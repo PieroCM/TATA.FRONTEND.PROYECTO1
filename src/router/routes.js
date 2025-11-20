@@ -2,11 +2,20 @@ const routes = [
   {
     path: '/',
     component: () => import('layouts/MainLayout.vue'),
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
+    children: [
+      { path: '', component: () => import('pages/IndexPage.vue') },
+      { path: 'dashboard', component: () => import('src/view/DashBoard/DashBoard.vue') },
+    ],
+  },
+  {
+    path: '/login',
+    component: () => import('src/view/InicioSesion/LoginForm.vue'),
+  },
+  {
+    path: '/register',
+    component: () => import('src/view/InicioSesion/RegisterForm.vue'),
   },
 
-  // Always leave this as last one,
-  // but you can also remove it
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
