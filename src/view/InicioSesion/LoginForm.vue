@@ -32,6 +32,7 @@
     <!-- SECCIÓN DERECHA (LOGIN) -->
     <div class="col-5 flex flex-center bg-page">
       <q-card class="login-card shadow-4 q-pa-xl">
+
         <!-- Avatar -->
         <div class="column items-center">
           <q-avatar size="80px" color="primary" text-color="white" class="q-mb-md">
@@ -39,8 +40,9 @@
           </q-avatar>
 
           <div class="text-h5 text-primary text-weight-bold q-mb-sm">Iniciar sesión</div>
-
-          <div class="text-body2 text-grey-7 q-mb-xl">Ingresa tus credenciales para continuar</div>
+          <div class="text-body2 text-grey-7 q-mb-xl">
+            Ingresa tus credenciales para continuar
+          </div>
         </div>
 
         <!-- CORREO -->
@@ -50,19 +52,33 @@
           </template>
         </q-input>
 
-        <!-- PASSWORD -->
-        <q-input v-model="password" type="password" label="Contraseña" filled dense class="q-mb-sm">
+        <!-- PASSWORD + SHOW/HIDE -->
+        <q-input
+          v-model="password"
+          :type="isPwd ? 'password' : 'text'"
+          label="Contraseña"
+          filled
+          dense
+          class="q-mb-sm"
+        >
           <template #prepend>
             <q-icon name="lock" />
           </template>
+
           <template #append>
-            <q-icon name="visibility" />
+            <q-icon
+              :name="isPwd ? 'visibility_off' : 'visibility'"
+              class="cursor-pointer"
+              @click="isPwd = !isPwd"
+            />
           </template>
         </q-input>
 
-        <!-- Olvidaste contraseña -->
+        <!-- OLVIDASTE -->
         <div class="text-right q-mb-lg">
-          <a class="text-primary cursor-pointer">¿Olvidaste tu contraseña?</a>
+          <a class="text-primary cursor-pointer" @click="showResetDialog = true">
+            ¿Olvidaste tu contraseña?
+          </a>
         </div>
 
         <!-- BOTÓN LOGIN -->
@@ -82,114 +98,141 @@
           </span>
         </div>
 
-        <!-- Demostración -->
         <div class="text-center text-grey-7 text-caption q-mt-md">
-          Credenciales de demostración: <br />
+          Credenciales demo:<br />
           usuario@tcs.com / tcs2024
         </div>
       </q-card>
     </div>
+
+    <!-- DIALOG RESET PASSWORD -->
+    <q-dialog v-model="showResetDialog">
+      <q-card class="q-pa-lg" style="width: 400px;">
+        <div class="text-h6 text-primary q-mb-md">Restablecer contraseña</div>
+
+        <q-input
+          v-model="resetEmail"
+          label="Ingresa tu correo"
+          filled dense
+          type="email"
+        />
+
+        <div class="row justify-end q-mt-md">
+          <q-btn flat label="Cancelar" color="grey" v-close-popup />
+          <q-btn label="Enviar" color="primary" @click="sendResetEmail" />
+        </div>
+      </q-card>
+    </q-dialog>
+
   </div>
 </template>
 
 <script>
 export default {
-  name: 'LoginForm',
+  name: "LoginForm",
 
   data() {
     return {
       slide: 0,
-      correo: '',
-      password: '',
+      correo: "",
+      password: "",
+      isPwd: true,        // 👈 Ocultar/mostrar contraseña
+      resetEmail: "",
+      showResetDialog: false,
 
       slides: [
         {
-          img: 'https://plus.unsplash.com/premium_photo-1661963212517-830bbb7d76fc?auto=format&fit=crop&w=1600&q=80',
-          title: 'Tecnología que Impulsa Resultados',
-          subtitle: 'Soluciones inteligentes para un mundo conectado.',
+          img: "https://plus.unsplash.com/premium_photo-1661963212517-830bbb7d76fc?auto=format&fit=crop&w=1600&q=80",
+          title: "Tecnología que Impulsa Resultados",
+          subtitle: "Soluciones inteligentes para un mundo conectado.",
         },
         {
-          img: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80',
-          title: 'Consultoría que Transforma Negocios',
-          subtitle: 'Estrategia, análisis y acompañamiento con visión global.',
+          img: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80",
+          title: "Consultoría que Transforma Negocios",
+          subtitle: "Estrategia, análisis y acompañamiento con visión global.",
         },
         {
-          img: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1600&q=80',
-          title: 'Innovación que Inspira el Futuro',
-          subtitle: 'Creando soluciones que marcan la diferencia.',
+          img: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1600&q=80",
+          title: "Innovación que Inspira el Futuro",
+          subtitle: "Creando soluciones que marcan la diferencia.",
         },
         {
-          img: 'https://images.unsplash.com/photo-1568952433726-3896e3881c65?auto=format&fit=crop&w=1600&q=80',
-          title: 'Transformación Digital sin Límites',
-          subtitle: 'Impulsando organizaciones hacia su máximo potencial.',
+          img: "https://images.unsplash.com/photo-1568952433726-3896e3881c65?auto=format&fit=crop&w=1600&q=80",
+          title: "Transformación Digital sin Límites",
+          subtitle: "Impulsando organizaciones hacia su máximo potencial.",
         },
       ],
-    }
+    };
   },
 
   methods: {
     async login() {
-      console.log('login() called', { correo: this.correo })
-
-      // Validar campos
       if (!this.correo || !this.password) {
-        console.warn('login validation failed: empty fields')
-        this.$q.notify({
-          type: 'warning',
-          message: 'Por favor completa todos los campos',
-          position: 'bottom',
-        })
-        return
-      }
-
-      const userData = {
-        correo: this.correo,
-        password: this.password,
+        return this.$q.notify({
+          type: "warning",
+          message: "Por favor completa todos los campos",
+          position: "bottom",
+        });
       }
 
       try {
-        console.log('sending login request...')
-        const response = await this.$api.post('/api/usuario/signin', userData)
-        console.log('login response', response)
+        const response = await this.$api.post("/api/usuario/signin", {
+          correo: this.correo,
+          password: this.password,
+        });
 
-        localStorage.setItem('token', response.data.token)
+        localStorage.setItem("token", response.data.token);
 
-        // Mostrar mensaje de éxito (con fallback a alert si notify no está disponible)
-        if (this.$q && typeof this.$q.notify === 'function') {
-          this.$q.notify({
-            type: 'positive',
-            message: 'Inicio de sesión exitoso',
-            position: 'bottom',
-            timeout: 1500,
-          })
-        } else {
-          window.alert('Inicio de sesión exitoso')
-        }
+        this.$q.notify({
+          type: "positive",
+          message: "Inicio de sesión exitoso",
+          position: "bottom",
+          timeout: 1500,
+        });
 
-        // Limpiar campos
-        this.correo = ''
-        this.password = ''
-
-        // Redirigir al dashboard después de que se muestre el mensaje
-        setTimeout(() => {
-          this.$router.push('/dashboard')
-        }, 1500)
+        this.$router.push("/dashboard");
       } catch (error) {
-        console.error('login error', error)
-        if (this.$q && typeof this.$q.notify === 'function') {
-          this.$q.notify({
-            type: 'negative',
-            message: error.response?.data?.message || 'Error al iniciar sesión',
-            position: 'bottom',
-            timeout: 2000,
-          })
-        } else {
-          window.alert(error.response?.data?.message || 'Error al iniciar sesión')
-        }
+        this.$q.notify({
+          type: "negative",
+          message: error.response?.data?.message || "Error al iniciar sesión",
+          position: "bottom",
+        });
+      }
+    },
+
+    async sendResetEmail() {
+      if (!this.resetEmail) {
+        return this.$q.notify({
+          type: "warning",
+          message: "Ingresa un correo válido",
+          position: "bottom",
+        });
+      }
+
+      try {
+        await this.$api.post("/api/usuario/reset-password-request", {
+          correo: this.resetEmail,
+        });
+
+        this.$q.notify({
+          type: "positive",
+          message: "Si el correo existe, se envió un enlace",
+          position: "bottom",
+        });
+
+        this.showResetDialog = false;
+        this.resetEmail = "";
+
+      } catch (error) {
+        this.$q.notify({
+          type: "negative",
+          message: error.response?.data?.message || "Error al enviar solicitud",
+          position: "bottom",
+        });
       }
     },
   },
-}
+};
 </script>
 
 <style scoped>
