@@ -32,7 +32,6 @@
     <!-- SECCIÓN DERECHA (LOGIN) -->
     <div class="col-5 flex flex-center bg-page">
       <q-card class="login-card shadow-4 q-pa-xl">
-
         <!-- Avatar -->
         <div class="column items-center">
           <q-avatar size="80px" color="primary" text-color="white" class="q-mb-md">
@@ -40,9 +39,7 @@
           </q-avatar>
 
           <div class="text-h5 text-primary text-weight-bold q-mb-sm">Iniciar sesión</div>
-          <div class="text-body2 text-grey-7 q-mb-xl">
-            Ingresa tus credenciales para continuar
-          </div>
+          <div class="text-body2 text-grey-7 q-mb-xl">Ingresa tus credenciales para continuar</div>
         </div>
 
         <!-- CORREO -->
@@ -107,15 +104,10 @@
 
     <!-- DIALOG RESET PASSWORD -->
     <q-dialog v-model="showResetDialog">
-      <q-card class="q-pa-lg" style="width: 400px;">
+      <q-card class="q-pa-lg" style="width: 400px">
         <div class="text-h6 text-primary q-mb-md">Restablecer contraseña</div>
 
-        <q-input
-          v-model="resetEmail"
-          label="Ingresa tu correo"
-          filled dense
-          type="email"
-        />
+        <q-input v-model="resetEmail" label="Ingresa tu correo" filled dense type="email" />
 
         <div class="row justify-end q-mt-md">
           <q-btn flat label="Cancelar" color="grey" v-close-popup />
@@ -123,116 +115,115 @@
         </div>
       </q-card>
     </q-dialog>
-
   </div>
 </template>
 
 <script>
 export default {
-  name: "LoginForm",
+  name: 'LoginForm',
 
   data() {
     return {
       slide: 0,
-      correo: "",
-      password: "",
-      isPwd: true,        // 👈 Ocultar/mostrar contraseña
-      resetEmail: "",
+      correo: '',
+      password: '',
+      isPwd: true, // 👈 Ocultar/mostrar contraseña
+      resetEmail: '',
       showResetDialog: false,
 
       slides: [
         {
-          img: "https://plus.unsplash.com/premium_photo-1661963212517-830bbb7d76fc?auto=format&fit=crop&w=1600&q=80",
-          title: "Tecnología que Impulsa Resultados",
-          subtitle: "Soluciones inteligentes para un mundo conectado.",
+          img: 'https://plus.unsplash.com/premium_photo-1661963212517-830bbb7d76fc?auto=format&fit=crop&w=1600&q=80',
+          title: 'Tecnología que Impulsa Resultados',
+          subtitle: 'Soluciones inteligentes para un mundo conectado.',
         },
         {
-          img: "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80",
-          title: "Consultoría que Transforma Negocios",
-          subtitle: "Estrategia, análisis y acompañamiento con visión global.",
+          img: 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?auto=format&fit=crop&w=1600&q=80',
+          title: 'Consultoría que Transforma Negocios',
+          subtitle: 'Estrategia, análisis y acompañamiento con visión global.',
         },
         {
-          img: "https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1600&q=80",
-          title: "Innovación que Inspira el Futuro",
-          subtitle: "Creando soluciones que marcan la diferencia.",
+          img: 'https://images.unsplash.com/photo-1485827404703-89b55fcc595e?auto=format&fit=crop&w=1600&q=80',
+          title: 'Innovación que Inspira el Futuro',
+          subtitle: 'Creando soluciones que marcan la diferencia.',
         },
         {
-          img: "https://images.unsplash.com/photo-1568952433726-3896e3881c65?auto=format&fit=crop&w=1600&q=80",
-          title: "Transformación Digital sin Límites",
-          subtitle: "Impulsando organizaciones hacia su máximo potencial.",
+          img: 'https://images.unsplash.com/photo-1568952433726-3896e3881c65?auto=format&fit=crop&w=1600&q=80',
+          title: 'Transformación Digital sin Límites',
+          subtitle: 'Impulsando organizaciones hacia su máximo potencial.',
         },
       ],
-    };
+    }
   },
 
   methods: {
     async login() {
       if (!this.correo || !this.password) {
         return this.$q.notify({
-          type: "warning",
-          message: "Por favor completa todos los campos",
-          position: "bottom",
-        });
+          type: 'warning',
+          message: 'Por favor completa todos los campos',
+          position: 'bottom',
+        })
       }
 
       try {
-        const response = await this.$api.post("/api/usuario/signin", {
+        const response = await this.$api.post('/api/usuario/signin', {
           correo: this.correo,
           password: this.password,
-        });
+        })
 
-        localStorage.setItem("token", response.data.token);
+        localStorage.setItem('token', response.data.token)
 
         this.$q.notify({
-          type: "positive",
-          message: "Inicio de sesión exitoso",
-          position: "bottom",
+          type: 'positive',
+          message: 'Inicio de sesión exitoso',
+          position: 'bottom',
           timeout: 1500,
-        });
+        })
 
-        this.$router.push("/dashboard");
+        // Redirigir al sistema (MainLayout)
+        this.$router.push('/sistema')
       } catch (error) {
         this.$q.notify({
-          type: "negative",
-          message: error.response?.data?.message || "Error al iniciar sesión",
-          position: "bottom",
-        });
+          type: 'negative',
+          message: error.response?.data?.message || 'Error al iniciar sesión',
+          position: 'bottom',
+        })
       }
     },
 
     async sendResetEmail() {
       if (!this.resetEmail) {
         return this.$q.notify({
-          type: "warning",
-          message: "Ingresa un correo válido",
-          position: "bottom",
-        });
+          type: 'warning',
+          message: 'Ingresa un correo válido',
+          position: 'bottom',
+        })
       }
 
       try {
-        await this.$api.post("/api/usuario/reset-password-request", {
+        await this.$api.post('/api/usuario/reset-password-request', {
           correo: this.resetEmail,
-        });
+        })
 
         this.$q.notify({
-          type: "positive",
-          message: "Si el correo existe, se envió un enlace",
-          position: "bottom",
-        });
+          type: 'positive',
+          message: 'Si el correo existe, se envió un enlace',
+          position: 'bottom',
+        })
 
-        this.showResetDialog = false;
-        this.resetEmail = "";
-
+        this.showResetDialog = false
+        this.resetEmail = ''
       } catch (error) {
         this.$q.notify({
-          type: "negative",
-          message: error.response?.data?.message || "Error al enviar solicitud",
-          position: "bottom",
-        });
+          type: 'negative',
+          message: error.response?.data?.message || 'Error al enviar solicitud',
+          position: 'bottom',
+        })
       }
     },
   },
-};
+}
 </script>
 
 <style scoped>

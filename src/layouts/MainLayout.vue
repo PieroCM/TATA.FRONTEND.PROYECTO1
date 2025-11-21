@@ -18,17 +18,17 @@
             icon="dashboard"
             label="Dashboard"
             :mini="drawerMini"
-            :childrenRoutes="['/dashboard-ejecutivo', '/analisis interactivo']"
+            :childrenRoutes="['/sistema/dashboard-ejecutivo', '/sistema/analisis-interactivo']"
           >
             <SidebarItemChild
               label="Dashboard ejecutivo"
               icon="bar_chart"
-              to="/dashboard-ejecutivo"
+              to="/sistema/dashboard-ejecutivo"
             />
             <SidebarItemChild
               label="Análisis interactivo"
               icon="show_chart"
-              to="/analisis interactivo"
+              to="/sistema/analisis-interactivo"
             />
           </SidebarGroup>
           <!-- GRUPO: Datos SLA -->
@@ -36,10 +36,10 @@
             icon="storage"
             label="Datos solicitud"
             :mini="drawerMini"
-            :childrenRoutes="['/cargar-datos', '/crud']"
+            :childrenRoutes="['/sistema/cargar-datos', '/sistema/crud']"
           >
-            <SidebarItemChild label="Cargar Datos" icon="upload" to="/cargar-datos" />
-            <SidebarItemChild label="Gestión de solicitud" icon="edit" to="/crud" />
+            <SidebarItemChild label="Cargar Datos" icon="upload" to="/sistema/cargar-datos" />
+            <SidebarItemChild label="Gestión de solicitud" icon="edit" to="/sistema/crud" />
           </SidebarGroup>
 
           <!-- GRUPO: Reportes -->
@@ -47,13 +47,17 @@
             icon="description"
             label="Reportes"
             :mini="drawerMini"
-            :childrenRoutes="['/reportes-sla', '/programar-envio']"
+            :childrenRoutes="['/sistema/reportes-sla', '/sistema/programar-envio']"
           >
-            <SidebarItemChild label="Reporte de cumplimiento" icon="bar_chart" to="/reportes-sla" />
+            <SidebarItemChild
+              label="Reporte de cumplimiento"
+              icon="bar_chart"
+              to="/sistema/reportes-sla"
+            />
             <SidebarItemChild
               label="Programar envío automático"
               icon="schedule"
-              to="/programar-envio"
+              to="/sistema/programar-envio"
             />
           </SidebarGroup>
 
@@ -62,10 +66,18 @@
             icon="warning_amber"
             label="Alertas SLA"
             :mini="drawerMini"
-            :childrenRoutes="['/alertas', '/alertas/email']"
+            :childrenRoutes="['/sistema/alertas', '/sistema/alertas/email']"
           >
-            <SidebarItemChild icon="warning_amber" label="Gestión de alertas" to="/alertas" />
-            <SidebarItemChild icon="mail_outline" label="Configuración Email" to="/alertas/email" />
+            <SidebarItemChild
+              icon="warning_amber"
+              label="Gestión de alertas"
+              to="/sistema/alertas"
+            />
+            <SidebarItemChild
+              icon="mail_outline"
+              label="Configuración Email"
+              to="/sistema/alertas/email"
+            />
           </SidebarGroup>
 
           <!-- GRUPO: Configuración -->
