@@ -3,7 +3,7 @@
   Permite cargar archivos Excel, realizar drag & drop, y previsualizar datos.
 -->
 <template>
-  <div class="carga-sla-page q-pa-xl bg-grey-1">
+  <q-page class="q-pa-xl bg-grey-1">
     <div class="max-width-page">
       <!-- Encabezado -->
       <div class="q-mb-lg">
@@ -111,7 +111,7 @@
         </div>
       </q-card>
     </div>
-  </div>
+  </q-page>
 </template>
 
 <script setup>
@@ -310,11 +310,6 @@ const procesarArchivo = async () => {
 </script>
 
 <style scoped>
-.carga-sla-page {
-  min-height: 100vh;
-  width: 100%;
-}
-
 .max-width-page {
   max-width: 900px;
   margin: 0 auto;

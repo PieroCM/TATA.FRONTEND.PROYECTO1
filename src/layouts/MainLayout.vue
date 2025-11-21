@@ -6,6 +6,7 @@
       :mini="drawerMini"
       show-if-above
       :width="250"
+      :breakpoint="1024"
       bordered
       class="sidebar"
     >
@@ -18,17 +19,12 @@
             icon="dashboard"
             label="Dashboard"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/dashboard-ejecutivo', '/sistema/analisis-interactivo']"
+            :childrenRoutes="['/sistema/dashboard']"
           >
             <SidebarItemChild
               label="Dashboard ejecutivo"
               icon="bar_chart"
-              to="/sistema/dashboard-ejecutivo"
-            />
-            <SidebarItemChild
-              label="Análisis interactivo"
-              icon="show_chart"
-              to="/sistema/analisis-interactivo"
+              to="/sistema/dashboard"
             />
           </SidebarGroup>
           <!-- GRUPO: Datos SLA -->
@@ -36,10 +32,10 @@
             icon="storage"
             label="Datos solicitud"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/cargar-datos', '/sistema/crud']"
+            :childrenRoutes="['/sistema/carga-volumen', '/sistema/gestion-sla']"
           >
-            <SidebarItemChild label="Cargar Datos" icon="upload" to="/sistema/cargar-datos" />
-            <SidebarItemChild label="Gestión de solicitud" icon="edit" to="/sistema/crud" />
+            <SidebarItemChild label="Cargar Datos" icon="upload" to="/sistema/carga-volumen" />
+            <SidebarItemChild label="Gestión de solicitud" icon="edit" to="/sistema/gestion-sla" />
           </SidebarGroup>
 
           <!-- GRUPO: Reportes -->
@@ -87,9 +83,9 @@
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/logs']"
+            :childrenRoutes="['/sistema/log-view']"
           >
-            <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/logs" />
+            <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
           </SidebarGroup>
         </q-list>
       </q-scroll-area>
@@ -98,34 +94,31 @@
     <!-- ========== HEADER ========== -->
     <q-header elevated class="bg-white text-dark topbar">
       <q-toolbar class="header-bar">
-        <!-- IZQUIERDA -->
-        <div class="row items-center">
-          <!-- Logo (siempre visible en modo expandido, oculto en mini) -->
-          <template v-if="!drawerMini">
-            <q-avatar rounded size="32px" class="bg-primary text-white flex flex-center q-mr-sm">
-              <q-icon name="grid_view" size="20px" />
-            </q-avatar>
-            <span class="text-weight-medium text-body1 q-mr-lg">SLA Manager</span>
-          </template>
+        <!-- IZQUIERDA: Logo + Hamburguesa -->
+        <q-avatar
+          v-if="!drawerMini"
+          rounded
+          size="32px"
+          class="bg-primary text-white flex flex-center q-mr-sm"
+        >
+          <q-icon name="grid_view" size="20px" />
+        </q-avatar>
+        <span v-if="!drawerMini" class="text-weight-medium text-body1 q-mr-lg">SLA Manager</span>
 
-          <!-- Botón hamburguesa -->
-          <q-btn flat dense round icon="menu" class="hamburger" @click="toggleMini" />
-        </div>
+        <q-btn flat dense round icon="menu" class="hamburger" @click="toggleMini" />
 
         <q-space />
 
-        <!-- DERECHA -->
-        <div class="row items-center">
+        <!-- DERECHA: Fecha + Notificaciones + Usuario -->
+        <div class="row items-center q-gutter-md">
           <!-- Fecha -->
-          <div class="row items-center q-mr-lg">
-            <q-icon name="event" class="q-mr-xs" />
-            <span class="text-body2 text-grey-8">
-              {{ currentMonthLabel }}
-            </span>
+          <div class="row items-center no-wrap">
+            <q-icon name="event" size="18px" class="q-mr-xs" />
+            <span class="text-body2 text-grey-8">{{ currentMonthLabel }}</span>
           </div>
 
           <!-- Notificaciones -->
-          <q-btn round flat dense icon="notifications" class="q-mr-md">
+          <q-btn round flat dense icon="notifications">
             <q-badge color="red" floating>3</q-badge>
           </q-btn>
 
@@ -224,9 +217,30 @@ export default {
     },
   },
 
+  watch: {
+    $route() {
+      // En pantallas pequeñas, cerrar el drawer al cambiar de ruta
+      if (this.$q.screen.lt.lg) {
+        this.drawerOpen = false
+      }
+    },
+  },
+
   methods: {
     toggleMini() {
-      this.drawerMini = !this.drawerMini
+      // En pantallas pequeñas, toggle del drawer completo (abrir/cerrar)
+      if (this.$q.screen.lt.lg) {
+        this.drawerOpen = !this.drawerOpen
+      } else {
+        // En pantallas grandes, toggle del modo mini (expandir/contraer)
+        this.drawerMini = !this.drawerMini
+      }
+    },
+    handleDrawerClick() {
+      // En pantallas pequeñas, cerrar drawer al hacer click en cualquier item del menú
+      if (this.$q.screen.lt.lg) {
+        this.drawerOpen = false
+      }
     },
   },
 }
@@ -251,6 +265,7 @@ export default {
 .q-drawer {
   background: white !important;
   border-right: 1px solid var(--gray-border);
+  z-index: 2000 !important; /* Debajo del header */
 }
 
 .menu-item,
@@ -294,7 +309,60 @@ export default {
   color: var(--gray-icon) !important;
 }
 
-/* ------------------ MINI SIDEBAR ------------------ */
+/* ------------------ MINI SIDEBAR (CONTRAÍDO - SOLO ICONOS) ------------------ */
+/* Ocultar textos en modo mini */
+.q-drawer--mini .q-item__label,
+.q-drawer--mini .q-expansion-item__toggle-icon {
+  display: none !important;
+}
+
+/* Centrar iconos en modo mini */
+.q-drawer--mini .q-item {
+  justify-content: center !important;
+  padding: 12px 0 !important;
+}
+
+.q-drawer--mini .q-item__section--avatar {
+  min-width: auto !important;
+  padding-right: 0 !important;
+}
+
+/* Iconos en modo mini */
+.q-drawer--mini .q-icon {
+  color: var(--gray-icon) !important;
+  font-size: 24px !important;
+}
+
+.q-drawer--mini .q-item:hover .q-icon {
+  color: var(--blue-primary) !important;
+}
+
+.q-drawer--mini .q-item--active .q-icon,
+.q-drawer--mini .router-link-active .q-icon {
+  color: var(--blue-primary) !important;
+}
+
+/* Hover en modo mini */
+.q-drawer--mini .q-item:hover {
+  background-color: var(--hover-blue) !important;
+}
+
+/* Activo en modo mini */
+.q-drawer--mini .q-item--active,
+.q-drawer--mini .router-link-active {
+  background-color: var(--active-blue) !important;
+  border-left: 3px solid var(--blue-primary);
+}
+
+/* Espaciado entre items en modo mini */
+.q-drawer--mini .q-expansion-item {
+  padding: 0 !important;
+}
+
+.q-drawer--mini .q-list {
+  padding: 8px 0 !important;
+}
+
 .menu-item-mini q-icon {
   color: var(--gray-icon) !important;
 }
@@ -303,6 +371,14 @@ export default {
 .topbar {
   background: white !important;
   border-bottom: 1px solid var(--gray-border);
+  height: 56px;
+  z-index: 3000 !important; /* Asegura que el header esté encima del drawer */
+}
+
+.header-bar {
+  min-height: 56px;
+  height: 56px;
+  z-index: 3000 !important;
 }
 
 .hamburger {
@@ -310,6 +386,33 @@ export default {
 }
 .hamburger:hover {
   color: var(--blue-primary) !important;
+}
+
+/* ------------------ RESPONSIVIDAD ------------------ */
+@media (max-width: 1023px) {
+  /* En pantallas pequeñas, el drawer se comporta como overlay */
+  .q-drawer {
+    z-index: 6000 !important; /* Por encima del header en móvil */
+  }
+
+  .topbar {
+    z-index: 5500 !important; /* Header debajo del drawer en móvil */
+  }
+
+  .q-layout__backdrop {
+    z-index: 5000 !important;
+  }
+}
+
+/* Para pantallas mayores (desktop), mantener jerarquía original */
+@media (min-width: 1024px) {
+  .q-drawer {
+    z-index: 2000 !important; /* Debajo del header en desktop */
+  }
+
+  .topbar {
+    z-index: 3000 !important; /* Header encima del drawer en desktop */
+  }
 }
 
 /* ------------------ OCULTAR SCROLLBAR ------------------ */
@@ -387,30 +490,7 @@ export default {
 .q-expansion-item--expanded .q-expansion-item__toggle-icon {
   color: #1a73e8 !important;
 }
-/* Íconos en modo MINI (colapsado) */
-.q-drawer--mini .q-item q-icon {
-  color: #6b7280 !important; /* gris del Figma */
-  opacity: 0.9;
-}
-.q-drawer--mini .q-item:hover .q-icon {
-  color: #3b82f6 !important; /* azul hover */
-}
-/* --- ESPACIADO ENTRE ICONOS EN MODO MINI --- */
-.q-drawer--mini .q-item {
-  padding-top: 10px !important;
-  padding-bottom: 10px !important;
-}
 
-.q-drawer--mini .q-item-section {
-  justify-content: center !important;
-}
-/* ICONOS EN DRAWER MINI (selector alternativo) */
-.q-drawer--mini-closed .q-item .q-icon,
-.q-drawer--mini .q-item .q-icon,
-aside[mini] .q-item .q-icon,
-.q-drawer.q-mini .q-item .q-icon {
-  color: #6b7280 !important;
-}
 /* --- MENÚ DE USUARIO (ESTILO FIGMA) --- */
 
 .user-menu {

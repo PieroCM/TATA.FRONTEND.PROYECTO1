@@ -2,15 +2,21 @@ const routes = [
   {
     // Ruta raíz: Login
     path: '/',
-    component: () => import('src/view/Sistemas/logView.vue'),
-    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
     component: () => import('src/view/InicioSesion/LoginForm.vue'),
+  },
+  {
+    path: '/register',
+    component: () => import('src/view/InicioSesion/RegisterForm.vue'),
   },
   {
     // Ruta del sistema con MainLayout
     path: '/sistema',
     component: () => import('layouts/MainLayout.vue'),
     children: [
+      {
+        path: '',
+        redirect: '/sistema/dashboard',
+      },
       {
         path: 'dashboard',
         name: 'dashboard',
@@ -26,23 +32,22 @@ const routes = [
         name: 'alertas-email',
         component: () => import('src/view/Configuraciones/PageConfigEmail.vue'),
       },
+      {
+        path: 'gestion-sla',
+        name: 'GestionSLAView',
+        component: () => import('src/view/SLA/GestionSLAView.vue'),
+      },
+      {
+        path: 'carga-volumen',
+        name: 'CargaVolumenSolicitudView',
+        component: () => import('src/view/SLA/CargaVolumenSolicitudView.vue'),
+      },
+      {
+        path: 'log-view',
+        name: 'LogView',
+        component: () => import('src/view/Sistemas/logView.vue'),
+      },
     ],
-  },
-  {
-    path: '/register',
-    component: () => import('src/view/InicioSesion/RegisterForm.vue'),
-  },
-
-  {
-    path: '/GestionSLAView',
-    name: 'GestionSLAView',
-    component: () => import('src/view/SLA/GestionSLAView.vue'),
-  },
-
-  {
-    path: '/CargaVolumenSolicitudView',
-    name: 'CargaVolumenSolicitudView',
-    component: () => import('src/view/SLA/CargaVolumenSolicitudView.vue'),
   },
 
   // Always leave this as last one

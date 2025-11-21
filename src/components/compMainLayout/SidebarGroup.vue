@@ -5,7 +5,7 @@
     :label="label"
     :icon="icon"
     class="menu-group"
-    switch-toggle-side="right"
+    switch-toggle-side
   >
     <slot />
   </q-expansion-item>

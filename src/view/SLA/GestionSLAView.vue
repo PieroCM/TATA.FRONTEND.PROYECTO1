@@ -4,7 +4,7 @@
   Permite búsqueda por rol o estado.
 -->
 <template>
-  <div class="gestion-sla-page">
+  <q-page class="gestion-sla-page">
     <div class="gestion-sla-container">
       <!-- Título -->
       <div class="gestion-sla-header">
@@ -45,7 +45,7 @@
       :registro-id="selectedRegistroId"
       @registro-actualizado="loadSolicitudes"
     />
-  </div>
+  </q-page>
 </template>
 
 <script setup>
