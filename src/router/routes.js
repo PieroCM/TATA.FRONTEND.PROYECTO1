@@ -2,6 +2,8 @@ const routes = [
   {
     // Ruta raíz: Login
     path: '/',
+    component: () => import('src/view/Sistemas/logView.vue'),
+    children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
     component: () => import('src/view/InicioSesion/LoginForm.vue'),
   },
   {
