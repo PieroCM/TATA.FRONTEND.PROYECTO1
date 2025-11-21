@@ -12,19 +12,22 @@
     >
       <q-scroll-area class="fit">
         <q-list padding>
-          <!-- Ítems simples -->
-
           <!-- GRUPO: Dashboard -->
           <SidebarGroup
             icon="dashboard"
             label="Dashboard"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/dashboard']"
+            :childrenRoutes="['/sistema/dashboard', '/sistema/analitica-interactiva']"
           >
             <SidebarItemChild
               label="Dashboard ejecutivo"
               icon="bar_chart"
               to="/sistema/dashboard"
+            />
+            <SidebarItemChild
+              label="Análisis interactivo"
+              icon="show_chart"
+              to="/sistema/analitica-interactiva"
             />
           </SidebarGroup>
           <!-- GRUPO: Datos SLA -->
@@ -68,11 +71,6 @@
               icon="warning_amber"
               label="Gestión de alertas"
               to="/sistema/alertas"
-            />
-            <SidebarItemChild
-              icon="mail_outline"
-              label="Configuración Email"
-              to="/sistema/alertas/email"
             />
           </SidebarGroup>
 
