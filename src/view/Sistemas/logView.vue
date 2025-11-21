@@ -90,6 +90,7 @@ import LogItem from '../../components/compLogView/LogItem.vue'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 import tataLogo from 'src/assets/Tata_logo.png?base64'
+import { api } from 'src/boot/axios'
 
 /* ------------------------------
     VARIABLES REACTIVAS
@@ -140,13 +141,12 @@ const updateCounts = () => {
 }
 
 /* ------------------------------
-     CARGAR API (SIMULADO)
+     CARGAR API
 --------------------------------*/
 const fetchLogs = async () => {
   try {
-    // 👉 REEMPLAZA ESTA URL CON TU API REAL
-    const res = await fetch('http://localhost:5260/api/logsistema')
-    logs.value = await res.json()
+    const res = await api.get('/api/logsistema')
+    logs.value = res.data
     // Normalizamos los niveles para que siempre sean MAYÚSCULAS
     logs.value = logs.value.map((l) => ({
       ...l,
