@@ -19,12 +19,13 @@ const routes = [
         component: () => import('pages/SLA_AnaliticaInteractiva.vue'),
         meta: { title: 'Analítica Interactiva SLA' }
       },
-      {
-        path: 'sla-filtros',
-        name: 'sla-filtros',
-        component: () => import('pages/SLA_FiltrosReporte.vue'),
-        meta: { title: 'Filtros de Reporte SLA' }
-      },
+      // Ruta comentada - Filtros y Reportes manejado en otra rama
+      // {
+      //   path: 'sla-filtros',
+      //   name: 'sla-filtros',
+      //   component: () => import('pages/SLA_FiltrosReporte.vue'),
+      //   meta: { title: 'Filtros de Reporte SLA' }
+      // },
       {
         path: 'productos',
         name: 'productos',

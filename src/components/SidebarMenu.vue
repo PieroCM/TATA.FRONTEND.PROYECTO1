@@ -59,12 +59,6 @@ const menuItems = [
     caption: null,
     icon: 'insights',
     link: '/sla-analitica'
-  },
-  {
-    title: 'Filtros y Reportes',
-    caption: null,
-    icon: 'filter_alt',
-    link: '/sla-filtros'
   }
 ]
 </script>

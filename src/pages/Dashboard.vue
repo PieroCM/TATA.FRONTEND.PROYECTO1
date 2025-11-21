@@ -1,11 +1,15 @@
 <template>
   <q-page class="dashboard-page">
-    <!-- Loading Overlay -->
-    <q-inner-loading :showing="loading">
-      <q-spinner-gears size="50px" color="primary" />
-      <div class="q-mt-md">Cargando datos del dashboard...</div>
-    </q-inner-loading>
+    <!-- Loading Fullscreen -->
+    <div v-if="initialLoading" class="fullscreen-loading">
+      <div class="loading-content">
+        <q-spinner-gears size="80px" color="primary" />
+        <div class="text-h6 q-mt-lg text-primary">Cargando datos del dashboard...</div>
+      </div>
+    </div>
 
+    <!-- Contenido del Dashboard -->
+    <div v-else>
     <!-- Header del Dashboard -->
     <div class="dashboard-header q-mb-lg">
       <div class="row items-center justify-between">
@@ -87,7 +91,7 @@
           <!-- Select para agregar roles -->
           <q-select
             v-model="nuevoRol"
-            :options="rolesDisponibles"
+            :options="rolesDisponiblesParaSeleccionar"
             label="+ Agregar rol"
             outlined
             dense
@@ -250,26 +254,7 @@
         </q-card>
       </div>
     </div>
-
-    <!-- Filtros por Rol (chips adicionales) -->
-    <q-card flat bordered>
-      <q-card-section>
-        <div class="text-subtitle2 q-mb-md">Filtrar por rol:</div>
-        <div class="row q-gutter-sm">
-          <q-chip
-            v-for="(rol, index) in todosLosRoles"
-            :key="index"
-            clickable
-            :outline="!rol.activo"
-            :color="rol.activo ? 'primary' : 'grey-4'"
-            :text-color="rol.activo ? 'white' : 'grey-8'"
-            @click="toggleRolFiltro(index)"
-          >
-            {{ rol.nombre }} ({{ rol.cantidad }})
-          </q-chip>
-        </div>
-      </q-card-section>
-    </q-card>
+    </div>
   </q-page>
 </template>
 
@@ -277,12 +262,15 @@
 import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
+import { useAppStore } from 'stores/app-store'
 
 // Obtener instancia de Quasar
 const $q = useQuasar()
+const appStore = useAppStore()
 
 // Referencias reactivas
 const loading = ref(false)
+const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
 const autoRefresh = ref(true)
 const refreshInterval = ref(null)
 
@@ -304,6 +292,11 @@ const aniosDisponibles = ref([])
 const rolesSeleccionados = ref([])
 const nuevoRol = ref(null)
 const rolesDisponibles = ref([])
+
+// Computed: Roles disponibles para seleccionar (excluye los ya seleccionados)
+const rolesDisponiblesParaSeleccionar = computed(() => {
+  return rolesDisponibles.value.filter(rol => !rolesSeleccionados.value.includes(rol))
+})
 
 // Estadísticas principales
 const slaGlobal = ref(0)
@@ -489,6 +482,12 @@ const cargarDashboard = async () => {
     // Calcular cumplimiento por rol
     const cumplimientoPorRol = todosRoles
       .filter(r => r.esActivo)
+      .filter(rol => {
+        // Si NO hay roles seleccionados, mostrar todos
+        if (rolesSeleccionados.value.length === 0) return true
+        // Si HAY roles seleccionados, mostrar solo esos (aunque no tengan registros)
+        return rolesSeleccionados.value.includes(rol.nombreRol)
+      })
       .map(rol => {
         const solicitudesRol = solicitudesConSla.filter(s => s.idRolRegistro === rol.idRolRegistro)
         const totalRol = solicitudesRol.length
@@ -501,7 +500,6 @@ const cargarDashboard = async () => {
           total: totalRol
         }
       })
-      .filter(r => r.total > 0)
       .sort((a, b) => b.cumplimiento - a.cumplimiento)
 
     cumplimientoRoles.value = cumplimientoPorRol
@@ -523,6 +521,12 @@ const cargarDashboard = async () => {
         // Calcular cumplimiento por rol para este tipo de SLA
         const cumplimientoPorRolTipoSla = todosRoles
           .filter(r => r.esActivo)
+          .filter(rol => {
+            // Si NO hay roles seleccionados, mostrar todos
+            if (rolesSeleccionados.value.length === 0) return true
+            // Si HAY roles seleccionados, mostrar solo esos (aunque no tengan registros)
+            return rolesSeleccionados.value.includes(rol.nombreRol)
+          })
           .map(rol => {
             const solicitudesRolTipo = solicitudesTipoSla.filter(s => s.idRolRegistro === rol.idRolRegistro)
             const totalRolTipo = solicitudesRolTipo.length
@@ -535,7 +539,6 @@ const cargarDashboard = async () => {
               total: totalRolTipo
             }
           })
-          .filter(r => r.total > 0)
           .sort((a, b) => b.cumplimiento - a.cumplimiento)
 
         return {
@@ -559,13 +562,6 @@ const cargarDashboard = async () => {
           activo: rolesSeleccionados.value.includes(rol.nombreRol)
         }
       })
-
-    $q.notify({
-      type: 'positive',
-      message: `Datos actualizados: ${totalSolicitudes} solicitudes encontradas`,
-      position: 'top-right',
-      timeout: 2000
-    })
 
   } catch (error) {
     console.error('Error al cargar dashboard desde API:', error)
@@ -594,6 +590,7 @@ const cargarDashboard = async () => {
     })
   } finally {
     loading.value = false
+    appStore.markAsLoaded()
   }
 }
 
@@ -673,26 +670,6 @@ const removerRol = (rol) => {
 
     cargarDashboard()
   }
-}
-
-const toggleRolFiltro = (index) => {
-  const rol = todosLosRoles.value[index]
-  rol.activo = !rol.activo
-
-  if (rol.activo) {
-    // Agregar rol si no está en la lista
-    if (!rolesSeleccionados.value.includes(rol.nombre)) {
-      rolesSeleccionados.value.push(rol.nombre)
-    }
-  } else {
-    // Remover rol de la lista
-    const idx = rolesSeleccionados.value.indexOf(rol.nombre)
-    if (idx > -1) {
-      rolesSeleccionados.value.splice(idx, 1)
-    }
-  }
-
-  cargarDashboard()
 }
 
 // Funciones para colores de barras y chips
@@ -845,5 +822,25 @@ onBeforeUnmount(() => {
   color: white;
   font-weight: 600;
   font-size: 14px;
+}
+
+.fullscreen-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 </style>

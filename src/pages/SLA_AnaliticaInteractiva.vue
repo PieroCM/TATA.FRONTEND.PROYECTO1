@@ -1,11 +1,15 @@
 <template>
   <q-page class="dashboard-page">
-    <!-- Loading Overlay -->
-    <q-inner-loading :showing="loading">
-      <q-spinner-gears size="50px" color="primary" />
-      <div class="q-mt-md">Cargando análisis...</div>
-    </q-inner-loading>
+    <!-- Loading Fullscreen -->
+    <div v-if="initialLoading" class="fullscreen-loading">
+      <div class="loading-content">
+        <q-spinner-gears size="80px" color="primary" />
+        <div class="text-h6 q-mt-lg text-primary">Cargando análisis...</div>
+      </div>
+    </div>
 
+    <!-- Contenido -->
+    <div v-else>
     <!-- Header -->
     <div class="dashboard-header q-mb-lg">
       <div class="row items-center">
@@ -26,14 +30,15 @@
         </div>
 
         <div class="row q-col-gutter-md">
-          <!-- Mes/Año -->
+          <!-- Rango de Meses -->
           <div class="col-12 col-md-2">
             <q-select
-              v-model="filtros.mes"
+              v-model="filtros.mesInicio"
               :options="mesesDisponibles"
-              label="Mes"
+              label="Mes Inicio"
               outlined
               dense
+              clearable
             >
               <template v-slot:prepend>
                 <q-icon name="event" />
@@ -43,11 +48,28 @@
 
           <div class="col-12 col-md-2">
             <q-select
-              v-model="filtros.anio"
-              :options="aniosDisponibles"
-              label="Año"
+              v-model="filtros.mesFin"
+              :options="mesesDisponibles"
+              label="Mes Fin"
               outlined
               dense
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="event" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Rango de Años -->
+          <div class="col-12 col-md-2">
+            <q-select
+              v-model="filtros.anioInicio"
+              :options="aniosDisponibles"
+              label="Año Inicio"
+              outlined
+              dense
+              clearable
             >
               <template v-slot:prepend>
                 <q-icon name="calendar_today" />
@@ -55,8 +77,23 @@
             </q-select>
           </div>
 
-          <!-- Tipo SLA -->
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
+            <q-select
+              v-model="filtros.anioFin"
+              :options="aniosDisponibles"
+              label="Año Fin"
+              outlined
+              dense
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="calendar_today" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Tipo SLA (desde BD) -->
+          <div class="col-12 col-md-2">
             <q-select
               v-model="filtros.tipoSla"
               :options="tiposSlaDisponibles"
@@ -71,8 +108,8 @@
             </q-select>
           </div>
 
-          <!-- Roles (multi-selección) -->
-          <div class="col-12 col-md-3">
+          <!-- Roles (desde BD) -->
+          <div class="col-12 col-md-2">
             <q-select
               v-model="filtros.roles"
               :options="rolesDisponibles"
@@ -88,7 +125,10 @@
               </template>
             </q-select>
           </div>
+        </div>
 
+        <!-- Segunda fila de filtros -->
+        <div class="row q-col-gutter-md q-mt-sm">
           <!-- Tipo de Gráfico -->
           <div class="col-12 col-md-2">
             <q-select
@@ -137,8 +177,45 @@
         </div>
         <q-separator class="q-mb-md" />
 
-        <div v-if="datosGrafico.labels && datosGrafico.labels.length > 0" class="chart-wrapper">
-          <canvas ref="chartCanvas"></canvas>
+        <div v-if="datosGrafico.labels && datosGrafico.labels.length > 0">
+          <div class="row">
+            <!-- Gráfico -->
+            <div class="col-12 col-md-9">
+              <div class="chart-wrapper">
+                <canvas ref="chartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Leyenda de colores a la derecha -->
+            <div class="col-12 col-md-3">
+              <div class="color-legend">
+                <div class="text-subtitle2 text-weight-medium q-mb-md">Leyenda de Estado SLA:</div>
+                <div class="legend-items">
+                  <div class="legend-item q-mb-sm">
+                    <q-chip color="positive" text-color="white" dense>
+                      <q-icon name="check_circle" left />
+                      Excelente
+                    </q-chip>
+                    <div class="text-caption text-grey-7 q-mt-xs">≥ 90%</div>
+                  </div>
+                  <div class="legend-item q-mb-sm">
+                    <q-chip color="orange" text-color="white" dense>
+                      <q-icon name="warning" left />
+                      Aceptable
+                    </q-chip>
+                    <div class="text-caption text-grey-7 q-mt-xs">≥ 70%</div>
+                  </div>
+                  <div class="legend-item">
+                    <q-chip color="negative" text-color="white" dense>
+                      <q-icon name="error" left />
+                      Bajo
+                    </q-chip>
+                    <div class="text-caption text-grey-7 q-mt-xs">&lt; 70%</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <div v-else class="text-center text-grey-7 q-pa-xl">
           <q-icon name="insert_chart_outlined" size="64px" color="grey-5" />
@@ -183,6 +260,7 @@
         </q-card>
       </div>
     </div>
+    </div>
   </q-page>
 </template>
 
@@ -191,13 +269,16 @@ import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import { Chart, registerables } from 'chart.js'
+import { useAppStore } from 'stores/app-store'
 
 Chart.register(...registerables)
 
 const $q = useQuasar()
+const appStore = useAppStore()
 
 // Estados
 const loading = ref(false)
+const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
 const chartCanvas = ref(null)
 let chartInstance = null
 
@@ -209,14 +290,16 @@ const mesesDisponibles = [
 const tiposGraficoDisponibles = [
   { label: 'Barras', value: 'bar' },
   { label: 'Líneas', value: 'line' },
-  { label: 'Área', value: 'line' },
+  { label: 'Área', value: 'area' },
   { label: 'Donut', value: 'doughnut' },
   { label: 'Radar', value: 'radar' }
 ]
 
 const filtros = ref({
-  mes: mesesDisponibles[new Date().getMonth()],
-  anio: new Date().getFullYear(),
+  mesInicio: null,
+  mesFin: null,
+  anioInicio: null,
+  anioFin: null,
   tipoSla: null,
   roles: []
 })
@@ -239,9 +322,27 @@ const estadisticas = ref({
 
 // Computed
 const tituloGrafico = computed(() => {
-  const mes = filtros.value.mes
-  const anio = filtros.value.anio
-  return `Análisis SLA - ${mes} ${anio}`
+  let titulo = 'Análisis SLA'
+
+  // Rango de meses
+  if (filtros.value.mesInicio && filtros.value.mesFin) {
+    titulo += ` - ${filtros.value.mesInicio} a ${filtros.value.mesFin}`
+  } else if (filtros.value.mesInicio) {
+    titulo += ` - ${filtros.value.mesInicio}`
+  } else if (filtros.value.mesFin) {
+    titulo += ` - hasta ${filtros.value.mesFin}`
+  }
+
+  // Rango de años
+  if (filtros.value.anioInicio && filtros.value.anioFin) {
+    titulo += ` (${filtros.value.anioInicio} - ${filtros.value.anioFin})`
+  } else if (filtros.value.anioInicio) {
+    titulo += ` (${filtros.value.anioInicio})`
+  } else if (filtros.value.anioFin) {
+    titulo += ` (hasta ${filtros.value.anioFin})`
+  }
+
+  return titulo
 })
 
 // Watchers
@@ -286,11 +387,41 @@ const cargarConfiguracionesIniciales = async () => {
 }
 
 const aplicarFiltros = async () => {
+  // Validar rangos de fechas
+  if (filtros.value.anioInicio && filtros.value.anioFin) {
+    if (filtros.value.anioInicio > filtros.value.anioFin) {
+      $q.notify({
+        type: 'negative',
+        message: 'El año de inicio no puede ser mayor al año final',
+        position: 'top-right',
+        timeout: 3000
+      })
+      return
+    }
+  }
+
+  // Validar rango de meses si están en el mismo año
+  if (filtros.value.mesInicio && filtros.value.mesFin) {
+    const mesInicioNum = mesesDisponibles.indexOf(filtros.value.mesInicio)
+    const mesFinNum = mesesDisponibles.indexOf(filtros.value.mesFin)
+
+    // Si hay mismo año o no hay filtro de años, validar meses
+    if (!filtros.value.anioInicio || !filtros.value.anioFin || filtros.value.anioInicio === filtros.value.anioFin) {
+      if (mesInicioNum > mesFinNum) {
+        $q.notify({
+          type: 'negative',
+          message: 'El mes de inicio no puede ser mayor al mes final',
+          position: 'top-right',
+          timeout: 3000
+        })
+        return
+      }
+    }
+  }
+
   loading.value = true
 
   try {
-    const mesNumero = mesesDisponibles.indexOf(filtros.value.mes) + 1
-
     const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
       api.get('/Solicitud'),
       api.get('/RolRegistro'),
@@ -301,12 +432,35 @@ const aplicarFiltros = async () => {
     const todosRoles = rolesRes.data || []
     const configsSla = configSlaRes.data || []
 
-    // Filtrar por mes/año
+    // Filtrar por rango de fechas (mes y año)
     solicitudes = solicitudes.filter(s => {
       if (!s.fechaSolicitud) return false
       const fecha = new Date(s.fechaSolicitud)
-      return fecha.getFullYear() === filtros.value.anio &&
-             (fecha.getMonth() + 1) === mesNumero
+      const anio = fecha.getFullYear()
+      const mes = fecha.getMonth() + 1 // 1-12
+
+      // Filtrar por rango de años
+      if (filtros.value.anioInicio && anio < filtros.value.anioInicio) return false
+      if (filtros.value.anioFin && anio > filtros.value.anioFin) return false
+
+      // Filtrar por rango de meses (solo si están en el mismo año o sin filtro de año)
+      if (filtros.value.mesInicio || filtros.value.mesFin) {
+        const mesInicioNum = filtros.value.mesInicio ? mesesDisponibles.indexOf(filtros.value.mesInicio) + 1 : 1
+        const mesFinNum = filtros.value.mesFin ? mesesDisponibles.indexOf(filtros.value.mesFin) + 1 : 12
+
+        // Si hay rango de años, aplicar lógica más compleja
+        if (filtros.value.anioInicio && filtros.value.anioFin) {
+          // Primer año: desde mesInicio hasta diciembre
+          if (anio === filtros.value.anioInicio && mes < mesInicioNum) return false
+          // Último año: desde enero hasta mesFin
+          if (anio === filtros.value.anioFin && mes > mesFinNum) return false
+        } else {
+          // Sin rango de años, filtrar solo por meses
+          if (mes < mesInicioNum || mes > mesFinNum) return false
+        }
+      }
+
+      return true
     })
 
     // Filtrar por tipo SLA
@@ -358,16 +512,50 @@ const aplicarFiltros = async () => {
       .filter(r => r.total > 0)
       .sort((a, b) => b.porcentaje - a.porcentaje)
 
-    datosGrafico.value = {
-      labels: cumplimientoPorRol.map(r => r.nombre),
-      datasets: [{
-        label: 'Cumplimiento SLA (%)',
-        data: cumplimientoPorRol.map(r => r.porcentaje),
-        backgroundColor: cumplimientoPorRol.map(r => getColorByPercentage(r.porcentaje)),
-        borderColor: cumplimientoPorRol.map(r => getColorByPercentage(r.porcentaje)),
-        borderWidth: 2,
-        fill: tipoGrafico.value.label === 'Área'
-      }]
+    // Configurar datos según tipo de gráfico
+    if (tipoGrafico.value.value === 'line') {
+      // Para gráfico de líneas: una línea con todos los puntos (roles) con colores según SLA
+      const labels = cumplimientoPorRol.map(r => r.nombre)
+      const data = cumplimientoPorRol.map(r => r.porcentaje)
+      const pointColors = cumplimientoPorRol.map(rol => {
+        if (rol.porcentaje >= 90) {
+          return 'rgba(76, 175, 80, 1)' // Verde (Excelente)
+        } else if (rol.porcentaje >= 70) {
+          return 'rgba(255, 152, 0, 1)' // Amarillo (Aceptable)
+        } else {
+          return 'rgba(244, 67, 54, 1)' // Rojo (Bajo)
+        }
+      })
+
+      datosGrafico.value = {
+        labels: labels,
+        datasets: [{
+          label: 'Cumplimiento SLA (%)',
+          data: data,
+          borderColor: 'rgba(76, 175, 80, 0.5)', // Color de línea general
+          backgroundColor: 'rgba(76, 175, 80, 0.1)',
+          borderWidth: 2,
+          pointBackgroundColor: pointColors, // Colores individuales por punto
+          pointBorderColor: pointColors,
+          pointRadius: 6,
+          pointHoverRadius: 8,
+          fill: false,
+          tension: 0.4
+        }]
+      }
+    } else {
+      // Para otros gráficos: dataset único con múltiples barras/puntos
+      datosGrafico.value = {
+        labels: cumplimientoPorRol.map(r => r.nombre),
+        datasets: [{
+          label: 'Cumplimiento SLA (%)',
+          data: cumplimientoPorRol.map(r => r.porcentaje),
+          backgroundColor: cumplimientoPorRol.map(r => getColorByPercentage(r.porcentaje)),
+          borderColor: cumplimientoPorRol.map(r => getColorByPercentage(r.porcentaje)),
+          borderWidth: 2,
+          fill: tipoGrafico.value.value === 'area'
+        }]
+      }
     }
 
     // Estadísticas
@@ -380,13 +568,6 @@ const aplicarFiltros = async () => {
     await nextTick()
     crearGrafico()
 
-    $q.notify({
-      type: 'positive',
-      message: `${solicitudesConSla.length} registros encontrados`,
-      position: 'top-right',
-      timeout: 2000
-    })
-
   } catch (error) {
     console.error('Error al aplicar filtros:', error)
     $q.notify({
@@ -397,6 +578,7 @@ const aplicarFiltros = async () => {
     })
   } finally {
     loading.value = false
+    appStore.markAsLoaded()
   }
 }
 
@@ -409,8 +591,11 @@ const crearGrafico = () => {
 
   const ctx = chartCanvas.value.getContext('2d')
 
+  // Convertir 'area' a 'line' para Chart.js (área es línea con fill)
+  const chartType = tipoGrafico.value.value === 'area' ? 'line' : tipoGrafico.value.value
+
   chartInstance = new Chart(ctx, {
-    type: tipoGrafico.value.value,
+    type: chartType,
     data: datosGrafico.value,
     options: {
       responsive: true,
@@ -418,13 +603,16 @@ const crearGrafico = () => {
       aspectRatio: 2,
       plugins: {
         legend: {
-          display: tipoGrafico.value.value === 'doughnut',
+          display: tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'line',
           position: 'bottom'
         },
         tooltip: {
           enabled: true,
           callbacks: {
             label: function(context) {
+              if (tipoGrafico.value.value === 'line') {
+                return context.dataset.label + ': ' + context.parsed.y + '%'
+              }
               return context.dataset.label + ': ' + context.parsed.y + '%'
             }
           }
@@ -447,13 +635,25 @@ const crearGrafico = () => {
 
 const restablecerFiltros = () => {
   filtros.value = {
-    mes: mesesDisponibles[new Date().getMonth()],
-    anio: new Date().getFullYear(),
+    mesInicio: null,
+    mesFin: null,
+    anioInicio: null,
+    anioFin: null,
     tipoSla: null,
     roles: []
   }
   tipoGrafico.value = { label: 'Barras', value: 'bar' }
-  aplicarFiltros()
+
+  // Limpiar gráfico
+  datosGrafico.value = {
+    labels: [],
+    datasets: []
+  }
+  estadisticas.value = {
+    totalSolicitudes: 0,
+    promedioSla: 0,
+    rolesAnalizados: 0
+  }
 }
 
 const getColorByPercentage = (percentage) => {
@@ -500,6 +700,68 @@ onBeforeUnmount(() => {
 .chart-wrapper {
   position: relative;
   width: 100%;
-  max-height: 500px;
+  height: 100%;
+  min-height: 400px;
+}
+
+.color-legend {
+  background: #f5f7fa;
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  height: 100%;
+  min-height: 400px;
+  display: flex;
+  flex-direction: column;
+}
+
+.legend-items {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.legend-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Responsive: en móvil la leyenda va abajo */
+@media (max-width: 768px) {
+  .chart-wrapper {
+    min-height: 300px;
+  }
+
+  .color-legend {
+    min-height: auto;
+    margin-top: 16px;
+  }
+
+  .legend-items {
+    flex-direction: row;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+}
+
+.fullscreen-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 </style>

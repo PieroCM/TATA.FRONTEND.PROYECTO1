@@ -1,5 +1,15 @@
 <template>
   <q-page class="dashboard-page">
+    <!-- Loading Fullscreen -->
+    <div v-if="initialLoading" class="fullscreen-loading">
+      <div class="loading-content">
+        <q-spinner-gears size="80px" color="primary" />
+        <div class="text-h6 q-mt-lg text-primary">Cargando filtros...</div>
+      </div>
+    </div>
+
+    <!-- Contenido -->
+    <div v-else>
     <!-- Header -->
     <div class="dashboard-header q-mb-lg">
       <div class="row items-center">
@@ -248,6 +258,7 @@
         </div>
       </q-card-section>
     </q-card>
+    </div>
   </q-page>
 </template>
 
@@ -255,14 +266,17 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
+import { useAppStore } from 'stores/app-store'
 
 const $q = useQuasar()
+const appStore = useAppStore()
 
 // Definir emit
 const emit = defineEmits(['onFiltroChange'])
 
 // Estados
 const loading = ref(false)
+const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
 
 const mesesDisponibles = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
@@ -497,13 +511,6 @@ const aplicarFiltros = async () => {
       estadisticas: estadisticas.value
     })
 
-    $q.notify({
-      type: 'positive',
-      message: `${cumplimientoPorRol.length} roles encontrados`,
-      position: 'top-right',
-      timeout: 2000
-    })
-
   } catch (error) {
     console.error('Error al aplicar filtros:', error)
     $q.notify({
@@ -565,12 +572,6 @@ const exportarReporte = () => {
   a.href = url
   a.download = `Reporte_SLA_${filtros.value.mes}_${filtros.value.anio}.csv`
   a.click()
-
-  $q.notify({
-    type: 'positive',
-    message: 'Reporte exportado correctamente',
-    position: 'top-right'
-  })
 }
 
 const scrollToTop = () => {
@@ -599,6 +600,7 @@ const getEstadoLabel = (cumplimiento) => {
 onMounted(async () => {
   await cargarConfiguracionesIniciales()
   await aplicarFiltros()
+  appStore.markAsLoaded()
 })
 </script>
 
@@ -621,5 +623,25 @@ onMounted(async () => {
 .stat-mini-card {
   background: white;
   border-radius: 8px;
+}
+
+.fullscreen-loading {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.loading-content {
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
 </style>
