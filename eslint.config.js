@@ -57,6 +57,16 @@ export default [
 
       // allow debugger during development only
       'no-debugger': process.env.NODE_ENV === 'production' ? 'error' : 'off',
+
+      // Permitir nombres de componentes de una sola palabra en páginas
+      'vue/multi-word-component-names': 'off',
+
+      // Permitir variables no usadas en catch
+      'no-unused-vars': ['error', {
+        'argsIgnorePattern': '^_',
+        'varsIgnorePattern': '^_',
+        'caughtErrors': 'none'
+      }],
     },
   },
 
