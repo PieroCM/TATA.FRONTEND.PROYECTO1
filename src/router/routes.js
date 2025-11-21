@@ -32,6 +32,19 @@ const routes = [
   },
 
   {
+    path: '/GestionSLAView',
+    name: 'GestionSLAView',
+    component: () => import('src/view/SLA/GestionSLAView.vue'),
+  },
+
+  {
+    path: '/CargaVolumenSolicitudView',
+    name: 'CargaVolumenSolicitudView',
+    component: () => import('src/view/SLA/CargaVolumenSolicitudView.vue'),
+  },
+
+  // Always leave this as last one
+  {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),
   },
