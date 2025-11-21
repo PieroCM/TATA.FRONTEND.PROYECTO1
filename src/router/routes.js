@@ -4,10 +4,17 @@ const routes = [
     component: () => import('layouts/MainLayout.vue'),
     children: [{ path: '', component: () => import('pages/IndexPage.vue') }],
   },
+
   {
     path: '/GestionSLAView',
     name: 'GestionSLAView',
     component: () => import('src/view/SLA/GestionSLAView.vue'),
+  },
+
+  {
+    path: '/CargaVolumenSolicitudView',
+    name: 'CargaVolumenSolicitudView',
+    component: () => import('src/view/SLA/CargaVolumenSolicitudView.vue'),
   },
 
   // Always leave this as last one,
