@@ -52,14 +52,17 @@ const routes = [
         component: () => import('src/view/Sistemas/logView.vue'),
       },
       {
-        path: '/reportes/sla-indicadores',
-        component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue')
+        path: 'reportes/sla-indicadores',
+        name: 'reportes-sla-indicadores',
+        component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue'),
+        meta: { title: 'Reporte SLA - Indicadores' },
       },
       {
-        path: '/reportes/sla-historial',
-        component: () => import('src/view/Reportes/HistorialReportesSLA.vue')
-      }
-
+        path: 'reportes/sla-historial',
+        name: 'reportes-sla-historial',
+        component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
+        meta: { title: 'Historial de Reportes SLA' },
+      },
     ],
   },
 
