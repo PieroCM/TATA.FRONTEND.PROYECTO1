@@ -51,6 +51,15 @@ const routes = [
         name: 'LogView',
         component: () => import('src/view/Sistemas/logView.vue'),
       },
+      {
+        path: '/reportes/sla-indicadores',
+        component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue')
+      },
+      {
+        path: '/reportes/sla-historial',
+        component: () => import('src/view/Reportes/HistorialReportesSLA.vue')
+      }
+
     ],
   },
 

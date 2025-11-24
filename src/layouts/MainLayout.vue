@@ -46,19 +46,20 @@
             icon="description"
             label="Reportes"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/reportes-sla', '/sistema/programar-envio']"
+            :childrenRoutes="['/reportes/sla-indicadores', '/reportes/sla-historial']"
           >
             <SidebarItemChild
               label="Reporte de cumplimiento"
               icon="bar_chart"
-              to="/sistema/reportes-sla"
+              to="/reportes/sla-indicadores"
             />
             <SidebarItemChild
-              label="Programar envío automático"
-              icon="schedule"
-              to="/sistema/programar-envio"
+              label="Historial de reportes"
+              icon="history"
+              to="/reportes/sla-historial"
             />
           </SidebarGroup>
+
 
           <!-- GRUPO: Alertas SLA -->
           <SidebarGroup
