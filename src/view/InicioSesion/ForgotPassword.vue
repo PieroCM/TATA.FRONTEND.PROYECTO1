@@ -1,28 +1,19 @@
 <template>
-  <div class="row justify-center items-center" style="height: 100vh;">
-    <q-card class="q-pa-xl shadow-4" style="width: 420px; border-radius: 18px;">
-
+  <div class="row justify-center items-center" style="height: 100vh">
+    <q-card class="q-pa-xl shadow-4" style="width: 420px; border-radius: 18px">
       <div class="column items-center q-mb-lg">
         <q-avatar size="80px" color="primary" text-color="white">
           <q-icon name="lock_reset" size="40px" />
         </q-avatar>
 
-        <div class="text-h5 text-primary text-weight-bold q-mt-md">
-          Recuperar contraseña
-        </div>
+        <div class="text-h5 text-primary text-weight-bold q-mt-md">Recuperar contraseña</div>
 
         <div class="text-body2 text-grey-7 text-center q-mt-sm">
           Ingresa tu correo y te enviaremos instrucciones
         </div>
       </div>
 
-      <q-input
-        v-model="correo"
-        label="Correo electrónico"
-        filled
-        dense
-        class="q-mb-lg"
-      >
+      <q-input v-model="correo" label="Correo electrónico" filled dense class="q-mb-lg">
         <template #prepend>
           <q-icon name="mail" />
         </template>
@@ -45,23 +36,23 @@
 
 <script>
 export default {
-  name: "ForgotPassword",
+  name: 'ForgotPassword',
 
   data() {
     return {
-      correo: "",
-    };
+      correo: '',
+    }
   },
 
   methods: {
     async sendInstructions() {
       if (!this.correo) {
         this.$q.notify({
-          type: "warning",
-          message: "Ingresa tu correo",
-          position: "bottom",
-        });
-        return;
+          type: 'warning',
+          message: 'Ingresa tu correo',
+          position: 'bottom',
+        })
+        return
       }
 
       try {
@@ -69,24 +60,26 @@ export default {
         // await this.$api.post("/api/usuario/forgot-password", { correo: this.correo });
 
         this.$q.notify({
-          type: "positive",
-          message: "Si el correo existe, se enviarán instrucciones",
-          position: "bottom",
-        });
+          type: 'positive',
+          message: 'Si el correo existe, se enviarán instrucciones',
+          position: 'bottom',
+        })
 
-        this.correo = "";
+        this.correo = ''
       } catch (error) {
         this.$q.notify({
-          type: "negative",
-          message: error.response?.data?.message || "Error al procesar la solicitud",
-          position: "bottom",
-        });
+          type: 'negative',
+          message: error.response?.data?.message || 'Error al procesar la solicitud',
+          position: 'bottom',
+        })
       }
-    }
-  }
-};
+    },
+  },
+}
 </script>
 
 <style scoped>
-.full-width { width: 100%; }
+.full-width {
+  width: 100%;
+}
 </style>
