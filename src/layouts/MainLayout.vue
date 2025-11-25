@@ -168,6 +168,13 @@
                   </q-item-section>
                   <q-item-section>Seguridad</q-item-section>
                 </q-item>
+                <!-- Usuario -->
+                <q-item clickable v-ripple class="user-option" @click="irAPerfil" v-close-popup>
+                  <q-item-section avatar>
+                    <q-icon name="person" color="grey-7" />
+                  </q-item-section>
+                  <q-item-section>Perfil de usuario</q-item-section>
+                </q-item>
 
                 <q-separator />
 
@@ -242,6 +249,9 @@ export default {
       if (this.$q.screen.lt.lg) {
         this.drawerOpen = false
       }
+    },
+    irAPerfil() {
+      this.$router.push('/sistema/usuario')
     },
   },
 }

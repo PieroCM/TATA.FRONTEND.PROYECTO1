@@ -273,6 +273,8 @@ const exportPDF = () => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
 }
 
 .title {
@@ -305,6 +307,7 @@ const exportPDF = () => {
   display: flex;
   gap: 20px;
   margin-top: 30px;
+  flex-wrap: wrap;
 }
 
 /* Filter panel */
@@ -313,14 +316,20 @@ const exportPDF = () => {
   display: flex;
   gap: 15px;
   align-items: center;
+  flex-wrap: wrap;
 }
 
 .filter-input {
   width: 350px;
+  max-width: 100%;
+  flex: 1;
+  min-width: 200px;
 }
 
 .filter-select {
   width: 190px;
+  max-width: 100%;
+  min-width: 150px;
 }
 
 /* Log list */
@@ -334,6 +343,81 @@ const exportPDF = () => {
   text-align: center;
   color: #777;
 }
+
+/* 📱 RESPONSIVE */
+@media (max-width: 599px) {
+  .logs-container {
+    padding: 16px;
+  }
+
+  .header-row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .title {
+    font-size: 22px;
+  }
+
+  .subtitle {
+    font-size: 13px;
+  }
+
+  .export-btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .summary-row {
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .filter-panel {
+    flex-direction: column;
+    gap: 12px;
+    margin-top: 20px;
+  }
+
+  .filter-input,
+  .filter-select {
+    width: 100%;
+  }
+
+  .log-list {
+    margin-top: 20px;
+  }
+}
+
+@media (min-width: 600px) and (max-width: 900px) {
+  .logs-container {
+    padding: 18px 24px;
+  }
+
+  .title {
+    font-size: 24px;
+  }
+
+  .summary-row {
+    gap: 16px;
+    justify-content: space-between;
+  }
+
+  .filter-panel {
+    gap: 12px;
+  }
+
+  .filter-input {
+    flex: 2;
+  }
+
+  .filter-select {
+    flex: 1;
+  }
+}
+
 .export-btn {
   border: 1px solid #d0d7e3;
   border-radius: 10px;

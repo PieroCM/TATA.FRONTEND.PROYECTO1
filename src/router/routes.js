@@ -52,6 +52,12 @@ const routes = [
         component: () => import('src/view/Sistemas/logView.vue'),
       },
       {
+        path: 'usuario',
+        name: 'usuario-perfil',
+        component: () => import('src/view/Usuarios/UsuarioView.vue'),
+        meta: { title: 'Mi Perfil' },
+      },
+      {
         path: 'reportes/sla-indicadores',
         name: 'reportes-sla-indicadores',
         component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue'),
