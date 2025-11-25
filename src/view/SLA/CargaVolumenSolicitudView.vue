@@ -110,6 +110,63 @@
           </table>
         </div>
       </q-card>
+
+      <!-- Card de resultado de carga -->
+      <q-card v-if="resultadoCarga" flat bordered class="q-pa-md q-mb-lg card-result">
+        <div class="row items-center q-mb-md">
+          <q-icon name="task_alt" size="md" color="positive" class="q-mr-sm" />
+          <div class="text-subtitle1 text-weight-medium">Resultado de la última carga masiva</div>
+        </div>
+
+        <!-- Resumen estadístico -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <div class="col-12 col-sm-4">
+            <div class="result-stat">
+              <div class="text-caption text-grey-7">Total de filas</div>
+              <div class="text-h6 text-weight-bold text-dark">
+                {{ resultadoCarga.totalFilas }}
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-4">
+            <div class="result-stat">
+              <div class="text-caption text-grey-7">Filas exitosas</div>
+              <div class="text-h6 text-weight-bold text-positive">
+                {{ resultadoCarga.filasExitosas }}
+              </div>
+            </div>
+          </div>
+          <div class="col-12 col-sm-4">
+            <div class="result-stat">
+              <div class="text-caption text-grey-7">Filas con error</div>
+              <div class="text-h6 text-weight-bold text-negative">
+                {{ resultadoCarga.filasConError }}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabla de errores -->
+        <div v-if="resultadoCarga.errores && resultadoCarga.errores.length > 0" class="q-mt-md">
+          <div class="text-subtitle2 text-weight-medium q-mb-sm">Detalle de errores</div>
+          <div class="error-table-wrapper">
+            <table class="error-table">
+              <thead>
+                <tr>
+                  <th style="width: 100px">Fila</th>
+                  <th>Mensaje de error</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(error, index) in resultadoCarga.errores" :key="index">
+                  <td class="text-center text-weight-medium">{{ error.rowIndex }}</td>
+                  <td>{{ error.mensaje }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </q-card>
     </div>
   </q-page>
 </template>
@@ -131,6 +188,7 @@ const allRows = ref([]) // Todas las filas del Excel para enviar al backend
 const isDragging = ref(false)
 const fileInputRef = ref(null)
 const isProcessing = ref(false)
+const resultadoCarga = ref(null) // Resultado completo del backend
 
 // Disparar selector de archivo
 const triggerFileSelect = () => {
@@ -176,6 +234,9 @@ const handleFile = (file) => {
   }
 
   selectedFileName.value = file.name
+
+  // Limpiar resultado anterior al cargar un nuevo archivo
+  resultadoCarga.value = null
 
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -278,6 +339,9 @@ const procesarArchivo = async () => {
 
     const data = response.data
 
+    // Guardar resultado completo del backend
+    resultadoCarga.value = data
+
     $q.notify({
       type: 'positive',
       message: 'Carga masiva procesada correctamente',
@@ -328,6 +392,54 @@ const procesarArchivo = async () => {
 .card-preview {
   background-color: #ffffff;
   border-color: #e0e6ff !important;
+}
+
+.card-result {
+  background-color: #f0fdf4;
+  border-color: #bbf7d0 !important;
+}
+
+.result-stat {
+  padding: 12px;
+  background-color: white;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+}
+
+.error-table-wrapper {
+  overflow-x: auto;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  background-color: #fef2f2;
+}
+
+.error-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.error-table thead {
+  background-color: #fee2e2;
+}
+
+.error-table th {
+  padding: 10px;
+  border-bottom: 2px solid #fecaca;
+  text-align: left;
+  font-weight: 600;
+  color: #991b1b;
+}
+
+.error-table td {
+  padding: 10px;
+  border-bottom: 1px solid #fecaca;
+  color: #7f1d1d;
+  background-color: white;
+}
+
+.error-table tbody tr:hover {
+  background-color: #fef2f2;
 }
 
 .upload-drop-area {
