@@ -84,9 +84,10 @@
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/log-view']"
+            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios']"
           >
             <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
+            <SidebarItemChild icon="people" label="Gestión de Usuarios" to="/sistema/usuarios" />
           </SidebarGroup>
         </q-list>
       </q-scroll-area>
