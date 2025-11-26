@@ -32,9 +32,9 @@ const routes = [
         component: () => import('src/view/Alertas/PageGestionAlertas.vue'),
       },
       {
-        path: 'alertas/email',
-        name: 'alertas-email',
-        component: () => import('src/view/Configuraciones/PageConfigEmail.vue'),
+        path: 'alertas/config-email',
+        name: 'alertas-config-email',
+        component: () => import('src/view/Alertas/PageConfigEmail.vue'),
       },
       {
         path: 'gestion-sla',
@@ -53,13 +53,12 @@ const routes = [
       },
       {
         path: '/reportes/sla-indicadores',
-        component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue')
+        component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue'),
       },
       {
         path: '/reportes/sla-historial',
-        component: () => import('src/view/Reportes/HistorialReportesSLA.vue')
-      }
-
+        component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
+      },
     ],
   },
 

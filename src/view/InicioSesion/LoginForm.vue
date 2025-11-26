@@ -119,6 +119,8 @@
 </template>
 
 <script>
+import { useAuthStore } from 'stores/useAuthStore'
+
 export default {
   name: 'LoginForm',
 
@@ -172,7 +174,16 @@ export default {
           password: this.password,
         })
 
-        localStorage.setItem('token', response.data.token)
+        // Usar el store de autenticación para guardar token y usuario
+        const authStore = useAuthStore()
+
+        // Guardar token y datos del usuario
+        authStore.setAuth(response.data.token, {
+          correo: this.correo,
+          nombre: response.data.nombre || response.data.nombreCompleto || 'Usuario',
+          rol: response.data.rol || 'Usuario',
+          id: response.data.id || response.data.idUsuario,
+        })
 
         this.$q.notify({
           type: 'positive',
