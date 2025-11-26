@@ -25,47 +25,90 @@
 
       <!-- Segunda fila: Filtros avanzados -->
       <div class="sla-filter-bar__filters">
-        <!-- Fecha Solicitud -->
+        <!-- Fecha Solicitud Desde -->
         <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Fecha Solicitud</label>
+          <label class="sla-filter-bar__label">Fecha Solicitud (desde)</label>
           <input
-            v-model="fechaInicio"
+            v-model="fechaSolicitudDesde"
             type="date"
             class="sla-filter-bar__input"
-            placeholder="Fecha solicitud"
+            placeholder="Desde"
           />
         </div>
 
-        <!-- Fecha Ingreso -->
+        <!-- Fecha Solicitud Hasta -->
         <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Fecha Ingreso</label>
+          <label class="sla-filter-bar__label">Fecha Solicitud (hasta)</label>
           <input
-            v-model="fechaFin"
+            v-model="fechaSolicitudHasta"
             type="date"
             class="sla-filter-bar__input"
-            placeholder="Fecha ingreso"
+            placeholder="Hasta"
           />
         </div>
 
-        <!-- Estado Solicitud -->
+        <!-- Fecha Ingreso Desde -->
         <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Estado Solicitud</label>
-          <select v-model="estado" class="sla-filter-bar__select">
-            <option value="">Todos los estados</option>
+          <label class="sla-filter-bar__label">Fecha Ingreso (desde)</label>
+          <input
+            v-model="fechaIngresoDesde"
+            type="date"
+            class="sla-filter-bar__input"
+            placeholder="Desde"
+          />
+        </div>
+
+        <!-- Fecha Ingreso Hasta -->
+        <div class="sla-filter-bar__filter">
+          <label class="sla-filter-bar__label">Fecha Ingreso (hasta)</label>
+          <input
+            v-model="fechaIngresoHasta"
+            type="date"
+            class="sla-filter-bar__input"
+            placeholder="Hasta"
+          />
+        </div>
+
+        <!-- Estado SLA (Cumplimiento) -->
+        <div class="sla-filter-bar__filter">
+          <label class="sla-filter-bar__label">Estado SLA (cumplimiento)</label>
+          <select v-model="estadoCumplimientoSla" class="sla-filter-bar__select">
+            <option value="TODOS">Todos los estados SLA</option>
             <option value="EN_PROCESO">En proceso</option>
-            <option value="VENCIDO">Vencido</option>
-            <option value="CERRADO">Cerrado</option>
+            <option value="CUMPLE">Cumple SLA</option>
+            <option value="NO_CUMPLE">No cumple SLA</option>
           </select>
         </div>
 
-        <!-- Código SLA -->
+        <!-- Estado de la Solicitud -->
+        <div class="sla-filter-bar__filter">
+          <label class="sla-filter-bar__label">Estado de la solicitud</label>
+          <select v-model="estadoSolicitud" class="sla-filter-bar__select">
+            <option value="TODOS">Todos los estados</option>
+            <option value="ACTIVA">Activa</option>
+            <option value="INACTIVA">Inactiva</option>
+            <option value="VENCIDA">Vencida</option>
+          </select>
+        </div>
+
+        <!-- Código SLA (Selector Múltiple) -->
         <div class="sla-filter-bar__filter">
           <label class="sla-filter-bar__label">Código SLA</label>
-          <input
+          <q-select
             v-model="codigoSla"
-            type="text"
-            class="sla-filter-bar__input"
-            placeholder="Ej: SLA1"
+            :options="opcionesCodigoSla"
+            option-value="value"
+            option-label="label"
+            emit-value
+            map-options
+            multiple
+            outlined
+            dense
+            clearable
+            use-chips
+            :loading="loadingCodigos"
+            placeholder="Seleccionar códigos"
+            class="sla-filter-bar__q-select"
           />
         </div>
 
@@ -77,39 +120,88 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted } from 'vue'
+import { api } from 'boot/axios'
 import SlaSearchInput from './SlaSearchInput.vue'
 
 const emit = defineEmits(['filtrar', 'exportar', 'nuevo-registro'])
 
 const searchText = ref('')
-const fechaInicio = ref('')
-const fechaFin = ref('')
-const estado = ref('')
-const codigoSla = ref('')
+const fechaSolicitudDesde = ref('')
+const fechaSolicitudHasta = ref('')
+const fechaIngresoDesde = ref('')
+const fechaIngresoHasta = ref('')
+const estadoCumplimientoSla = ref('TODOS') // EN_PROCESO, CUMPLE, NO_CUMPLE, TODOS
+const estadoSolicitud = ref('TODOS') // ACTIVA, INACTIVA, VENCIDA, TODOS
+const codigoSla = ref([]) // Array de códigos seleccionados
+const opcionesCodigoSla = ref([]) // Opciones cargadas desde /api/ConfigSla
+const loadingCodigos = ref(false)
+
+// Cargar códigos SLA activos desde la API
+const loadCodigosSla = async () => {
+  loadingCodigos.value = true
+  try {
+    const { data } = await api.get('/api/ConfigSla')
+    // Filtrar solo los activos y mapear a formato de opciones
+    opcionesCodigoSla.value = data
+      .filter((config) => config.esActivo === true)
+      .map((config) => ({
+        value: config.codigoSla,
+        label: `${config.codigoSla} - ${config.tipoSolicitud || 'Sin tipo'}`,
+      }))
+  } catch (error) {
+    console.error('Error cargando códigos SLA:', error)
+    opcionesCodigoSla.value = []
+  } finally {
+    loadingCodigos.value = false
+  }
+}
+
+onMounted(() => {
+  loadCodigosSla()
+})
 
 // Emitir cambios de filtros
 const emitirFiltros = () => {
   emit('filtrar', {
-    searchText: searchText.value,
-    fechaInicio: fechaInicio.value,
-    fechaFin: fechaFin.value,
-    estado: estado.value,
-    codigoSla: codigoSla.value,
+    texto: searchText.value,
+    fechaSolicitudDesde: fechaSolicitudDesde.value,
+    fechaSolicitudHasta: fechaSolicitudHasta.value,
+    fechaIngresoDesde: fechaIngresoDesde.value,
+    fechaIngresoHasta: fechaIngresoHasta.value,
+    estadoCumplimientoSla: estadoCumplimientoSla.value,
+    estadoSolicitud: estadoSolicitud.value,
+    codigoSla: codigoSla.value, // Array de códigos seleccionados
   })
 }
 
 // Watchers para emitir cambios en tiempo real
-watch([searchText, fechaInicio, fechaFin, estado, codigoSla], () => {
-  emitirFiltros()
-})
+watch(
+  [
+    searchText,
+    fechaSolicitudDesde,
+    fechaSolicitudHasta,
+    fechaIngresoDesde,
+    fechaIngresoHasta,
+    estadoCumplimientoSla,
+    estadoSolicitud,
+    codigoSla,
+  ],
+  () => {
+    emitirFiltros()
+  },
+  { deep: true },
+)
 
 const limpiarFiltros = () => {
   searchText.value = ''
-  fechaInicio.value = ''
-  fechaFin.value = ''
-  estado.value = ''
-  codigoSla.value = ''
+  fechaSolicitudDesde.value = ''
+  fechaSolicitudHasta.value = ''
+  fechaIngresoDesde.value = ''
+  fechaIngresoHasta.value = ''
+  estadoCumplimientoSla.value = 'TODOS'
+  estadoSolicitud.value = 'TODOS'
+  codigoSla.value = []
 }
 
 const emitExportar = () => {
@@ -155,9 +247,15 @@ const emitNuevoRegistro = () => {
 
 .sla-filter-bar__filters {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
   align-items: end;
+}
+
+@media (min-width: 1400px) {
+  .sla-filter-bar__filters {
+    grid-template-columns: repeat(4, 1fr);
+  }
 }
 
 .sla-filter-bar__filter {
@@ -193,6 +291,14 @@ const emitNuevoRegistro = () => {
 
 .sla-filter-bar__select {
   cursor: pointer;
+}
+
+.sla-filter-bar__q-select {
+  min-width: 200px;
+}
+
+.sla-filter-bar__q-select :deep(.q-field__control) {
+  min-height: 40px;
 }
 
 .sla-filter-bar__btn-clear {

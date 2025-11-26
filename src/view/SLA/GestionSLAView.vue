@@ -65,11 +65,14 @@ const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
 const selectedRegistroId = ref(null)
 const filtros = ref({
-  searchText: '',
-  fechaInicio: '',
-  fechaFin: '',
-  estado: '',
-  codigoSla: '',
+  texto: '',
+  fechaSolicitudDesde: '',
+  fechaSolicitudHasta: '',
+  fechaIngresoDesde: '',
+  fechaIngresoHasta: '',
+  estadoCumplimientoSla: 'TODOS', // EN_PROCESO, CUMPLE, NO_CUMPLE, TODOS
+  estadoSolicitud: 'TODOS', // ACTIVA, INACTIVA, VENCIDA, TODOS
+  codigoSla: [], // Array de códigos seleccionados
 })
 
 // Función para cargar solicitudes desde la API
@@ -124,80 +127,100 @@ const registrosTabla = computed(() => {
 
 const registrosFiltrados = computed(() => {
   return registrosTabla.value.filter((registro) => {
-    // Filtro por texto de búsqueda
-    if (filtros.value.searchText.trim()) {
-      const searchTerm = filtros.value.searchText.toLowerCase()
+    // 1. Filtro por texto de búsqueda
+    if (filtros.value.texto.trim()) {
+      const searchTerm = filtros.value.texto.toLowerCase()
       const matchSearch =
         registro.rol.toLowerCase().includes(searchTerm) ||
         (registro.estadoSolicitud || '').toLowerCase().includes(searchTerm) ||
         (registro.cumplimientoSla || '').toLowerCase().includes(searchTerm) ||
         (registro.codigoSla || '').toLowerCase().includes(searchTerm) ||
-        (registro.tipo || '').toLowerCase().includes(searchTerm)
+        (registro.tipo || '').toLowerCase().includes(searchTerm) ||
+        (registro.resumenSla || '').toLowerCase().includes(searchTerm)
 
       if (!matchSearch) return false
     }
 
-    // Filtro por rango de fechas
-    // Verifica si el rango del registro (fechaSolicitud - fechaIngreso)
-    // se solapa con el rango del filtro (Fecha Solicitud - Fecha Ingreso)
-    // filtros.value.fechaInicio = Fecha Solicitud del filtro
-    // filtros.value.fechaFin = Fecha Ingreso del filtro
-    if (filtros.value.fechaInicio || filtros.value.fechaFin) {
-      // Parsear fechas del registro (sin conversión de zona horaria)
+    // 2. Filtros de fecha de solicitud
+    if (filtros.value.fechaSolicitudDesde) {
       const fechaSolicitud = registro.fechaSolicitud
-        ? new Date(registro.fechaSolicitud + 'T00:00:00')
+        ? new Date(registro.fechaSolicitud.split('T')[0] + 'T00:00:00')
         : null
+      const filtroDesde = new Date(filtros.value.fechaSolicitudDesde + 'T00:00:00')
+
+      if (!fechaSolicitud || fechaSolicitud < filtroDesde) {
+        return false
+      }
+    }
+
+    if (filtros.value.fechaSolicitudHasta) {
+      const fechaSolicitud = registro.fechaSolicitud
+        ? new Date(registro.fechaSolicitud.split('T')[0] + 'T00:00:00')
+        : null
+      const filtroHasta = new Date(filtros.value.fechaSolicitudHasta + 'T00:00:00')
+
+      if (!fechaSolicitud || fechaSolicitud > filtroHasta) {
+        return false
+      }
+    }
+
+    // 3. Filtros de fecha de ingreso
+    if (filtros.value.fechaIngresoDesde) {
       const fechaIngreso = registro.fechaIngreso
-        ? new Date(registro.fechaIngreso + 'T00:00:00')
+        ? new Date(registro.fechaIngreso.split('T')[0] + 'T00:00:00')
         : null
+      const filtroDesde = new Date(filtros.value.fechaIngresoDesde + 'T00:00:00')
 
-      // Parsear fechas del filtro
-      const filtroInicio = filtros.value.fechaInicio
-        ? new Date(filtros.value.fechaInicio + 'T00:00:00')
+      // Si no hay fechaIngreso y se está filtrando por ingreso, excluir
+      if (!fechaIngreso || fechaIngreso < filtroDesde) {
+        return false
+      }
+    }
+
+    if (filtros.value.fechaIngresoHasta) {
+      const fechaIngreso = registro.fechaIngreso
+        ? new Date(registro.fechaIngreso.split('T')[0] + 'T00:00:00')
         : null
-      const filtroFin = filtros.value.fechaFin
-        ? new Date(filtros.value.fechaFin + 'T23:59:59')
-        : null
+      const filtroHasta = new Date(filtros.value.fechaIngresoHasta + 'T00:00:00')
 
-      // Lógica de solapamiento de rangos:
-      // El rango del registro se solapa con el rango del filtro si:
-      // - El inicio del registro es <= al fin del filtro
-      // - El fin del registro es >= al inicio del filtro
+      // Si no hay fechaIngreso y se está filtrando por ingreso, excluir
+      if (!fechaIngreso || fechaIngreso > filtroHasta) {
+        return false
+      }
+    }
 
-      if (filtroInicio && filtroFin) {
-        // Ambas fechas del filtro están definidas
-        const registroInicio = fechaSolicitud
-        const registroFin = fechaIngreso || fechaSolicitud // Si no hay fecha ingreso, usar fecha solicitud
+    // 4. Filtro por estado de cumplimiento SLA
+    if (filtros.value.estadoCumplimientoSla && filtros.value.estadoCumplimientoSla !== 'TODOS') {
+      const cumplimiento = (registro.cumplimientoSla || '').toUpperCase()
+      const estadoFiltro = filtros.value.estadoCumplimientoSla.toUpperCase()
 
-        // No hay solapamiento si:
-        // - El registro termina antes de que empiece el filtro
-        // - El registro empieza después de que termine el filtro
-        if (registroFin < filtroInicio || registroInicio > filtroFin) {
+      if (estadoFiltro === 'EN_PROCESO') {
+        if (!cumplimiento.startsWith('EN_PROCESO_')) {
           return false
         }
-      } else if (filtroInicio) {
-        // Solo hay fecha inicio del filtro
-        const registroFin = fechaIngreso || fechaSolicitud
-        if (registroFin < filtroInicio) {
+      } else if (estadoFiltro === 'CUMPLE') {
+        if (!cumplimiento.startsWith('CUMPLE_')) {
           return false
         }
-      } else if (filtroFin) {
-        // Solo hay fecha fin del filtro
-        if (fechaSolicitud > filtroFin) {
+      } else if (estadoFiltro === 'NO_CUMPLE') {
+        if (!cumplimiento.startsWith('NO_CUMPLE_')) {
           return false
         }
       }
     }
 
-    // Filtro por estado solicitud
-    if (filtros.value.estado) {
-      if (registro.estadoSolicitud !== filtros.value.estado) return false
+    // 5. Filtro por estado de la solicitud
+    if (filtros.value.estadoSolicitud && filtros.value.estadoSolicitud !== 'TODOS') {
+      if (registro.estadoSolicitud !== filtros.value.estadoSolicitud) {
+        return false
+      }
     }
 
-    // Filtro por código SLA
-    if (filtros.value.codigoSla.trim()) {
-      const codigoTerm = filtros.value.codigoSla.toLowerCase()
-      if (!(registro.codigoSla || '').toLowerCase().includes(codigoTerm)) return false
+    // 6. Filtro por códigos SLA (array múltiple)
+    if (filtros.value.codigoSla && filtros.value.codigoSla.length > 0) {
+      if (!filtros.value.codigoSla.includes(registro.codigoSla)) {
+        return false
+      }
     }
 
     return true
