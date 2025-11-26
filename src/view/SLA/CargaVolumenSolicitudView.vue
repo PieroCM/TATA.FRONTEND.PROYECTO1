@@ -326,6 +326,12 @@ const procesarArchivo = async () => {
 
   isProcessing.value = true
   try {
+    console.log('📤 Enviando datos al backend:', {
+      totalFilas: allRows.value.length,
+      primeraFila: allRows.value[0],
+      columnas: Object.keys(allRows.value[0] || {}),
+    })
+
     // Llamar al backend
     const response = await api.post('/api/SubidaVolumen/solicitudes', allRows.value)
 
@@ -350,22 +356,50 @@ const procesarArchivo = async () => {
       timeout: 6000,
     })
   } catch (error) {
-    console.error('Error al procesar carga masiva:', error)
+    console.error('❌ Error al procesar carga masiva:', error)
+    console.error('📋 Detalles del error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers,
+    })
 
     let caption = 'Revisa los datos del archivo o el log del servidor.'
-    if (error.response && error.response.data) {
-      caption =
-        typeof error.response.data === 'string'
-          ? error.response.data
-          : error.response.data.message || caption
+    let detailMessage = ''
+
+    if (error.response?.data) {
+      const errorData = error.response.data
+
+      // Si es un objeto con propiedades específicas
+      if (typeof errorData === 'object') {
+        detailMessage = errorData.message || errorData.title || JSON.stringify(errorData)
+
+        // Si hay errores de validación (ModelState)
+        if (errorData.errors) {
+          const validationErrors = Object.entries(errorData.errors)
+            .map(
+              ([field, messages]) =>
+                `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`,
+            )
+            .join(' | ')
+          caption = `Errores de validación: ${validationErrors}`
+        } else {
+          caption = detailMessage
+        }
+      } else {
+        caption = String(errorData)
+      }
     }
 
     $q.notify({
       type: 'negative',
       message: 'Error al procesar la carga masiva',
-      caption,
+      caption: caption || 'Revisa la consola del navegador para más detalles',
       position: 'top-right',
-      timeout: 8000,
+      timeout: 10000,
+      actions: [
+        { label: 'Ver consola', color: 'white', handler: () => console.table(allRows.value) },
+      ],
     })
   } finally {
     isProcessing.value = false
