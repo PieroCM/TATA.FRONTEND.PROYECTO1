@@ -56,11 +56,12 @@ const routes = [
         name: 'LogView',
         component: () => import('src/view/Sistemas/logView.vue'),
       },
-        
+
       {
         path: '/reportes/sla-historial',
         component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
       },
+      {
         path: 'usuario',
         name: 'usuario-perfil',
         component: () => import('src/view/Usuarios/UsuarioView.vue'),
