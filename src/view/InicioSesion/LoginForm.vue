@@ -111,6 +111,8 @@
 </template>
 
 <script>
+import { useAuthStore } from 'stores/useAuthStore'
+
 export default {
   name: 'LoginForm',
 

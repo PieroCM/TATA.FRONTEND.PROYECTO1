@@ -65,15 +65,20 @@
 
           <!-- GRUPO: Alertas SLA -->
           <SidebarGroup
-            icon="warning_amber"
+            icon="notifications_active"
             label="Alertas SLA"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/alertas', '/sistema/alertas/email']"
+            :childrenRoutes="['/sistema/alertas', '/sistema/alertas/config-email']"
           >
             <SidebarItemChild
-              icon="warning_amber"
-              label="Gestión de alertas"
+              icon="notifications"
+              label="Gestión de Alertas"
               to="/sistema/alertas"
+            />
+            <SidebarItemChild
+              icon="email"
+              label="Configurar Email"
+              to="/sistema/alertas/config-email"
             />
           </SidebarGroup>
 
@@ -131,8 +136,10 @@
             </q-avatar>
 
             <div class="column items-start q-mr-xs">
-              <span class="text-body2 text-weight-medium">Ana García</span>
-              <span class="text-caption text-grey">Administrador</span>
+              <span class="text-body2 text-weight-medium">{{
+                authStore.userName || 'Usuario'
+              }}</span>
+              <span class="text-caption text-grey">{{ authStore.usuario?.rol || 'Rol' }}</span>
             </div>
 
             <q-icon name="expand_more" size="18px" />
@@ -180,7 +187,7 @@
                 <q-separator />
 
                 <!-- Cerrar sesión -->
-                <q-item clickable v-ripple class="logout-option">
+                <q-item clickable v-ripple class="logout-option" @click="cerrarSesion">
                   <q-item-section>Cerrar Sesión</q-item-section>
                 </q-item>
               </q-list>
@@ -200,6 +207,7 @@
 <script>
 import SidebarGroup from 'src/components/compMainLayout/SidebarGroup.vue'
 import SidebarItemChild from 'src/components/compMainLayout/SidebarItemChild.vue'
+import { useAuthStore } from 'stores/useAuthStore'
 
 export default {
   name: 'MainLayout',
@@ -207,6 +215,11 @@ export default {
   components: {
     SidebarGroup,
     SidebarItemChild,
+  },
+
+  setup() {
+    const authStore = useAuthStore()
+    return { authStore }
   },
 
   data() {
@@ -251,8 +264,20 @@ export default {
         this.drawerOpen = false
       }
     },
-    irAPerfil() {
-      this.$router.push('/sistema/usuario')
+    cerrarSesion() {
+      // Limpiar sesión
+      this.authStore.clearAuth()
+
+      // Notificar al usuario
+      this.$q.notify({
+        type: 'info',
+        message: 'Sesión cerrada exitosamente',
+        position: 'bottom',
+        timeout: 1500,
+      })
+
+      // Redirigir al login
+      this.$router.push('/')
     },
   },
 }

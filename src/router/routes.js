@@ -37,9 +37,9 @@ const routes = [
         component: () => import('src/view/Alertas/PageGestionAlertas.vue'),
       },
       {
-        path: 'alertas/email',
-        name: 'alertas-email',
-        component: () => import('src/view/Configuraciones/PageConfigEmail.vue'),
+        path: 'alertas/config-email',
+        name: 'alertas-config-email',
+        component: () => import('src/view/Alertas/PageConfigEmail.vue'),
       },
       {
         path: 'gestion-sla',
@@ -56,7 +56,11 @@ const routes = [
         name: 'LogView',
         component: () => import('src/view/Sistemas/logView.vue'),
       },
+        
       {
+        path: '/reportes/sla-historial',
+        component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
+      },
         path: 'usuario',
         name: 'usuario-perfil',
         component: () => import('src/view/Usuarios/UsuarioView.vue'),
