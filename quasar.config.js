@@ -73,6 +73,7 @@ export default defineConfig((/* ctx */) => {
     // Full list of options: https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#devserver
     devServer: {
       // https: true,
+      port: 9000,
       open: true, // opens browser window automatically
     },
 
@@ -91,7 +92,7 @@ export default defineConfig((/* ctx */) => {
       // directives: [],
 
       // Quasar plugins
-      plugins: ['Notify', 'Loading', 'QDialog'],
+      plugins: ['Notify', 'Loading', 'Dialog'],
     },
 
     // animations: 'all', // --- includes all animations

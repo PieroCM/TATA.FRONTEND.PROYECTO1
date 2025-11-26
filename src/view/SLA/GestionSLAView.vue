@@ -111,6 +111,7 @@ const registrosTabla = computed(() => {
       dias: solicitud.numDiasSla,
       estadoSolicitud: solicitud.estadoSolicitud,
       cumplimientoSla: solicitud.estadoCumplimientoSla,
+      resumenSla: solicitud.resumenSla, // Incluir resumen para tooltips o futuras mejoras
       creadoEn: solicitud.creadoEn, // Agregar para ordenar
     }))
     .sort((a, b) => {
