@@ -236,8 +236,9 @@ export default {
 
         this.$q.notify({
           type: 'positive',
-          message: 'Registro exitoso',
+          message: '¡Registro exitoso! Redirigiendo al login...',
           position: 'bottom',
+          timeout: 2000,
         })
 
         // LIMPIAR FORMULARIO
@@ -246,15 +247,16 @@ export default {
         this.password = ''
         this.password_confirm = ''
 
-        // REDIRIGIR AL LOGIN
+        // REDIRIGIR AL LOGIN después de mostrar el mensaje
         setTimeout(() => {
           this.$router.push('/login')
-        }, 600)
+        }, 1500)
       } catch (error) {
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || 'Error en el registro',
           position: 'bottom',
+          timeout: 2000,
         })
       }
     },

@@ -73,7 +73,7 @@
 
         <!-- OLVIDASTE -->
         <div class="text-right q-mb-lg">
-          <a class="text-primary cursor-pointer" @click="showResetDialog = true">
+          <a class="text-primary cursor-pointer" @click="$router.push('/forgot-password')">
             ¿Olvidaste tu contraseña?
           </a>
         </div>
@@ -86,14 +86,6 @@
           class="full-width q-mb-md"
           @click="login"
         />
-
-        <!-- REGISTRARSE -->
-        <div class="text-center text-caption text-grey-7 q-mt-sm">
-          ¿No tienes una cuenta?
-          <span class="text-primary cursor-pointer" @click="$router.push('/register')">
-            Regístrate aquí
-          </span>
-        </div>
 
         <div class="text-center text-grey-7 text-caption q-mt-md">
           Credenciales demo:<br />
@@ -168,11 +160,28 @@ export default {
 
       try {
         const response = await this.$api.post('/api/usuario/signin', {
-          correo: this.correo,
-          password: this.password,
+          usuarioNombre: this.correo,
+          usuarioContrasena: this.password,
         })
 
-        localStorage.setItem('token', response.data.token)
+        // Validar que la respuesta contenga el token
+        if (!response.data?.token) {
+          console.error('La respuesta del backend no contiene token:', response.data)
+          throw new Error('El servidor no devolvió un token válido')
+        }
+
+        // Guardar token en localStorage con la clave 'authToken'
+        localStorage.setItem('authToken', response.data.token)
+
+        // Opcional: guardar información adicional del usuario si viene en la respuesta
+        if (response.data.correo) {
+          localStorage.setItem('userEmail', response.data.correo)
+        }
+        if (response.data.username) {
+          localStorage.setItem('username', response.data.username)
+        }
+
+        console.log('Token guardado exitosamente en localStorage')
 
         this.$q.notify({
           type: 'positive',
@@ -181,11 +190,13 @@ export default {
           timeout: 1500,
         })
 
-        this.$router.push('/dashboard')
+        // Redirigir al sistema (MainLayout)
+        this.$router.push('/sistema')
       } catch (error) {
+        console.error('Error en login:', error)
         this.$q.notify({
           type: 'negative',
-          message: error.response?.data?.message || 'Error al iniciar sesión',
+          message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
           position: 'bottom',
         })
       }
