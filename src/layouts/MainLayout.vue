@@ -84,9 +84,10 @@
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/log-view']"
+            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios']"
           >
             <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
+            <SidebarItemChild icon="people" label="Gestión de Usuarios" to="/sistema/usuarios" />
           </SidebarGroup>
         </q-list>
       </q-scroll-area>
@@ -168,6 +169,13 @@
                   </q-item-section>
                   <q-item-section>Seguridad</q-item-section>
                 </q-item>
+                <!-- Usuario -->
+                <q-item clickable v-ripple class="user-option" @click="irAPerfil" v-close-popup>
+                  <q-item-section avatar>
+                    <q-icon name="person" color="grey-7" />
+                  </q-item-section>
+                  <q-item-section>Perfil de usuario</q-item-section>
+                </q-item>
 
                 <q-separator />
 
@@ -242,6 +250,9 @@ export default {
       if (this.$q.screen.lt.lg) {
         this.drawerOpen = false
       }
+    },
+    irAPerfil() {
+      this.$router.push('/sistema/usuario')
     },
   },
 }

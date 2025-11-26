@@ -5,8 +5,13 @@ const routes = [
     component: () => import('src/view/InicioSesion/LoginForm.vue'),
   },
   {
-    path: '/register',
-    component: () => import('src/view/InicioSesion/RegisterForm.vue'),
+    // Ruta explícita para login
+    path: '/login',
+    component: () => import('src/view/InicioSesion/LoginForm.vue'),
+  },
+  {
+    path: '/forgot-password',
+    component: () => import('src/view/InicioSesion/ForgotPassword.vue'),
   },
   {
     // Ruta del sistema con MainLayout
@@ -52,6 +57,12 @@ const routes = [
         component: () => import('src/view/Sistemas/logView.vue'),
       },
       {
+        path: 'usuario',
+        name: 'usuario-perfil',
+        component: () => import('src/view/Usuarios/UsuarioView.vue'),
+        meta: { title: 'Mi Perfil' },
+      },
+      {
         path: 'reportes/sla-indicadores',
         name: 'reportes-sla-indicadores',
         component: () => import('src/view/Reportes/ReporteSLAIndicadores.vue'),
@@ -62,6 +73,12 @@ const routes = [
         name: 'reportes-sla-historial',
         component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
         meta: { title: 'Historial de Reportes SLA' },
+      },
+      {
+        path: 'usuarios',
+        name: 'gestion-usuarios',
+        component: () => import('src/view/Usuarios/GestionUsuarios.vue'),
+        meta: { title: 'Gestión de Usuarios' },
       },
     ],
   },

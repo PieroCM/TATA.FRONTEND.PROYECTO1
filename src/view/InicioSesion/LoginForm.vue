@@ -73,7 +73,7 @@
 
         <!-- OLVIDASTE -->
         <div class="text-right q-mb-lg">
-          <a class="text-primary cursor-pointer" @click="showResetDialog = true">
+          <a class="text-primary cursor-pointer" @click="$router.push('/forgot-password')">
             ¿Olvidaste tu contraseña?
           </a>
         </div>
@@ -86,14 +86,6 @@
           class="full-width q-mb-md"
           @click="login"
         />
-
-        <!-- REGISTRARSE -->
-        <div class="text-center text-caption text-grey-7 q-mt-sm">
-          ¿No tienes una cuenta?
-          <span class="text-primary cursor-pointer" @click="$router.push('/register')">
-            Regístrate aquí
-          </span>
-        </div>
 
         <div class="text-center text-grey-7 text-caption q-mt-md">
           Credenciales demo:<br />
