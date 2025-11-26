@@ -160,8 +160,8 @@ export default {
 
       try {
         const response = await this.$api.post('/api/usuario/signin', {
-          usuarioNombre: this.correo,
-          usuarioContrasena: this.password,
+          correo: this.correo,
+          password: this.password,
         })
 
         // Validar que la respuesta contenga el token
@@ -194,9 +194,20 @@ export default {
         this.$router.push('/sistema')
       } catch (error) {
         console.error('Error en login:', error)
+        console.error('Detalles del error:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          enviado: {
+            usuarioNombre: this.correo,
+            usuarioContrasena: this.password,
+          },
+        })
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
+          caption: error.response?.data?.errors
+            ? Object.values(error.response.data.errors).flat().join(', ')
+            : '',
           position: 'bottom',
         })
       }
