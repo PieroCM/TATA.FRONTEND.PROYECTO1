@@ -13,7 +13,7 @@
       </div>
 
       <!-- Barra de filtros -->
-      <div class="gestion-sla-filters">
+      <div class="gestion-sla-filters q-mb-lg">
         <SlaFilterBar
           @filtrar="handleFiltrar"
           @exportar="handleExportar"
@@ -281,7 +281,7 @@ const handleEliminar = (registro) => {
 }
 
 .gestion-sla-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
 }
 
@@ -300,11 +300,6 @@ const handleEliminar = (registro) => {
   margin: 0;
   font-size: 14px;
   color: #666;
-}
-
-.gestion-sla-filters {
-  margin-top: 16px;
-  margin-bottom: 16px;
 }
 
 .gestion-sla-table-card {
@@ -328,13 +323,66 @@ const handleEliminar = (registro) => {
   font-size: 14px;
 }
 
-@media (max-width: 768px) {
+/* ===== RESPONSIVE: TABLET ===== */
+@media (max-width: 1024px) {
+  .gestion-sla-container {
+    max-width: 100%;
+  }
+
+  .gestion-sla-page {
+    padding: 20px;
+  }
+
+  .gestion-sla-header__title {
+    font-size: 24px;
+  }
+}
+
+/* ===== RESPONSIVE: MOBILE ===== */
+@media (max-width: 767px) {
   .gestion-sla-page {
     padding: 16px;
+    background-color: #ffffff;
+  }
+
+  .gestion-sla-header {
+    margin-bottom: 16px;
+  }
+
+  .gestion-sla-header__title {
+    font-size: 20px;
+  }
+
+  .gestion-sla-header__subtitle {
+    font-size: 13px;
   }
 
   .gestion-sla-table-card {
-    padding: 12px 12px;
+    padding: 12px;
+    box-shadow: none;
+    border-radius: 0;
+    background-color: transparent;
+  }
+
+  .gestion-sla-loading,
+  .gestion-sla-error {
+    padding: 24px;
+    font-size: 14px;
+  }
+}
+
+/* ===== RESPONSIVE: MOBILE PEQUEÑO ===== */
+@media (max-width: 480px) {
+  .gestion-sla-page {
+    padding: 12px;
+  }
+
+  .gestion-sla-header__title {
+    font-size: 18px;
+  }
+
+  .gestion-sla-table-card {
+    padding: 8px;
   }
 }
 </style>
