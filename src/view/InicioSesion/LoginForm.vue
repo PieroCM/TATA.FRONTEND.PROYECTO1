@@ -111,8 +111,6 @@
 </template>
 
 <script>
-import { useAuthStore } from 'stores/useAuthStore'
-
 export default {
   name: 'LoginForm',
 
@@ -162,8 +160,8 @@ export default {
 
       try {
         const response = await this.$api.post('/api/usuario/signin', {
-          correo: this.correo,
-          password: this.password,
+          usuarioNombre: this.correo,
+          usuarioContrasena: this.password,
         })
 
         // Validar que la respuesta contenga el token
