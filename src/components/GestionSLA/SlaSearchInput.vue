@@ -10,7 +10,7 @@
       class="sla-search-input__field"
       :value="modelValue"
       @input="handleInput"
-      placeholder="Buscar por rol o estado..."
+      placeholder="Buscar por rol, estado o SLA..."
     />
   </div>
 </template>
@@ -19,8 +19,8 @@
 defineProps({
   modelValue: {
     type: String,
-    default: ''
-  }
+    default: '',
+  },
 })
 
 const emit = defineEmits(['update:modelValue'])

@@ -79,11 +79,15 @@ const formatFecha = (fecha) => {
   }
 }
 
-// Funciones para Estado Solicitud (ACTIVO, INACTIVO, PREVENTIVO)
+// Funciones para Estado Solicitud (EN_PROCESO, VENCIDO, CERRADO)
 const formatEstadoSolicitud = (estado) => {
   if (!estado) return '-'
   const estadoNormalizado = estado.toUpperCase().trim()
   const estadosMap = {
+    EN_PROCESO: 'En proceso',
+    VENCIDO: 'Vencido',
+    CERRADO: 'Cerrado',
+    // Mantener compatibilidad con estados antiguos
     ACTIVO: 'Activo',
     INACTIVO: 'Inactivo',
     PREVENTIVO: 'Preventivo',
@@ -95,6 +99,10 @@ const getEstadoSolicitudClass = (estado) => {
   if (!estado) return ''
   const estadoNormalizado = estado.toUpperCase().trim()
   const classMap = {
+    EN_PROCESO: 'sla-estado-solicitud-badge--en-proceso',
+    VENCIDO: 'sla-estado-solicitud-badge--vencido',
+    CERRADO: 'sla-estado-solicitud-badge--cerrado',
+    // Mantener compatibilidad con estados antiguos
     ACTIVO: 'sla-estado-solicitud-badge--activo',
     INACTIVO: 'sla-estado-solicitud-badge--inactivo',
     PREVENTIVO: 'sla-estado-solicitud-badge--preventivo',
@@ -102,17 +110,24 @@ const getEstadoSolicitudClass = (estado) => {
   return classMap[estadoNormalizado] || ''
 }
 
-// Funciones para Cumplimiento SLA (CUMPLE_SLA, NO_CUMPLE_SLA)
+// Funciones para Cumplimiento SLA (CUMPLE_SLA, NO_CUMPLE_SLA, EN_PROCESO_SLA)
 const formatCumplimiento = (estado) => {
   if (!estado) return '-'
-  // Retornar el texto completo tal como viene del backend
-  return estado
+  // Reemplazar guiones bajos con espacios para mejor legibilidad
+  // Ejemplo: "EN_PROCESO_SLA3" -> "EN PROCESO SLA3"
+  //          "CUMPLE_SLA1" -> "CUMPLE SLA1"
+  //          "NO_CUMPLE_SLA2" -> "NO CUMPLE SLA2"
+  return estado.replace(/_/g, ' ')
 }
 
 const getCumplimientoClass = (estado) => {
   if (!estado) return ''
   const estadoNormalizado = estado.toUpperCase().trim()
 
+  // Detectar "EN_PROCESO" o "EN PROCESO" (puede venir con guiones bajos o espacios)
+  if (estadoNormalizado.includes('EN_PROCESO') || estadoNormalizado.includes('EN PROCESO')) {
+    return 'sla-cumplimiento-badge--en-proceso'
+  }
   // Detectar "NO CUMPLE" primero (porque también contiene "CUMPLE")
   if (estadoNormalizado.includes('NO CUMPLE') || estadoNormalizado.includes('NO_CUMPLE')) {
     return 'sla-cumplimiento-badge--incumplido'
@@ -155,7 +170,7 @@ const handleEliminar = () => {
   text-align: center;
 }
 
-/* Estilos para Estado Solicitud (ACTIVO, INACTIVO, PREVENTIVO) */
+/* Estilos para Estado Solicitud (EN_PROCESO, VENCIDO, CERRADO y compatibilidad con antiguos) */
 .sla-estado-solicitud-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -165,6 +180,23 @@ const handleEliminar = () => {
   text-align: center;
 }
 
+/* Nuevos estados */
+.sla-estado-solicitud-badge--en-proceso {
+  background-color: #e3f2fd;
+  color: #1565c0;
+}
+
+.sla-estado-solicitud-badge--vencido {
+  background-color: #ffebee;
+  color: #c62828;
+}
+
+.sla-estado-solicitud-badge--cerrado {
+  background-color: #e8f5e9;
+  color: #2e7d32;
+}
+
+/* Estados antiguos (compatibilidad) */
 .sla-estado-solicitud-badge--activo {
   background-color: #e8f5e9;
   color: #2e7d32;
@@ -180,7 +212,7 @@ const handleEliminar = () => {
   color: #ef6c00;
 }
 
-/* Estilos para Cumplimiento SLA (CUMPLE_SLA, NO_CUMPLE_SLA) */
+/* Estilos para Cumplimiento SLA (CUMPLE_SLA, NO_CUMPLE_SLA, EN_PROCESO_SLA) */
 .sla-cumplimiento-badge {
   display: inline-block;
   padding: 4px 12px;
@@ -188,6 +220,11 @@ const handleEliminar = () => {
   font-size: 12px;
   font-weight: 500;
   text-align: center;
+}
+
+.sla-cumplimiento-badge--en-proceso {
+  background-color: #fff4e5;
+  color: #ff8c00;
 }
 
 .sla-cumplimiento-badge--cumplido {

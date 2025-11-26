@@ -164,7 +164,24 @@ export default {
           password: this.password,
         })
 
-        localStorage.setItem('token', response.data.token)
+        // Validar que la respuesta contenga el token
+        if (!response.data?.token) {
+          console.error('La respuesta del backend no contiene token:', response.data)
+          throw new Error('El servidor no devolvió un token válido')
+        }
+
+        // Guardar token en localStorage con la clave 'authToken'
+        localStorage.setItem('authToken', response.data.token)
+
+        // Opcional: guardar información adicional del usuario si viene en la respuesta
+        if (response.data.correo) {
+          localStorage.setItem('userEmail', response.data.correo)
+        }
+        if (response.data.username) {
+          localStorage.setItem('username', response.data.username)
+        }
+
+        console.log('Token guardado exitosamente en localStorage')
 
         this.$q.notify({
           type: 'positive',
@@ -176,9 +193,10 @@ export default {
         // Redirigir al sistema (MainLayout)
         this.$router.push('/sistema')
       } catch (error) {
+        console.error('Error en login:', error)
         this.$q.notify({
           type: 'negative',
-          message: error.response?.data?.message || 'Error al iniciar sesión',
+          message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
           position: 'bottom',
         })
       }
