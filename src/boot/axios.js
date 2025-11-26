@@ -1,5 +1,6 @@
 import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
+import { Notify } from 'quasar'
 
 const api = axios.create({ baseURL: 'http://localhost:5260' })
 
