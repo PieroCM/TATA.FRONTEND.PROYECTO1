@@ -52,9 +52,9 @@
           <label class="sla-filter-bar__label">Estado Solicitud</label>
           <select v-model="estado" class="sla-filter-bar__select">
             <option value="">Todos los estados</option>
-            <option value="ACTIVO">Activo</option>
-            <option value="INACTIVO">Inactivo</option>
-            <option value="PREVENTIVO">Preventivo</option>
+            <option value="EN_PROCESO">En proceso</option>
+            <option value="VENCIDO">Vencido</option>
+            <option value="CERRADO">Cerrado</option>
           </select>
         </div>
 

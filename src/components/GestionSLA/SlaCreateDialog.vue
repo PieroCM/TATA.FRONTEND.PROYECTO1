@@ -2,6 +2,13 @@
   Diálogo para crear una nueva Solicitud SLA.
   Carga roles y configuraciones SLA desde la API.
   Envía POST a /api/Solicitud al crear.
+
+  LÓGICA DE SLA (calculada automáticamente en backend):
+  - fechaIngreso es OPCIONAL:
+    * Si está vacía (null) → solicitud "en proceso" (backend decide EN_PROCESO o VENCIDO según días transcurridos vs umbral)
+    * Si tiene valor → solicitud "cerrada" (backend decide CUMPLE o NO_CUMPLE según días entre solicitud e ingreso)
+  - numDiasSla, estadoCumplimientoSla, estadoSolicitud y resumenSla se calculan en backend
+  - NO enviar estadoSolicitud hardcodeado, el backend lo define
 -->
 <template>
   <q-dialog
@@ -23,6 +30,29 @@
       <!-- Form -->
       <q-card-section class="q-pt-lg">
         <q-form @submit.prevent="onSubmit" class="sla-create-dialog__form">
+          <!-- Fila 0: Colaborador/Personal -->
+          <div class="row q-col-gutter-md q-mb-md">
+            <div class="col-12">
+              <q-select
+                v-model="form.idPersonal"
+                :options="personales"
+                :option-label="personalOptionLabel"
+                option-value="idPersonal"
+                emit-value
+                map-options
+                label="Colaborador / Personal *"
+                outlined
+                dense
+                :rules="[(val) => !!val || 'El colaborador es requerido']"
+                placeholder="Seleccionar colaborador..."
+              >
+                <template v-slot:prepend>
+                  <q-icon name="person" />
+                </template>
+              </q-select>
+            </div>
+          </div>
+
           <!-- Fila 1: Rol y Código SLA -->
           <div class="row q-col-gutter-md q-mb-md">
             <div class="col-12 col-md-6">
@@ -104,10 +134,10 @@
               <q-input
                 v-model="form.fechaIngreso"
                 type="date"
-                label="Fecha ingreso *"
+                label="Fecha ingreso (opcional)"
                 outlined
                 dense
-                :rules="[(val) => !!val || 'La fecha de ingreso es requerida']"
+                hint="Dejar vacío si la solicitud está en proceso"
               >
                 <template v-slot:prepend>
                   <q-icon name="event" />
@@ -167,7 +197,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 
@@ -186,8 +216,10 @@ const loading = ref(false)
 const roles = ref([]) // lista completa de RolRegistro activos
 const filteredRoles = ref([]) // roles filtrados para el search
 const slas = ref([]) // lista completa de ConfigSla activos
+const personales = ref([]) // lista de Personal activos
 
 const form = ref({
+  idPersonal: null,
   idRolRegistro: null,
   idSla: null,
   fechaSolicitud: '',
@@ -203,10 +235,26 @@ const slaOptionLabel = (sla) => {
   return `${sla.codigoSla} - ${sla.tipoSolicitud}`
 }
 
+// Función para formatear label del Personal
+const personalOptionLabel = (p) => {
+  return `${p.nombres} ${p.apellidos} - ${p.correoCorporativo || p.usuarioCorreo}`
+}
+
 // Cargar datos al montar
 onMounted(async () => {
   await Promise.all([loadRoles(), loadSlas()])
+  // NO cargar personales aquí, se cargará cuando el diálogo se abra
 })
+
+// Cargar personal cuando el diálogo se abre
+watch(
+  () => props.modelValue,
+  async (isOpen) => {
+    if (isOpen && personales.value.length === 0) {
+      await loadPersonales()
+    }
+  },
+)
 
 // Cargar roles activos
 const loadRoles = async () => {
@@ -239,6 +287,43 @@ const loadSlas = async () => {
   }
 }
 
+// Cargar personal activo
+const loadPersonales = async () => {
+  try {
+    const { data } = await api.get('/api/Personal')
+    personales.value = data.filter((p) => p.estado === 'ACTIVO')
+  } catch (err) {
+    console.error('Error al cargar personal:', err)
+    console.error('Status:', err.response?.status)
+    console.error('Data:', err.response?.data)
+    console.error('Headers:', err.response?.headers)
+
+    let errorMessage = 'Error al cargar la lista de personal'
+    let errorCaption = ''
+
+    if (err.response?.status === 401) {
+      errorMessage = 'No autorizado'
+      errorCaption = 'Necesitas iniciar sesión para cargar la lista de personal'
+    } else if (err.response?.status === 500) {
+      errorMessage = 'Error en el servidor'
+      errorCaption = err.response?.data?.message || 'Error interno del servidor'
+    } else if (err.message === 'Network Error') {
+      errorMessage = 'Error de red'
+      errorCaption = 'No se pudo conectar con el servidor. Verifica que el backend esté corriendo.'
+    } else if (err.response?.data?.message) {
+      errorCaption = err.response.data.message
+    }
+
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      caption: errorCaption,
+      position: 'top-right',
+      timeout: 5000,
+    })
+  }
+}
+
 // Filtrar roles por búsqueda
 const filterRoles = (val, update) => {
   if (val === '') {
@@ -263,6 +348,7 @@ const handleCancel = () => {
 // Reset del formulario
 const resetForm = () => {
   form.value = {
+    idPersonal: null,
     idRolRegistro: null,
     idSla: null,
     fechaSolicitud: '',
@@ -276,17 +362,31 @@ const onSubmit = async () => {
   try {
     loading.value = true
 
-    // Construir payload según especificaciones
+    // Validación: si fechaIngreso tiene valor, debe ser >= fechaSolicitud
+    if (form.value.fechaIngreso && form.value.fechaIngreso < form.value.fechaSolicitud) {
+      $q.notify({
+        type: 'negative',
+        message: 'Fecha de ingreso inválida',
+        caption: 'La fecha de ingreso no puede ser anterior a la fecha de solicitud',
+        position: 'top-right',
+      })
+      loading.value = false
+      return
+    }
+
+    // Construir payload según nueva lógica de SLA
+    // IMPORTANTE: El backend calcula automáticamente numDiasSla, estadoCumplimientoSla,
+    // estadoSolicitud y resumenSla usando SolicitudService.CalcularSlaYResumen
     const payload = {
-      idPersonal: 1, // Hardcoded
+      idPersonal: form.value.idPersonal,
       idSla: form.value.idSla,
       idRolRegistro: form.value.idRolRegistro,
-      creadoPor: 1, // Hardcoded
+      creadoPor: 1, // TODO: reemplazar luego por el idUsuario autenticado
       fechaSolicitud: form.value.fechaSolicitud + 'T00:00:00',
-      fechaIngreso: form.value.fechaIngreso + 'T00:00:00',
-      resumenSla: form.value.resumenSla || 'Sin observaciones',
-      origenDato: 'WEB', // Hardcoded
-      estadoSolicitud: 'ACTIVO', // Hardcoded
+      fechaIngreso: form.value.fechaIngreso ? form.value.fechaIngreso + 'T00:00:00' : null,
+      resumenSla: form.value.resumenSla || null, // null permite que backend genere resumen automático
+      origenDato: 'WEB_FORM',
+      estadoSolicitud: null, // null permite que backend calcule (EN_PROCESO, VENCIDO o CERRADO)
     }
 
     const { data } = await api.post('/api/Solicitud', payload)
