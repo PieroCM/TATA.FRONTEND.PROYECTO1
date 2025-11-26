@@ -46,17 +46,20 @@
             icon="description"
             label="Reportes"
             :mini="drawerMini"
-            :childrenRoutes="['/reportes/sla-indicadores', '/reportes/sla-historial']"
+            :childrenRoutes="[
+              '/sistema/reportes/sla-indicadores',
+              '/sistema/reportes/sla-historial',
+            ]"
           >
             <SidebarItemChild
               label="Reporte de cumplimiento"
               icon="bar_chart"
-              to="/reportes/sla-indicadores"
+              to="/sistema/reportes/sla-indicadores"
             />
             <SidebarItemChild
               label="Historial de reportes"
               icon="history"
-              to="/reportes/sla-historial"
+              to="/sistema/reportes/sla-historial"
             />
           </SidebarGroup>
 
@@ -86,9 +89,10 @@
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/log-view']"
+            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios']"
           >
             <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
+            <SidebarItemChild icon="people" label="Gestión de Usuarios" to="/sistema/usuarios" />
           </SidebarGroup>
         </q-list>
       </q-scroll-area>
@@ -171,6 +175,13 @@
                     <q-icon name="security" color="grey-7" />
                   </q-item-section>
                   <q-item-section>Seguridad</q-item-section>
+                </q-item>
+                <!-- Usuario -->
+                <q-item clickable v-ripple class="user-option" @click="irAPerfil" v-close-popup>
+                  <q-item-section avatar>
+                    <q-icon name="person" color="grey-7" />
+                  </q-item-section>
+                  <q-item-section>Perfil de usuario</q-item-section>
                 </q-item>
 
                 <q-separator />
