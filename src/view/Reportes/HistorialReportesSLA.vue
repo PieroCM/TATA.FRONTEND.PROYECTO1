@@ -15,9 +15,7 @@
           <q-icon name="history" size="40px" color="primary" class="q-mr-md" />
           <div>
             <div class="text-h5 text-weight-medium">Historial de Reportes SLA</div>
-            <div class="text-grey-7">
-              Consulta quién generó cada reporte y descarga el archivo.
-            </div>
+            <div class="text-grey-7">Consulta quién generó cada reporte y descarga el archivo.</div>
           </div>
         </div>
       </div>
@@ -59,17 +57,27 @@
               </q-td>
             </template>
 
-            <template v-slot:body-cell-acciones="props">
+            <template v-slot:body-cell-tipoReporte="props">
               <q-td :props="props">
-                <q-btn
-                  flat
-                  dense
-                  color="primary"
-                  icon="file_download"
-                  @click="descargarReporte(props.row)"
-                >
-                  <q-tooltip>Descargar</q-tooltip>
-                </q-btn>
+                {{ props.row.tipoReporte }}
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-formato="props">
+              <q-td :props="props">
+                {{ props.row.formato }}
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-totalSolicitudes="props">
+              <q-td :props="props">
+                {{ props.row.totalSolicitudes }}
+              </q-td>
+            </template>
+
+            <template v-slot:body-cell-generadoPorNombre="props">
+              <q-td :props="props">
+                {{ props.row.generadoPorNombre }}
               </q-td>
             </template>
           </q-table>
@@ -92,62 +100,50 @@ const loading = ref(false)
 const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
 
 const reportes = ref([])
+const usuariosMap = ref({}) // Mapeo de ID usuario -> nombre
 
 const columnas = [
   {
-    name: 'idReporte',
-    label: 'ID',
-    field: 'idReporte',
+    name: 'fechaGeneracion',
+    label: 'Fecha de generación',
+    field: 'fechaGeneracion',
     align: 'left',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'tipoReporte',
     label: 'Tipo',
     field: 'tipoReporte',
     align: 'left',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'formato',
     label: 'Formato',
     field: 'formato',
     align: 'center',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'filtrosJson',
     label: 'Filtros',
     field: 'filtrosJson',
-    align: 'left'
+    align: 'left',
+  },
+  {
+    name: 'totalSolicitudes',
+    label: 'Total solicitudes',
+    field: 'totalSolicitudes',
+    align: 'center',
+    sortable: true,
   },
   {
     name: 'generadoPorNombre',
     label: 'Generado por',
     field: 'generadoPorNombre',
     align: 'left',
-    sortable: true
+    sortable: true,
   },
-  {
-    name: 'fechaGeneracion',
-    label: 'Fecha generación',
-    field: 'fechaGeneracion',
-    align: 'left',
-    sortable: true
-  },
-  {
-    name: 'totalSolicitudes',
-    label: 'Total Solicitudes',
-    field: 'totalSolicitudes',
-    align: 'center',
-    sortable: true
-  },
-  {
-    name: 'acciones',
-    label: 'Acciones',
-    field: 'acciones',
-    align: 'center'
-  }
 ]
 
 const formatFecha = (valor) => {
@@ -159,14 +155,47 @@ const formatFecha = (valor) => {
 const cargarHistorial = async () => {
   loading.value = true
   try {
+    // Cargar usuarios primero
+    try {
+      const usuariosRes = await api.get('/api/Usuario')
+      if (usuariosRes.data && Array.isArray(usuariosRes.data)) {
+        usuariosRes.data.forEach((usuario) => {
+          usuariosMap.value[usuario.idUsuario] = usuario.username || usuario.nombreCompleto || `Usuario ${usuario.idUsuario}`
+        })
+      }
+    } catch (usuarioError) {
+      console.warn('No se pudieron cargar los usuarios:', usuarioError)
+    }
+
     const res = await api.get('/api/reporte')
-    reportes.value = res.data || []
+    const datos = res.data || []
+    console.log('Datos del API:', datos)
+    
+    // Enriquecer datos con nombres de usuario
+    const datosEnriquecidos = datos.map((reporte) => {
+      let nombreUsuario = reporte.generadoPorNombre
+      if (!nombreUsuario && reporte.generadoPor) {
+        nombreUsuario = usuariosMap.value[reporte.generadoPor] || `Usuario ${reporte.generadoPor}`
+      }
+      return {
+        ...reporte,
+        generadoPorNombre: nombreUsuario || 'Sin nombre',
+      }
+    })
+
+    // Ordenar por fecha de generación descendente (más recientes primero)
+    reportes.value = datosEnriquecidos.sort((a, b) => {
+      const fechaA = new Date(a.fechaGeneracion).getTime()
+      const fechaB = new Date(b.fechaGeneracion).getTime()
+      return fechaB - fechaA
+    })
+    console.log('Reportes ordenados:', reportes.value)
   } catch (error) {
     console.error('Error al cargar historial de reportes:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar historial de reportes',
-      position: 'top-right'
+      position: 'top-right',
     })
   } finally {
     loading.value = false
@@ -174,12 +203,12 @@ const cargarHistorial = async () => {
   }
 }
 
-const descargarReporte = (row) => {
+const _descargarReporte = (row) => {
   if (!row.rutaArchivo) {
     $q.notify({
       type: 'warning',
       message: 'El reporte no tiene ruta de archivo asociada',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
@@ -196,7 +225,7 @@ const descargarReporte = (row) => {
       type: 'negative',
       message:
         'No se pudo descargar el reporte. Verifica la publicación de la carpeta /reports en el backend.',
-      position: 'top-right'
+      position: 'top-right',
     })
   }
 }
