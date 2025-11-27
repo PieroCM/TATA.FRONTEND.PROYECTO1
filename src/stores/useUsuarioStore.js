@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia'
-import { usuarioService } from 'src/services/usuarioService'
+import { personalService } from 'src/services/personalService'
 
 export const useUsuarioStore = defineStore('usuario', {
   state: () => ({
@@ -21,7 +21,7 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        this.usuarios = await usuarioService.getAll()
+        this.usuarios = await personalService.getAll()
       } catch (err) {
         this.error = err.message
         console.error('Error al cargar usuarios:', err)
@@ -35,7 +35,7 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        this.usuarioActual = await usuarioService.getById(id)
+        this.usuarioActual = await personalService.getById(id)
         return this.usuarioActual
       } catch (err) {
         this.error = err.message
@@ -46,14 +46,15 @@ export const useUsuarioStore = defineStore('usuario', {
       }
     },
 
-    async crearUsuario(usuario) {
+    async crearUsuario(personal) {
       this.loading = true
       this.error = null
 
       try {
-        const nuevoUsuario = await usuarioService.create(usuario)
-        this.usuarios.push(nuevoUsuario)
-        return nuevoUsuario
+        const resultado = await personalService.createWithAccount(personal)
+        // Recargar la lista completa
+        await this.fetchUsuarios()
+        return resultado
       } catch (err) {
         this.error = err.message
         console.error('Error al crear usuario:', err)
@@ -68,10 +69,10 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await usuarioService.update(id, datosActualizar)
+        await personalService.update(id, datosActualizar)
 
         // Actualizar en la lista local
-        const index = this.usuarios.findIndex((u) => u.idUsuario === id)
+        const index = this.usuarios.findIndex((u) => u.idPersonal === id)
         if (index !== -1) {
           this.usuarios[index] = {
             ...this.usuarios[index],
@@ -94,8 +95,8 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await usuarioService.delete(id)
-        this.usuarios = this.usuarios.filter((u) => u.idUsuario !== id)
+        await personalService.delete(id)
+        this.usuarios = this.usuarios.filter((u) => u.idPersonal !== id)
         return true
       } catch (err) {
         this.error = err.message
@@ -111,10 +112,11 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await usuarioService.toggleEstado(id, estado)
+        // Personal no tiene endpoint toggle-estado, usar update
+        await personalService.update(id, { estado })
 
         // Actualizar en la lista local
-        const index = this.usuarios.findIndex((u) => u.idUsuario === id)
+        const index = this.usuarios.findIndex((u) => u.idPersonal === id)
         if (index !== -1) {
           this.usuarios[index].estado = estado
         }
@@ -126,6 +128,16 @@ export const useUsuarioStore = defineStore('usuario', {
         return false
       } finally {
         this.loading = false
+      }
+    },
+
+    async verificarDocumento(documento) {
+      try {
+        const resultado = await personalService.verificarDocumento(documento)
+        return resultado
+      } catch (err) {
+        console.error('Error al verificar documento:', err)
+        return { existe: false, error: err.message }
       }
     },
   },

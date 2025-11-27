@@ -17,30 +17,17 @@
     <q-card class="q-mb-md">
       <q-card-section>
         <div class="row q-col-gutter-md">
-          <div class="col-12 col-md-4">
+          <div class="col-12 col-md-6">
             <q-input
               v-model="filtro.busqueda"
               outlined
               dense
-              label="Buscar usuario"
-              placeholder="Nombre, email..."
+              label="Buscar personal"
+              placeholder="Nombre, email, documento..."
               @update:model-value="filtrarUsuarios"
             >
               <template #prepend><q-icon name="search" /></template>
             </q-input>
-          </div>
-          <div class="col-12 col-md-3">
-            <q-select
-              v-model="filtro.rol"
-              outlined
-              dense
-              label="Filtrar por Rol"
-              :options="rolesOptions"
-              emit-value
-              map-options
-              clearable
-              @update:model-value="filtrarUsuarios"
-            />
           </div>
           <div class="col-12 col-md-3">
             <q-select
@@ -55,7 +42,7 @@
               @update:model-value="filtrarUsuarios"
             />
           </div>
-          <div class="col-12 col-md-2">
+          <div class="col-12 col-md-3">
             <q-btn
               color="secondary"
               icon="refresh"
@@ -73,19 +60,12 @@
       <q-table
         :rows="usuariosFiltrados"
         :columns="columns"
-        row-key="idUsuario"
+        row-key="idPersonal"
         :loading="loading"
         :pagination="pagination"
         flat
         bordered
       >
-        <template #body-cell-rol="props">
-          <q-td :props="props">
-            <q-badge :color="getRolColor(props.row.nombreRol)">{{
-              getRolLabel(props.row.nombreRol)
-            }}</q-badge>
-          </q-td>
-        </template>
         <template #body-cell-estado="props">
           <q-td :props="props">
             <q-badge :color="props.row.estado === 'ACTIVO' ? 'positive' : 'negative'">{{
@@ -133,72 +113,118 @@
     </q-card>
 
     <q-dialog v-model="dialogUsuario" persistent>
-      <q-card style="width: 500px; max-width: 90vw">
+      <q-card style="width: 600px; max-width: 90vw">
         <q-card-section class="row items-center q-pb-none">
-          <div class="text-h6">{{ modoEdicion ? 'Editar Usuario' : 'Crear Usuario' }}</div>
+          <div class="text-h6">{{ modoEdicion ? 'Editar Personal' : 'Nuevo Personal' }}</div>
           <q-space /><q-btn icon="close" flat round dense v-close-popup />
         </q-card-section>
+
         <q-card-section>
-          <div class="column items-center q-mb-md">
-            <q-avatar size="80px" color="primary" text-color="white"
-              ><q-icon name="person_add" size="40px"
-            /></q-avatar>
-            <div class="text-caption text-grey-7 q-mt-sm">Datos del usuario</div>
+          <!-- SECCIÓN 1: DATOS DE PERSONAL (Siempre visible) -->
+          <div class="q-mb-lg">
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
+              <q-icon name="person" class="q-mr-xs" />
+              Datos de Personal
+            </div>
+
+            <q-input v-model="formUsuario.nombres" label="Nombres *" outlined dense class="q-mb-md"
+              ><template #prepend><q-icon name="badge" /></template
+            ></q-input>
+
+            <q-input
+              v-model="formUsuario.apellidos"
+              label="Apellidos *"
+              outlined
+              dense
+              class="q-mb-md"
+              ><template #prepend><q-icon name="badge" /></template
+            ></q-input>
+
+            <q-input
+              v-model="formUsuario.documento"
+              label="Documento"
+              outlined
+              dense
+              class="q-mb-md"
+              @blur="verificarDocumentoDisponible"
+              hint="Opcional - Número de identificación"
+              ><template #prepend><q-icon name="credit_card" /></template
+              ><template #append v-if="verificandoDoc"
+                ><q-spinner color="primary" size="20px" /></template
+            ></q-input>
+
+            <q-input
+              v-model="formUsuario.correoCorporativo"
+              label="Correo Corporativo"
+              type="email"
+              outlined
+              dense
+              class="q-mb-md"
+              :disable="modoEdicion"
+              hint="Requerido si se crea cuenta de usuario"
+              ><template #prepend><q-icon name="mail" /></template
+            ></q-input>
           </div>
-          <q-input
-            v-model="formUsuario.username"
-            label="Nombre de usuario *"
-            outlined
-            dense
-            class="q-mb-md"
-            ><template #prepend><q-icon name="person" /></template
-          ></q-input>
-          <q-input
-            v-model="formUsuario.correo"
-            label="Correo Electrónico *"
-            type="email"
-            outlined
-            dense
-            class="q-mb-md"
-            :disable="modoEdicion"
-            ><template #prepend><q-icon name="mail" /></template
-          ></q-input>
-          <q-input
-            v-if="!modoEdicion"
-            v-model="formUsuario.password"
-            :type="showPassword ? 'text' : 'password'"
-            label="Contraseña *"
-            outlined
-            dense
-            class="q-mb-md"
-            ><template #prepend><q-icon name="lock" /></template
-            ><template #append
-              ><q-icon
-                :name="showPassword ? 'visibility_off' : 'visibility'"
-                class="cursor-pointer"
-                @click="showPassword = !showPassword" /></template
-          ></q-input>
-          <q-input
-            v-if="!modoEdicion"
-            v-model="formUsuario.password_confirm"
-            :type="showPassword ? 'text' : 'password'"
-            label="Confirmar Contraseña *"
-            outlined
-            dense
-            class="q-mb-md"
-            ><template #prepend><q-icon name="lock" /></template
-          ></q-input>
-          <q-select
-            v-model="formUsuario.idRolSistema"
-            label="Rol *"
-            outlined
-            dense
-            :options="rolesOptions"
-            emit-value
-            map-options
-            class="q-mb-md"
-            ><template #prepend><q-icon name="admin_panel_settings" /></template
-          ></q-select>
+
+          <!-- SEPARADOR Y OPCIÓN DE CREAR CUENTA (Solo al crear nuevo) -->
+          <template v-if="!modoEdicion">
+            <q-separator class="q-mb-md" />
+
+            <div class="q-mb-md">
+              <q-toggle
+                v-model="formUsuario.crearCuentaUsuario"
+                label="Crear cuenta de usuario para acceso al sistema"
+                color="primary"
+                size="lg"
+                icon="person_add"
+                class="q-mb-sm"
+              />
+              <div class="text-caption text-grey-7 q-ml-xl">
+                Si se activa, el personal podrá iniciar sesión en el sistema
+              </div>
+            </div>
+
+            <!-- SECCIÓN 2: CUENTA DE ACCESO (Condicional) -->
+            <div v-if="formUsuario.crearCuentaUsuario" class="bg-blue-1 q-pa-md rounded-borders">
+              <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
+                <q-icon name="lock" class="q-mr-xs" />
+                Cuenta de Acceso
+              </div>
+
+              <q-banner class="bg-info text-white q-mb-md" rounded dense>
+                <template #avatar>
+                  <q-icon name="email" color="white" />
+                </template>
+                <strong>Seguridad:</strong> Se enviará un correo de activación al usuario con un
+                enlace válido por 24 horas para que establezca su propia contraseña.
+              </q-banner>
+
+              <q-input
+                v-model="formUsuario.username"
+                label="Nombre de usuario (username) *"
+                outlined
+                dense
+                class="q-mb-md bg-white"
+                hint="Identificador único para iniciar sesión"
+                ><template #prepend><q-icon name="account_circle" /></template
+              ></q-input>
+
+              <q-select
+                v-model="formUsuario.idRolSistema"
+                label="Rol del Sistema *"
+                outlined
+                dense
+                :options="rolesOptions"
+                emit-value
+                map-options
+                class="bg-white"
+                hint="Define los permisos del usuario"
+                ><template #prepend><q-icon name="admin_panel_settings" /></template
+              ></q-select>
+            </div>
+          </template>
+
+          <!-- SECCIÓN EDICIÓN: Solo estado -->
           <q-select
             v-if="modoEdicion"
             v-model="formUsuario.estado"
@@ -208,18 +234,20 @@
             :options="estadosOptions"
             emit-value
             map-options
-            class="q-mb-md"
+            class="q-mt-md"
             ><template #prepend><q-icon name="toggle_on" /></template
           ></q-select>
         </q-card-section>
-        <q-card-actions align="right">
+
+        <q-card-actions align="right" class="q-pa-md">
           <q-btn label="Cancelar" flat color="grey" v-close-popup />
           <q-btn
-            :label="modoEdicion ? 'Actualizar' : 'Crear'"
+            :label="modoEdicion ? 'Actualizar' : 'Crear Personal'"
             color="primary"
             unelevated
             @click="guardarUsuario"
             :loading="loadingGuardar"
+            :icon="modoEdicion ? 'save' : 'person_add'"
           />
         </q-card-actions>
       </q-card>
@@ -233,10 +261,10 @@
         </q-card-section>
         <q-card-section v-if="usuarioSeleccionado">
           <div class="text-body2">
-            <strong>Usuario:</strong> {{ usuarioSeleccionado.username }}<br /><strong
-              >Email:</strong
-            >
-            {{ usuarioSeleccionado.correo }}
+            <strong>Usuario:</strong> {{ usuarioSeleccionado.username }}<br />
+            <strong>Nombre:</strong> {{ usuarioSeleccionado.nombres }}
+            {{ usuarioSeleccionado.apellidos }}<br />
+            <strong>Email:</strong> {{ usuarioSeleccionado.correoCorporativo }}
           </div>
         </q-card-section>
         <q-card-actions align="right">
@@ -267,39 +295,59 @@ export default {
     const usuariosFiltrados = ref([])
     const loadingGuardar = ref(false)
     const loadingEliminar = ref(false)
+    const verificandoDoc = ref(false)
     const dialogUsuario = ref(false)
     const dialogEliminar = ref(false)
     const modoEdicion = ref(false)
-    const showPassword = ref(false)
     const usuarioSeleccionado = ref(null)
-    const filtro = ref({ busqueda: '', rol: null, estado: null })
+    const filtro = ref({ busqueda: '', estado: null })
     const formUsuario = ref({
       username: '',
-      correo: '',
-      password: '',
-      password_confirm: '',
-      idRolSistema: 1,
+      nombres: '',
+      apellidos: '',
+      documento: '',
+      correoCorporativo: '',
       estado: 'ACTIVO',
+      crearCuentaUsuario: false,
+      idRolSistema: 3, // Rol por defecto: Operador
     })
     const columns = [
       { name: 'username', label: 'Usuario', field: 'username', align: 'left', sortable: true },
-      { name: 'correo', label: 'Correo', field: 'correo', align: 'left', sortable: true },
-      { name: 'rol', label: 'Rol', field: 'nombreRol', align: 'center', sortable: true },
-      { name: 'estado', label: 'Estado', field: 'estado', align: 'center', sortable: true },
       {
-        name: 'ultimoLogin',
-        label: 'Último Login',
-        field: 'ultimoLogin',
+        name: 'nombreCompleto',
+        label: 'Nombre Completo',
+        field: (row) => `${row.nombres} ${row.apellidos}`,
+        align: 'left',
+        sortable: true,
+      },
+      {
+        name: 'documento',
+        label: 'Documento',
+        field: 'documento',
         align: 'center',
         sortable: true,
-        format: (val) => (val ? new Date(val).toLocaleString('es-ES') : 'Nunca'),
+      },
+      {
+        name: 'correo',
+        label: 'Correo Corporativo',
+        field: 'correoCorporativo',
+        align: 'left',
+        sortable: true,
+      },
+      { name: 'estado', label: 'Estado', field: 'estado', align: 'center', sortable: true },
+      {
+        name: 'tieneCuenta',
+        label: 'Tiene Cuenta',
+        field: 'tieneCuentaUsuario',
+        align: 'center',
+        sortable: true,
+        format: (val) => (val ? 'Sí' : 'No'),
       },
       { name: 'acciones', label: 'Acciones', align: 'center' },
     ]
     const rolesOptions = [
-      { label: 'Administrador', value: 1 },
-      { label: 'Operador', value: 2 },
-      { label: 'Usuario', value: 3 },
+      { label: 'Administrador', value: 2 },
+      { label: 'Operador', value: 3 },
     ]
     const estadosOptions = [
       { label: 'Activo', value: 'ACTIVO' },
@@ -320,10 +368,12 @@ export default {
         resultado = resultado.filter(
           (u) =>
             u.username?.toLowerCase().includes(busqueda) ||
-            u.correo?.toLowerCase().includes(busqueda),
+            u.correoCorporativo?.toLowerCase().includes(busqueda) ||
+            u.nombres?.toLowerCase().includes(busqueda) ||
+            u.apellidos?.toLowerCase().includes(busqueda) ||
+            u.documento?.toLowerCase().includes(busqueda),
         )
       }
-      if (filtro.value.rol) resultado = resultado.filter((u) => u.idRolSistema === filtro.value.rol)
       if (filtro.value.estado) resultado = resultado.filter((u) => u.estado === filtro.value.estado)
       usuariosFiltrados.value = resultado
     }
@@ -332,110 +382,189 @@ export default {
       modoEdicion.value = false
       formUsuario.value = {
         username: '',
-        correo: '',
-        password: '',
-        password_confirm: '',
-        idRolSistema: 1,
+        nombres: '',
+        apellidos: '',
+        documento: '',
+        correoCorporativo: '',
         estado: 'ACTIVO',
+        crearCuentaUsuario: false,
+        idRolSistema: 3,
       }
       dialogUsuario.value = true
     }
 
-    const openEditDialog = (usuario) => {
+    const verificarDocumentoDisponible = async () => {
+      if (!formUsuario.value.documento || modoEdicion.value) return
+
+      verificandoDoc.value = true
+      try {
+        const resultado = await usuarioStore.verificarDocumento(formUsuario.value.documento)
+        if (resultado.existe) {
+          $q.notify({
+            type: 'warning',
+            message: 'El documento ya está registrado',
+            position: 'bottom',
+          })
+        }
+      } catch (error) {
+        console.error('Error al verificar documento:', error)
+      } finally {
+        verificandoDoc.value = false
+      }
+    }
+
+    const openEditDialog = (personal) => {
       modoEdicion.value = true
-      usuarioSeleccionado.value = usuario
+      usuarioSeleccionado.value = personal
       formUsuario.value = {
-        id: usuario.idUsuario,
-        username: usuario.username,
-        correo: usuario.correo,
-        idRolSistema: usuario.idRolSistema,
-        estado: usuario.estado,
+        id: personal.idPersonal,
+        username: personal.username,
+        nombres: personal.nombres,
+        apellidos: personal.apellidos,
+        documento: personal.documento,
+        correoCorporativo: personal.correoCorporativo,
+        estado: personal.estado,
       }
       dialogUsuario.value = true
     }
 
     const guardarUsuario = async () => {
-      if (!formUsuario.value.username || !formUsuario.value.correo)
+      // Validar campos básicos obligatorios
+      if (!formUsuario.value.nombres || !formUsuario.value.apellidos) {
         return $q.notify({
           type: 'warning',
-          message: 'Completa todos los campos obligatorios',
-          position: 'bottom',
+          message: 'Nombres y Apellidos son obligatorios',
+          icon: 'warning',
+          position: 'top',
         })
-      if (!modoEdicion.value) {
-        if (!formUsuario.value.password || !formUsuario.value.password_confirm)
-          return $q.notify({
-            type: 'warning',
-            message: 'La contraseña es obligatoria',
-            position: 'bottom',
-          })
-        if (formUsuario.value.password !== formUsuario.value.password_confirm)
-          return $q.notify({
-            type: 'negative',
-            message: 'Las contraseñas no coinciden',
-            position: 'bottom',
-          })
-        if (formUsuario.value.password.length < 6)
-          return $q.notify({
-            type: 'warning',
-            message: 'La contraseña debe tener al menos 6 caracteres',
-            position: 'bottom',
-          })
       }
+
+      // Validaciones específicas cuando se crea cuenta de usuario
+      if (!modoEdicion.value && formUsuario.value.crearCuentaUsuario) {
+        if (!formUsuario.value.correoCorporativo) {
+          return $q.notify({
+            type: 'warning',
+            message: 'El correo corporativo es obligatorio para crear cuenta de usuario',
+            caption: 'Se necesita para enviar el enlace de activación',
+            icon: 'email',
+            position: 'top',
+          })
+        }
+
+        if (!formUsuario.value.username) {
+          return $q.notify({
+            type: 'warning',
+            message: 'El nombre de usuario es obligatorio para crear cuenta',
+            icon: 'account_circle',
+            position: 'top',
+          })
+        }
+
+        // Validar formato de email
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+        if (!emailRegex.test(formUsuario.value.correoCorporativo)) {
+          return $q.notify({
+            type: 'warning',
+            message: 'Formato de correo inválido',
+            icon: 'error',
+            position: 'top',
+          })
+        }
+      }
+
       loadingGuardar.value = true
       try {
         let success
         if (modoEdicion.value) {
+          // MODO EDICIÓN: Solo actualizar datos personales
           const datosActualizar = {
-            username: formUsuario.value.username,
-            idRolSistema: formUsuario.value.idRolSistema,
+            nombres: formUsuario.value.nombres,
+            apellidos: formUsuario.value.apellidos,
+            documento: formUsuario.value.documento,
+            correoCorporativo: formUsuario.value.correoCorporativo,
             estado: formUsuario.value.estado,
           }
           success = await usuarioStore.actualizarUsuario(formUsuario.value.id, datosActualizar)
-          if (success)
+
+          if (success) {
             $q.notify({
               type: 'positive',
-              message: 'Usuario actualizado exitosamente',
-              position: 'bottom',
+              message: 'Personal actualizado exitosamente',
+              icon: 'check_circle',
+              position: 'top',
             })
-        } else {
-          const nuevoUsuario = {
-            username: formUsuario.value.username,
-            correo: formUsuario.value.correo,
-            password: formUsuario.value.password,
-            idRolSistema: formUsuario.value.idRolSistema,
-            estado: formUsuario.value.estado,
           }
-          success = await usuarioStore.crearUsuario(nuevoUsuario)
-          if (success)
-            $q.notify({
-              type: 'positive',
-              message: 'Usuario creado exitosamente',
-              position: 'bottom',
-            })
+        } else {
+          // MODO CREACIÓN: Usar endpoint transaccional
+          const nuevoPersonal = {
+            nombres: formUsuario.value.nombres,
+            apellidos: formUsuario.value.apellidos,
+            documento: formUsuario.value.documento || null,
+            correoCorporativo: formUsuario.value.correoCorporativo || null,
+            estado: formUsuario.value.estado,
+            crearCuentaUsuario: formUsuario.value.crearCuentaUsuario,
+            username: formUsuario.value.crearCuentaUsuario ? formUsuario.value.username : null,
+            idRolSistema: formUsuario.value.crearCuentaUsuario
+              ? formUsuario.value.idRolSistema
+              : null,
+          }
+
+          const resultado = await usuarioStore.crearUsuario(nuevoPersonal)
+
+          if (resultado) {
+            if (resultado.conCuentaUsuario) {
+              // Cuenta creada: Mostrar mensaje detallado
+              $q.notify({
+                type: 'positive',
+                message: 'Personal y cuenta de usuario creados exitosamente',
+                caption: `Se ha enviado un correo de activación a ${formUsuario.value.correoCorporativo}. El enlace es válido por 24 horas.`,
+                icon: 'mark_email_read',
+                position: 'top',
+                timeout: 6000,
+                actions: [{ icon: 'close', color: 'white' }],
+              })
+            } else {
+              // Solo personal creado
+              $q.notify({
+                type: 'positive',
+                message: 'Personal registrado exitosamente',
+                caption: 'El personal ha sido agregado sin cuenta de acceso al sistema',
+                icon: 'person_add',
+                position: 'top',
+                timeout: 3000,
+              })
+            }
+            success = true
+          }
         }
+
         if (success || success !== false) {
           dialogUsuario.value = false
           usuariosFiltrados.value = [...usuarioStore.usuarios]
-        } else
+        } else {
           $q.notify({
             type: 'negative',
-            message: usuarioStore.error || 'Error al guardar usuario',
-            position: 'bottom',
+            message: usuarioStore.error || 'Error al guardar personal',
+            icon: 'error',
+            position: 'top',
           })
+        }
       } catch (error) {
         $q.notify({
           type: 'negative',
-          message: error.message || 'Error al guardar usuario',
-          position: 'bottom',
+          message: error.message || 'Error al guardar personal',
+          caption: 'Por favor verifica los datos e intenta nuevamente',
+          icon: 'error',
+          position: 'top',
         })
       } finally {
         loadingGuardar.value = false
       }
     }
 
-    const toggleEstado = async (usuario) => {
-      const nuevoEstado = usuario.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
-      const success = await usuarioStore.toggleEstado(usuario.idUsuario, nuevoEstado)
+    const toggleEstado = async (personal) => {
+      const nuevoEstado = personal.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
+      const success = await usuarioStore.toggleEstado(personal.idPersonal, nuevoEstado)
       if (success) {
         $q.notify({
           type: 'positive',
@@ -458,7 +587,7 @@ export default {
 
     const eliminarUsuario = async () => {
       loadingEliminar.value = true
-      const success = await usuarioStore.eliminarUsuario(usuarioSeleccionado.value.idUsuario)
+      const success = await usuarioStore.eliminarUsuario(usuarioSeleccionado.value.idPersonal)
       if (success) {
         $q.notify({
           type: 'positive',
@@ -476,10 +605,6 @@ export default {
       loadingEliminar.value = false
     }
 
-    const getRolColor = (rol) =>
-      ({ Administrador: 'deep-purple', Operador: 'orange', Usuario: 'blue' })[rol] || 'grey'
-    const getRolLabel = (rol) => rol || 'Sin Rol'
-
     onMounted(() => cargarUsuarios())
 
     return {
@@ -487,10 +612,10 @@ export default {
       loading,
       loadingGuardar,
       loadingEliminar,
+      verificandoDoc,
       dialogUsuario,
       dialogEliminar,
       modoEdicion,
-      showPassword,
       usuarioSeleccionado,
       filtro,
       formUsuario,
@@ -501,13 +626,12 @@ export default {
       cargarUsuarios,
       filtrarUsuarios,
       openCreateDialog,
+      verificarDocumentoDisponible,
       openEditDialog,
       guardarUsuario,
       toggleEstado,
       confirmarEliminar,
       eliminarUsuario,
-      getRolColor,
-      getRolLabel,
     }
   },
 }

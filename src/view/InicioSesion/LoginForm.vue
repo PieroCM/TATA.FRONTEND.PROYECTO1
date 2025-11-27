@@ -159,9 +159,10 @@ export default {
       }
 
       try {
+        // Petición al endpoint de autenticación con los campos correctos
         const response = await this.$api.post('/api/usuario/signin', {
-          usuarioNombre: this.correo,
-          usuarioContrasena: this.password,
+          email: this.correo,
+          password: this.password,
         })
 
         // Validar que la respuesta contenga el token
@@ -174,18 +175,25 @@ export default {
         localStorage.setItem('authToken', response.data.token)
 
         // Opcional: guardar información adicional del usuario si viene en la respuesta
-        if (response.data.correo) {
-          localStorage.setItem('userEmail', response.data.correo)
+        const userData = {
+          email: this.correo,
+          // Agregar cualquier otro dato que venga en la respuesta
+          ...response.data,
         }
-        if (response.data.username) {
-          localStorage.setItem('username', response.data.username)
+        delete userData.token // No guardar el token en el objeto usuario
+
+        // Usar el store de autenticación para manejar el estado
+        const authStore = this.$pinia ? this.$pinia.state.value.auth : null
+        if (authStore) {
+          // El store ya debería tener el token actualizado por setAuth
+          localStorage.setItem('usuario', JSON.stringify(userData))
         }
 
         console.log('Token guardado exitosamente en localStorage')
 
         this.$q.notify({
           type: 'positive',
-          message: 'Inicio de sesión exitoso',
+          message: response.data.message || 'Inicio de sesión exitoso',
           position: 'bottom',
           timeout: 1500,
         })
