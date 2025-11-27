@@ -5,7 +5,8 @@
       v-model="drawerOpen"
       :mini="drawerMini"
       show-if-above
-      :width="250"
+      :width="240"
+      :mini-width="56"
       :breakpoint="1024"
       bordered
       class="sidebar"
@@ -264,6 +265,9 @@ export default {
         this.drawerOpen = false
       }
     },
+    irAPerfil() {
+      this.$router.push('/sistema/usuario')
+    },
     cerrarSesion() {
       // Limpiar sesión
       this.authStore.clearAuth()
@@ -288,141 +292,150 @@ export default {
   font-family: 'Inter', sans-serif;
 }
 
-/* ------------------ VARIABLES FIGMA ------------------ */
+/* ------------------ COLORES BASE ------------------ */
 :root {
-  --gray-icon: #6b7280; /* íconos apagados */
-  --gray-text: #374151; /* texto normal */
-  --gray-border: #e5e7eb; /* bordes */
-  --hover-blue: #f0f6ff; /* hover azul claro */
-  --active-blue: #e8f0fe; /* seleccionado */
-  --blue-primary: #1a73e8; /* azul GOOGLE/Figma */
+  --sidebar-bg: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #374151;
+  --text-secondary: #6b7280;
+  --icon-default: #6b7280;
+  --hover-bg: #f3f4f6;
+  --active-bg: #dbeafe;
+  --active-color: #2563eb;
+  --active-border: #2563eb;
 }
 
 /* ------------------ SIDEBAR ------------------ */
 .q-drawer {
   background: white !important;
-  border-right: 1px solid var(--gray-border);
-  z-index: 2000 !important; /* Debajo del header */
+  border-right: 1px solid #e5e7eb;
+  z-index: 2000 !important;
 }
 
-.menu-item,
-.menu-group,
-.menu-child {
-  color: var(--gray-text);
-  font-weight: 400;
+.q-drawer :deep(.q-scrollarea__content) {
+  padding: 0 !important;
 }
 
-/* ícono apagado */
-.menu-icon {
-  color: var(--gray-icon) !important;
+.q-drawer :deep(.q-list) {
+  padding: 4px 0 !important;
 }
 
-/* hover igual Figma (celeste suave) */
-.menu-item:hover,
-.menu-child:hover,
-.menu-group:hover {
-  background-color: var(--hover-blue) !important;
+/* Controlar el espaciado de los iconos globalmente */
+.q-drawer :deep(.q-item__section--avatar) {
+  min-width: 40px !important;
+  padding-right: 12px !important;
 }
 
-/* ------------------ ITEM SELECCIONADO ------------------ */
-/* SidebarItem.vue */
-.router-link-active,
-.q-item--active {
-  background-color: var(--active-blue) !important;
-}
-
-.router-link-active .menu-label,
-.q-item--active .menu-label {
-  color: var(--blue-primary) !important;
-}
-
-.router-link-active .menu-icon,
-.q-item--active .menu-icon {
-  color: var(--blue-primary) !important;
+.q-drawer :deep(.q-item) {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
 }
 
 /* ------------------ FLECHAS DE EXPANSIÓN ------------------ */
 .q-expansion-item__toggle-icon {
-  color: var(--gray-icon) !important;
+  color: #9ca3af !important;
+  font-size: 16px !important;
+}
+
+.q-expansion-item :deep(.q-item__section--side) {
+  padding-left: 0 !important;
 }
 
 /* ------------------ MINI SIDEBAR (CONTRAÍDO - SOLO ICONOS) ------------------ */
-/* Ocultar textos en modo mini */
+.q-drawer--mini {
+  border-right: 1px solid #e5e7eb !important;
+  background: white !important;
+}
+
 .q-drawer--mini .q-item__label,
 .q-drawer--mini .q-expansion-item__toggle-icon {
   display: none !important;
 }
 
-/* Centrar iconos en modo mini */
 .q-drawer--mini .q-item {
   justify-content: center !important;
-  padding: 12px 0 !important;
+  padding: 10px 0 !important;
+  min-height: 48px !important;
+  margin: 2px 0 !important;
 }
 
 .q-drawer--mini .q-item__section--avatar {
-  min-width: auto !important;
-  padding-right: 0 !important;
+  min-width: 100% !important;
+  padding: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
-/* Iconos en modo mini */
+.q-drawer--mini .q-item__section--main {
+  display: none !important;
+}
+
 .q-drawer--mini .q-icon {
-  color: var(--gray-icon) !important;
-  font-size: 24px !important;
+  color: #6b7280 !important;
+  font-size: 20px !important;
+}
+
+.q-drawer--mini .q-item:hover {
+  background-color: #f3f4f6 !important;
 }
 
 .q-drawer--mini .q-item:hover .q-icon {
-  color: var(--blue-primary) !important;
-}
-
-.q-drawer--mini .q-item--active .q-icon,
-.q-drawer--mini .router-link-active .q-icon {
-  color: var(--blue-primary) !important;
-}
-
-/* Hover en modo mini */
-.q-drawer--mini .q-item:hover {
-  background-color: var(--hover-blue) !important;
+  color: #2563eb !important;
 }
 
 /* Activo en modo mini */
-.q-drawer--mini .q-item--active,
-.q-drawer--mini .router-link-active {
-  background-color: var(--active-blue) !important;
-  border-left: 3px solid var(--blue-primary);
+.q-drawer--mini .active-item,
+.q-drawer--mini .menu-child--active {
+  background-color: #dbeafe !important;
+  border-left: 3px solid #2563eb !important;
+  border-radius: 0 !important;
 }
 
-/* Espaciado entre items en modo mini */
+.q-drawer--mini .active-item .q-icon,
+.q-drawer--mini .menu-child--active .q-icon {
+  color: #2563eb !important;
+}
+
 .q-drawer--mini .q-expansion-item {
   padding: 0 !important;
+  margin: 0 !important;
+}
+
+.q-drawer--mini .q-expansion-item__content {
+  display: none !important;
 }
 
 .q-drawer--mini .q-list {
   padding: 8px 0 !important;
 }
 
-.menu-item-mini q-icon {
-  color: var(--gray-icon) !important;
+.q-drawer--mini .q-scrollarea__content {
+  width: 56px !important;
 }
 
 /* ------------------ TOPBAR ------------------ */
 .topbar {
   background: white !important;
-  border-bottom: 1px solid var(--gray-border);
-  height: 56px;
-  z-index: 3000 !important; /* Asegura que el header esté encima del drawer */
-}
-
-.header-bar {
-  min-height: 56px;
-  height: 56px;
+  border-bottom: 1px solid #e5e7eb;
+  height: 64px;
   z-index: 3000 !important;
 }
 
-.hamburger {
-  color: var(--gray-icon) !important;
+.header-bar {
+  min-height: 64px;
+  height: 64px;
+  z-index: 3000 !important;
+  padding: 0 20px;
 }
+
+.hamburger {
+  color: #6b7280 !important;
+}
+
 .hamburger:hover {
-  color: var(--blue-primary) !important;
+  color: #2563eb !important;
+  background: #f3f4f6;
 }
 
 /* ------------------ RESPONSIVIDAD ------------------ */
@@ -452,185 +465,77 @@ export default {
   }
 }
 
-/* ------------------ OCULTAR SCROLLBAR ------------------ */
-.q-scrollarea__thumb {
-  display: none !important;
-}
 /* ===========================
-   TITULOS DE GRUPO (Datos SLA, Reportes, etc.)
+   EXPANSION ITEMS - LIMPIEZA
    =========================== */
-
-/* Texto del grupo */
-.q-expansion-item .q-item__section--main {
-  color: #6b7280 !important; /* gris slate-500 del figma */
-  font-weight: 400 !important;
-  font-size: 14px !important;
+.q-expansion-item {
+  border-radius: 0 !important;
 }
 
-/* Icono del grupo */
-.q-expansion-item .q-item__section--avatar i {
-  color: #6b7280 !important; /* mismo gris */
-}
-
-/* Hover del grupo (la fila superior) */
-.q-expansion-item .q-item.q-item-type.row:hover {
-  background-color: #eef6ff !important; /* celeste suave del figma */
-}
-
-/* Grupo activo (cuando está expandido) */
-.q-expansion-item--expanded > .q-expansion-item__container > .q-item {
-  background-color: #eef6ff !important; /* celeste suave */
-}
-
-/* Flecha (toggle) */
-.q-expansion-item__toggle-icon {
-  color: #6b7280 !important;
+.q-expansion-item .q-item {
+  border-radius: 0 !important;
 }
 /* ==================================
-   ESTADOS ACTIVOS (ITEM Y GRUPOS)
+   ITEMS GENERALES
    ================================== */
-
-/* Fondo celeste al estar seleccionado */
-.q-item--active,
-.q-item--active:hover {
-  background-color: #d8e7ff !important; /* celeste figma */
+.q-item {
+  border-radius: 0 !important;
 }
 
-/* Texto azul cuando está activo */
-.q-item--active .q-item__section--main,
-.q-item--active .menu-label,
-.q-item--active .menu-child-label {
-  color: #1a73e8 !important; /* azul figma */
-  font-weight: 400 !important;
-}
-
-/* Icono azul cuando está activo */
-.q-item--active .q-item__section--avatar i {
-  color: #1a73e8 !important;
-}
-
-/* Para grupos (Datos SLA, Reportes, etc.) */
-.q-expansion-item--expanded > .q-expansion-item__container > .q-item {
-  background-color: #d8e7ff !important;
-}
-
-.q-expansion-item--expanded .q-item__section--main {
-  color: #1a73e8 !important;
-  font-weight: 400 !important;
-}
-
-.q-expansion-item--expanded .q-item__section--avatar i {
-  color: #1a73e8 !important;
-}
-
-/* Flecha azul cuando el grupo está activo */
-.q-expansion-item--expanded .q-expansion-item__toggle-icon {
-  color: #1a73e8 !important;
-}
-
-/* --- MENÚ DE USUARIO (ESTILO FIGMA) --- */
-
+/* --- MENÚ DE USUARIO --- */
 .user-menu {
-  border-radius: 10px;
-  padding: 4px 0;
-  box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .menu-title {
-  font-weight: 400;
-  font-size: 14px;
-  color: #111827;
+  font-weight: 500;
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
 }
-
-.user-option {
-  padding: 10px 12px;
-  color: #374151;
-  font-size: 14px;
-}
-
-.user-option:hover {
-  background: #f3f4f6;
-}
-
-.logout-option {
-  padding: 12px;
-  color: #dc2626 !important; /* rojo */
-  font-weight: 400;
-}
-
-.logout-option:hover {
-  background: #fee2e2;
-}
-/* --- HOVER EXACTO DEL FIGMA EN MENÚ DE USUARIO --- */
 
 .user-option {
   padding: 10px 12px;
   color: #374151;
   font-size: 14px;
   border-radius: 6px;
+  margin-bottom: 2px;
   transition: all 0.15s ease;
 }
 
 .user-option:hover {
-  background: #e8f1ff; /* celeste suave del Figma */
-  color: #1967d2 !important; /* azul del Figma */
+  background: #dbeafe !important;
+  color: #2563eb !important;
 }
 
 .user-option:hover .q-icon {
-  color: #1967d2 !important; /* icono azul cuando se hace hover */
+  color: #2563eb !important;
 }
 
 .logout-option {
-  padding: 12px;
+  padding: 10px 12px;
   color: #dc2626 !important;
   border-radius: 6px;
   font-weight: 400;
+  margin-top: 4px;
 }
 
 .logout-option:hover {
-  background: #fee2e2; /* rosado suave */
+  background: #fee2e2 !important;
 }
 </style>
 
 <style>
-/* --- GRUPOS --- */
-.q-expansion-item {
-  padding-left: 12px;
-}
-
-.q-expansion-item__container .q-item__label {
-  font-size: 14px;
-  font-weight: 400;
-  color: #4a5568;
-}
-
-/* --- ÍCONOS GRUPO --- */
-.q-expansion-item__container .q-item__section--avatar .q-icon {
-  color: #4a5568 !important;
-}
-
-/* --- MINI MODE ICONOS --- */
-.menu-item-mini q-icon {
-  color: #6b7280 !important;
-  font-size: 22px;
-  margin: 12px 0;
-}
-/* Ítem hijo ACTIVO (seleccionado) */
-.active-child {
-  background: #e8f0fe !important;
-  border-left: 3px solid #1a73e8;
-  color: #1a73e8 !important;
-}
-
-.active-child .menu-child-label {
-  color: #1a73e8 !important;
-  font-weight: 400;
-}
-
-.active-child .child-icon {
-  color: #1a73e8 !important;
-}
+/* --- SCROLLBAR OCULTO --- */
 .q-drawer__content::-webkit-scrollbar {
   width: 0 !important;
+}
+
+.q-scrollarea__thumb {
+  display: none !important;
 }
 </style>
