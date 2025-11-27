@@ -3,15 +3,22 @@
     <!-- ========== SIDEBAR ========== -->
     <q-drawer
       v-model="drawerOpen"
-      :mini="drawerMini"
+      :mini="drawerMini && isDesktopMode"
+      :overlay="isMobile"
+      :behavior="isDesktopMode ? 'desktop' : 'mobile'"
       show-if-above
-      :width="240"
+      :width="260"
       :mini-width="56"
-      :breakpoint="1024"
+      :breakpoint="600"
       bordered
       class="sidebar"
     >
-      <q-scroll-area class="fit">
+      <!-- Botón cerrar solo en mobile -->
+      <div v-if="isMobile" class="mobile-header">
+        <q-btn flat round dense icon="close" class="close-btn" @click="drawerOpen = false" />
+      </div>
+
+      <q-scroll-area class="fit" :style="isMobile ? 'height: calc(100% - 56px)' : ''">
         <q-list padding>
           <!-- GRUPO: Dashboard -->
           <SidebarGroup
@@ -122,7 +129,9 @@
           <!-- Fecha -->
           <div class="row items-center no-wrap">
             <q-icon name="event" size="18px" class="q-mr-xs" />
-            <span class="text-body2 text-grey-8">{{ currentMonthLabel }}</span>
+            <span v-show="!isSmallMobile" class="text-body2 text-grey-8">{{
+              currentMonthLabel
+            }}</span>
           </div>
 
           <!-- Notificaciones -->
@@ -132,16 +141,22 @@
 
           <!-- Usuario -->
           <q-btn flat dense no-caps class="user-btn">
-            <q-avatar size="32px" class="q-mr-sm">
-              <img src="https://i.pravatar.cc/150?img=47" />
-            </q-avatar>
+            <!-- Modo ultra pequeño: solo ícono -->
+            <q-icon v-if="isUltraSmall" name="person" size="20px" class="q-mr-xs" />
 
-            <div class="column items-start q-mr-xs">
-              <span class="text-body2 text-weight-medium">{{
-                authStore.userName || 'Usuario'
-              }}</span>
-              <span class="text-caption text-grey">{{ authStore.usuario?.rol || 'Rol' }}</span>
-            </div>
+            <!-- Modo normal: avatar + info -->
+            <template v-else>
+              <q-avatar size="32px" class="q-mr-sm">
+                <q-icon name="person" size="30px" class="q-mr-xs" />
+              </q-avatar>
+
+              <div class="column items-start q-mr-xs">
+                <span class="text-body2 text-weight-medium">{{
+                  authStore.userName || 'Usuario'
+                }}</span>
+                <span class="text-caption text-grey">{{ authStore.usuario?.rol || 'Rol' }}</span>
+              </div>
+            </template>
 
             <q-icon name="expand_more" size="18px" />
 
@@ -238,12 +253,27 @@ export default {
         year: 'numeric',
       })
     },
+    isMobile() {
+      return this.$q.screen.lt.sm
+    },
+    isTablet() {
+      return this.$q.screen.width >= 768 && this.$q.screen.width <= 1023
+    },
+    isDesktopMode() {
+      return !this.isMobile
+    },
+    isSmallMobile() {
+      return this.$q.screen.width < 521
+    },
+    isUltraSmall() {
+      return this.$q.screen.width <= 457
+    },
   },
 
   watch: {
     $route() {
       // En pantallas pequeñas, cerrar el drawer al cambiar de ruta
-      if (this.$q.screen.lt.lg) {
+      if (this.isMobile) {
         this.drawerOpen = false
       }
     },
@@ -251,17 +281,17 @@ export default {
 
   methods: {
     toggleMini() {
-      // En pantallas pequeñas, toggle del drawer completo (abrir/cerrar)
-      if (this.$q.screen.lt.lg) {
+      // En mobile real (<600px), toggle del drawer completo (abrir/cerrar)
+      if (this.isMobile) {
         this.drawerOpen = !this.drawerOpen
       } else {
-        // En pantallas grandes, toggle del modo mini (expandir/contraer)
+        // En tablet y desktop (>=600px), toggle del modo mini (expandir/contraer)
         this.drawerMini = !this.drawerMini
       }
     },
     handleDrawerClick() {
-      // En pantallas pequeñas, cerrar drawer al hacer click en cualquier item del menú
-      if (this.$q.screen.lt.lg) {
+      // Solo cerrar drawer en mobile real (<600px)
+      if (this.isMobile) {
         this.drawerOpen = false
       }
     },
@@ -318,6 +348,25 @@ export default {
 
 .q-drawer :deep(.q-list) {
   padding: 4px 0 !important;
+}
+
+/* Header mobile con botón cerrar */
+.mobile-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 16px;
+  height: 56px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.close-btn {
+  color: #6b7280;
+}
+
+.close-btn:hover {
+  color: #2563eb;
+  background: #f3f4f6;
 }
 
 /* Controlar el espaciado de los iconos globalmente */
@@ -426,7 +475,7 @@ export default {
   min-height: 64px;
   height: 64px;
   z-index: 3000 !important;
-  padding: 0 20px;
+  padding: 0 12px;
 }
 
 .hamburger {
@@ -439,29 +488,46 @@ export default {
 }
 
 /* ------------------ RESPONSIVIDAD ------------------ */
-@media (max-width: 1023px) {
-  /* En pantallas pequeñas, el drawer se comporta como overlay */
+@media (max-width: 599px) {
+  /* Solo móviles reales (<600px): drawer modal con overlay */
   .q-drawer {
-    z-index: 6000 !important; /* Por encima del header en móvil */
+    z-index: 6000 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
   }
 
   .topbar {
-    z-index: 5500 !important; /* Header debajo del drawer en móvil */
+    z-index: 5500 !important;
   }
 
   .q-layout__backdrop {
     z-index: 5000 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Drawer ocupa altura completa en mobile */
+  .sidebar {
+    height: 100vh !important;
   }
 }
 
-/* Para pantallas mayores (desktop), mantener jerarquía original */
-@media (min-width: 1024px) {
+/* Para tablets (600-1023px) y desktop (>=1024px): comportamiento fijo */
+@media (min-width: 600px) {
   .q-drawer {
-    z-index: 2000 !important; /* Debajo del header en desktop */
+    z-index: 2000 !important;
   }
 
   .topbar {
-    z-index: 3000 !important; /* Header encima del drawer en desktop */
+    z-index: 3000 !important;
+  }
+
+  /* Ocultar botón cerrar en tablet y desktop */
+  .mobile-header {
+    display: none !important;
+  }
+
+  /* No overlay en tablet y desktop */
+  .q-layout__backdrop {
+    display: none !important;
   }
 }
 
