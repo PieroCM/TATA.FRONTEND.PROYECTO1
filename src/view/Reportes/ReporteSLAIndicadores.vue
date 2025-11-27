@@ -88,23 +88,16 @@
               </q-select>
             </div>
 
-            <!-- Dropdown Roles (Multi-selección) -->
+            <!-- Roles con Dialog (Multi-selección) -->
             <div class="col-12 col-md-3">
-              <q-select
-                v-model="filtros.roles"
-                :options="rolesDisponibles"
+              <q-btn
+                outline
+                color="primary"
+                icon="people"
                 label="Roles/Áreas"
-                outlined
-                dense
-                multiple
-                use-chips
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="people" color="primary" />
-                </template>
-                <template v-slot:hint> Opcional - Selecciona uno o varios </template>
-              </q-select>
+                :badge="selectedRoles.length > 0 ? selectedRoles.length : undefined"
+                @click="dialogRoles = true"
+              />
             </div>
           </div>
 
@@ -136,7 +129,7 @@
               icon="search"
               @click="verReporte"
               :loading="loading"
-              :disable="!filtros.mes || !filtros.anio"
+              :disable="!filtros.mes || !filtros.anio || !filtros.codigoSla"
             />
             <q-btn
               outline
@@ -184,9 +177,9 @@
                   {{ tituloReporte }}
                 </div>
                 <div class="text-caption text-grey-7">
-                  Total recursos: <b>{{ resumen.totalRecursos }}</b> |
-                  SLA promedio: <b>{{ resumen.promedioSla }}%</b> |
-                  Roles incluidos: <b>{{ resumen.rolesIncluidos }}</b>
+                  Total recursos: <b>{{ resumen.totalRecursos }}</b> | SLA promedio:
+                  <b>{{ resumen.promedioSla }}%</b> | Roles incluidos:
+                  <b>{{ resumen.rolesIncluidos }}</b>
                 </div>
               </div>
 
@@ -202,21 +195,15 @@
                 <!-- SLA -->
                 <template v-slot:body-cell-sla="props">
                   <q-td :props="props">
-                    <span v-if="props.row.numRecursos > 0">
-                      {{ props.row.sla.toFixed(2) }}%
-                    </span>
-                    <span v-else>NA</span>
+                    <span v-if="props.row.sla === 'NA'">NA</span>
+                    <span v-else>{{ props.row.sla }}%</span>
                   </q-td>
                 </template>
 
                 <!-- Indicador (círculo de color) -->
                 <template v-slot:body-cell-indicador="props">
                   <q-td :props="props">
-                    <q-icon
-                      name="circle"
-                      :color="getIndicadorColor(props.row)"
-                      size="18px"
-                    >
+                    <q-icon name="circle" :color="getIndicadorColor(props.row)" size="18px">
                       <q-tooltip>
                         {{ getIndicadorTexto(props.row) }}
                       </q-tooltip>
@@ -227,11 +214,9 @@
 
               <!-- Gráfico dinámico -->
               <div class="q-mt-xl">
-                <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                  Gráfico de SLA por Rol
-                </div>
-                <div class="chart-wrapper">
-                  <canvas ref="chartCanvas"></canvas>
+                <div class="text-subtitle1 text-weight-medium q-mb-sm">Gráfico de SLA por Rol</div>
+                <div class="chart-wrapper" style="position: relative; width: 100%; height: 500px">
+                  <canvas ref="chartCanvasRef" data-chart="sla" style="display: block"></canvas>
                 </div>
               </div>
             </div>
@@ -277,13 +262,61 @@
         :loading="enviandoCorreo"
         @submit="enviarPorCorreo"
       />
+
+      <!-- Dialog para seleccionar Roles -->
+      <q-dialog v-model="dialogRoles">
+        <q-card style="min-width: 400px">
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-h6">Seleccionar Roles/Áreas</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section class="q-pt-md">
+            <!-- Opción Todos -->
+            <div class="q-mb-md">
+              <q-checkbox
+                v-model="selectTodos"
+                label="Seleccionar todos"
+                @update:model-value="toggleTodos"
+              />
+            </div>
+
+            <q-separator class="q-mb-md" />
+
+            <!-- Lista de roles con scroll -->
+            <div
+              style="
+                max-height: 350px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+              "
+            >
+              <div v-for="rol in rolesDisponibles" :key="rol" class="role-checkbox-item">
+                <q-checkbox v-model="selectedRoles" :val="rol" :label="rol" />
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn flat label="Aplicar" color="primary" v-close-popup />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
   </q-page>
 </template>
 
 <script setup>
 // npm i jspdf html2canvas
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import { Chart, registerables } from 'chart.js'
@@ -319,31 +352,34 @@ const mesesDisponibles = [
   'Septiembre',
   'Octubre',
   'Noviembre',
-  'Diciembre'
+  'Diciembre',
 ]
 
 const filtros = ref({
   mes: mesesDisponibles[new Date().getMonth()],
   anio: new Date().getFullYear(),
   codigoSla: null, // Código SLA: SLA1, SLA2, etc.
-  roles: []
+  roles: ['Todos los roles'],
 })
 
 const aniosDisponibles = ref([])
 const tiposSlaDisponibles = ref([]) // [{ label, value: codigoSla }]
 const rolesDisponibles = ref([]) // nombres de roles
+const selectedRoles = ref([]) // roles seleccionados en el popover
+const selectTodos = ref(false) // estado del checkbox "Seleccionar todos"
+const dialogRoles = ref(false) // control del dialog de roles
 
 // Datos del reporte
 const filasTabla = ref([]) // [{ rol, numRecursos, sla }]
 const resumen = ref({
   totalRecursos: 0,
   promedioSla: 0,
-  rolesIncluidos: 0
+  rolesIncluidos: 0,
 })
 const solicitudesFiltradas = ref([]) // para exportar (ids)
 
 // Chart
-const chartCanvas = ref(null)
+const chartCanvasRef = ref(null)
 let chartInstance = null
 
 // Para PDF
@@ -363,28 +399,28 @@ const columnas = [
     label: 'ROL',
     field: 'rol',
     align: 'left',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'numRecursos',
     label: 'NUM_RECURSOS',
     field: 'numRecursos',
     align: 'center',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'sla',
     label: 'SLA',
     field: 'sla',
     align: 'center',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'indicador',
     label: 'INDICADOR',
     field: 'indicador',
-    align: 'center'
-  }
+    align: 'center',
+  },
 ]
 
 // Computeds
@@ -399,7 +435,7 @@ const filtrosActivos = computed(() => {
       label: `${filtros.value.mes} ${filtros.value.anio}`,
       icon: 'event',
       color: 'primary',
-      removable: false
+      removable: false,
     })
   }
 
@@ -409,17 +445,18 @@ const filtrosActivos = computed(() => {
       label: `SLA: ${filtros.value.codigoSla}`,
       icon: 'category',
       color: 'secondary',
-      removable: true
+      removable: true,
     })
   }
 
-  if (filtros.value.roles && filtros.value.roles.length > 0) {
+  if (selectedRoles.value && selectedRoles.value.length > 0) {
+    const esTodos = selectedRoles.value.length === rolesDisponibles.value.length
     activos.push({
       key: 'roles',
-      label: `Roles: ${filtros.value.roles.length}`,
+      label: esTodos ? 'Roles: Todos' : `Roles: ${selectedRoles.value.length}`,
       icon: 'people',
       color: 'accent',
-      removable: true
+      removable: false,
     })
   }
 
@@ -441,18 +478,39 @@ const getMesNumero = (nombreMes) => {
 }
 
 const getIndicadorColor = (row) => {
-  if (row.numRecursos === 0) return 'grey-5'
-  if (row.sla >= 90) return 'positive'
-  if (row.sla >= 70) return 'orange'
+  // Gris cuando es NA (sin recursos)
+  if (row.sla === 'NA') return 'grey-5'
+  // Verde cuando es 100%
+  if (row.sla === 100) return 'positive'
+  // Rojo cuando es menor al 100%
   return 'negative'
 }
 
 const getIndicadorTexto = (row) => {
-  if (row.numRecursos === 0) return 'Sin recursos (NA)'
-  if (row.sla >= 90) return 'Excelente (≥ 90%)'
-  if (row.sla >= 70) return 'Aceptable (≥ 70%)'
-  return 'Bajo (< 70%)'
+  if (row.sla === 'NA') return 'Sin recursos (NA)'
+  if (row.sla === 100) return 'Cumple 100%'
+  return `Incumplimiento (${row.sla}%)`
 }
+
+// Función para manejar seleccionar/deseleccionar todos
+const toggleTodos = (value) => {
+  if (value) {
+    // Si se marca "Todos", seleccionar todos los roles
+    selectedRoles.value = [...rolesDisponibles.value]
+  } else {
+    // Si se desmarca "Todos", deseleccionar todos
+    selectedRoles.value = []
+  }
+}
+
+// Actualizar selectTodos cuando cambian selectedRoles
+watch(
+  selectedRoles,
+  (newVal) => {
+    selectTodos.value = newVal.length === rolesDisponibles.value.length
+  },
+  { deep: true },
+)
 
 // Cargar combos iniciales
 const cargarConfiguracionesIniciales = async () => {
@@ -460,7 +518,7 @@ const cargarConfiguracionesIniciales = async () => {
     const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
       api.get('/api/Solicitud'),
       api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla')
+      api.get('/api/ConfigSla'),
     ])
 
     // Años disponibles desde Solicitud
@@ -469,12 +527,11 @@ const cargarConfiguracionesIniciales = async () => {
         ...new Set(
           solicitudesRes.data
             .filter((s) => s.fechaSolicitud)
-            .map((s) => new Date(s.fechaSolicitud).getFullYear())
-        )
+            .map((s) => new Date(s.fechaSolicitud).getFullYear()),
+        ),
       ].sort((a, b) => b - a)
 
-      aniosDisponibles.value =
-        aniosUnicos.length > 0 ? aniosUnicos : [new Date().getFullYear()]
+      aniosDisponibles.value = aniosUnicos.length > 0 ? aniosUnicos : [new Date().getFullYear()]
     } else {
       const currentYear = new Date().getFullYear()
       aniosDisponibles.value = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
@@ -482,9 +539,11 @@ const cargarConfiguracionesIniciales = async () => {
 
     // Roles activos
     if (rolesRes.data) {
-      rolesDisponibles.value = rolesRes.data
-        .filter((r) => r.esActivo !== false)
-        .map((r) => r.nombreRol)
+      const nombresRoles = rolesRes.data.filter((r) => r.esActivo !== false).map((r) => r.nombreRol)
+      rolesDisponibles.value = nombresRoles
+      // Por defecto, seleccionar todos los roles
+      selectedRoles.value = [...nombresRoles]
+      selectTodos.value = true
     }
 
     // Tipos SLA (código SLA)
@@ -495,7 +554,7 @@ const cargarConfiguracionesIniciales = async () => {
         if (!codigos.some((x) => x.value === c.codigoSla)) {
           codigos.push({
             label: `${c.codigoSla} - ${c.tipoSolicitud}`,
-            value: c.codigoSla
+            value: c.codigoSla,
           })
         }
       })
@@ -506,7 +565,7 @@ const cargarConfiguracionesIniciales = async () => {
     $q.notify({
       type: 'negative',
       message: 'Error al cargar configuraciones de filtros',
-      position: 'top-right'
+      position: 'top-right',
     })
   }
 }
@@ -517,7 +576,16 @@ const verReporte = async () => {
     $q.notify({
       type: 'warning',
       message: 'Mes y Año son obligatorios',
-      position: 'top-right'
+      position: 'top-right',
+    })
+    return
+  }
+
+  if (!filtros.value.codigoSla) {
+    $q.notify({
+      type: 'warning',
+      message: 'Tipo SLA es obligatorio',
+      position: 'top-right',
     })
     return
   }
@@ -530,7 +598,7 @@ const verReporte = async () => {
     const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
       api.get('/api/Solicitud'),
       api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla')
+      api.get('/api/ConfigSla'),
     ])
 
     let solicitudes = solicitudesRes.data || []
@@ -538,85 +606,95 @@ const verReporte = async () => {
     const configsSla = configSlaRes.data || []
 
     // Filtrar por mes/año
+    // Nota: parseamos la fecha como "YYYY-MM-DD" para evitar problemas de zona horaria
     solicitudes = solicitudes.filter((s) => {
       if (!s.fechaSolicitud) return false
-      const fecha = new Date(s.fechaSolicitud)
-      return fecha.getFullYear() === filtros.value.anio && fecha.getMonth() + 1 === mesNumero
+      // Extraer año y mes directamente del string para evitar problemas de timezone
+      const [anioStr, mesStr] = s.fechaSolicitud.split('-')
+      const anioFecha = parseInt(anioStr, 10)
+      const mesFecha = parseInt(mesStr, 10)
+      return anioFecha === filtros.value.anio && mesFecha === mesNumero
     })
 
     // Filtrar por Código SLA
     if (filtros.value.codigoSla) {
-      const configsFiltradas = configsSla.filter(
-        (c) => c.codigoSla === filtros.value.codigoSla
-      )
+      const configsFiltradas = configsSla.filter((c) => c.codigoSla === filtros.value.codigoSla)
       const idsSla = configsFiltradas.map((c) => c.idSla)
       solicitudes = solicitudes.filter((s) => idsSla.includes(s.idSla))
     }
 
-    // Filtrar por roles
-    if (filtros.value.roles && filtros.value.roles.length > 0) {
+    // Filtrar por roles seleccionados
+    if (selectedRoles.value && selectedRoles.value.length > 0) {
       const rolesIds = todosRoles
-        .filter((r) => filtros.value.roles.includes(r.nombreRol))
+        .filter((r) => selectedRoles.value.includes(r.nombreRol))
         .map((r) => r.idRolRegistro)
       solicitudes = solicitudes.filter((s) => rolesIds.includes(s.idRolRegistro))
     }
 
-    // Calcular cumplimiento por solicitud
-    const solicitudesConSla = solicitudes.map((s) => {
-      const config = configsSla.find((c) => c.idSla === s.idSla)
-      const diasUmbral = config?.diasUmbral ?? 0
+    // Estados SLA válidos a considerar
+    const estadosSlaValidos = ['CUMPLE SLA1', 'NO CUMPLE SLA1', 'CUMPLE SLA2', 'NO CUMPLE SLA2']
 
-      let cumpleSla = false
-      if (s.fechaSolicitud && s.fechaIngreso) {
-        const fechaSol = new Date(s.fechaSolicitud)
-        const fechaIng = new Date(s.fechaIngreso)
-        const diffMs = fechaIng - fechaSol
-        const diasTranscurridos = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-        cumpleSla = diasTranscurridos <= diasUmbral
+    // Filtrar solicitudes que tengan un estado SLA válido
+    const solicitudesConEstadoValido = solicitudes.filter(
+      (s) => s.estadoCumplimientoSla && estadosSlaValidos.includes(s.estadoCumplimientoSla),
+    )
+
+    solicitudesFiltradas.value = solicitudesConEstadoValido
+
+    // Determinar qué roles mostrar en la tabla
+    const rolesParaTabla = todosRoles.filter(
+      (r) => r.esActivo !== false && selectedRoles.value.includes(r.nombreRol),
+    )
+
+    // Construir tabla por rol (solo los roles seleccionados)
+    const filas = rolesParaTabla.map((rol) => {
+      const solicitudesRol = solicitudesConEstadoValido.filter(
+        (s) => s.idRolRegistro === rol.idRolRegistro,
+      )
+      const total = solicitudesRol.length
+      const cumplen = solicitudesRol.filter(
+        (s) =>
+          s.estadoCumplimientoSla &&
+          (s.estadoCumplimientoSla === 'CUMPLE SLA1' || s.estadoCumplimientoSla === 'CUMPLE SLA2'),
+      ).length
+
+      let sla
+      if (total === 0) {
+        // NA cuando no hay solicitudes
+        sla = 'NA'
+      } else if (cumplen === total) {
+        // 100% cuando todas las solicitudes cumplen
+        sla = 100
+      } else {
+        // Calcular porcentaje
+        sla = parseFloat(((cumplen / total) * 100).toFixed(2))
       }
 
-      return { ...s, cumpleSla }
+      return {
+        rol: rol.nombreRol,
+        numRecursos: total,
+        sla: sla,
+      }
     })
-
-    solicitudesFiltradas.value = solicitudesConSla
-
-    // Construir tabla por rol (incluyendo roles con 0 recursos)
-    const filas = (todosRoles || [])
-      .filter((r) => r.esActivo !== false)
-      .map((rol) => {
-        const solicitudesRol = solicitudesConSla.filter(
-          (s) => s.idRolRegistro === rol.idRolRegistro
-        )
-        const total = solicitudesRol.length
-        const cumplen = solicitudesRol.filter((s) => s.cumpleSla).length
-        const porcentaje = total > 0 ? (cumplen / total) * 100 : 0
-
-        return {
-          rol: rol.nombreRol,
-          numRecursos: total,
-          sla: total > 0 ? parseFloat(porcentaje.toFixed(2)) : 0
-        }
-      })
 
     filasTabla.value = filas
 
     // Resumen
-    const rolesConRecursos = filas.filter((f) => f.numRecursos > 0)
+    const rolesConRecursos = filas.filter((f) => f.numRecursos > 0 && f.sla !== 'NA')
     const totalRecursos = rolesConRecursos.reduce((acc, f) => acc + f.numRecursos, 0)
     const promedioSla =
       rolesConRecursos.length > 0
         ? parseFloat(
-            (
-              rolesConRecursos.reduce((acc, f) => acc + f.sla, 0) /
-              rolesConRecursos.length
-            ).toFixed(2)
+            (rolesConRecursos.reduce((acc, f) => acc + f.sla, 0) / rolesConRecursos.length).toFixed(
+              2,
+            ),
           )
         : 0
 
     resumen.value = {
       totalRecursos,
       promedioSla,
-      rolesIncluidos: filas.length
+      rolesIncluidos: filas.length,
     }
 
     // Persistir filtros
@@ -626,82 +704,174 @@ const verReporte = async () => {
     emit('onFiltroChange', {
       filtros: filtros.value,
       datos: filasTabla.value,
-      resumen: resumen.value
+      resumen: resumen.value,
     })
-
-    await nextTick()
-    crearGrafico()
   } catch (error) {
     console.error('Error al calcular reporte:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al calcular el reporte',
       position: 'top-right',
-      timeout: 3000
+      timeout: 3000,
     })
   } finally {
     loading.value = false
+
+    // Crear el gráfico después de que loading sea false y el DOM se actualice
+    await nextTick()
+    await nextTick()
+    try {
+      crearGrafico()
+    } catch (graficoError) {
+      console.error('Error al crear el gráfico:', graficoError)
+    }
   }
 }
 
 const crearGrafico = () => {
-  if (chartInstance) {
-    chartInstance.destroy()
-  }
+  try {
+    console.log('=== INICIANDO crearGrafico ===')
 
-  if (!chartCanvas.value || !filasTabla.value.length) return
+    // Buscar el canvas en el DOM
+    const canvasElement = document.querySelector('canvas[data-chart="sla"]')
+    console.log('canvasElement encontrado:', !!canvasElement)
 
-  const ctx = chartCanvas.value.getContext('2d')
-
-  const filasConDatos = filasTabla.value.filter((f) => f.numRecursos > 0)
-
-  const labels = filasConDatos.map((f) => f.rol)
-  const data = filasConDatos.map((f) => f.sla)
-  const backgroundColors = filasConDatos.map((f) => {
-    const color = getIndicadorColor(f)
-    if (color === 'positive') return 'rgba(76, 175, 80, 0.8)'
-    if (color === 'orange') return 'rgba(255, 152, 0, 0.8)'
-    if (color === 'negative') return 'rgba(244, 67, 54, 0.8)'
-    return 'rgba(158, 158, 158, 0.8)'
-  })
-
-  chartInstance = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels,
-      datasets: [
-        {
-          label: 'SLA (%)',
-          data,
-          backgroundColor: backgroundColors
-        }
-      ]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: true,
-      aspectRatio: 2,
-      plugins: {
-        legend: {
-          display: false
-        },
-        tooltip: {
-          callbacks: {
-            label: (context) => `${context.parsed.y}%`
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          max: 100,
-          ticks: {
-            callback: (value) => `${value}%`
-          }
-        }
-      }
+    if (!canvasElement) {
+      console.log('ERROR: No se encontró el canvas en el DOM')
+      return
     }
-  })
+
+    if (chartInstance) {
+      console.log('Destruyendo gráfico anterior')
+      chartInstance.destroy()
+    }
+
+    if (!filasTabla.value.length) {
+      console.log('ERROR: filasTabla está vacía')
+      return
+    }
+
+    console.log('Obteniendo contexto del canvas')
+    const ctx = canvasElement.getContext('2d')
+    console.log('ctx:', !!ctx)
+
+    // Usar directamente todas las filas de la tabla (que ya contiene todos los roles seleccionados)
+    const filasConDatos = filasTabla.value
+
+    if (!filasConDatos.length) {
+      console.log('ERROR: No hay filas con datos válidos')
+      return
+    }
+
+    const labels = filasConDatos.map((f) => f.rol)
+    // Para datos, mostrar el SLA o 0 si no hay recursos
+    const data = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
+    const numRecursos = filasConDatos.map((f) => f.numRecursos)
+
+    const backgroundColors = filasConDatos.map((f) => {
+      // Si no hay recursos, mostrar gris
+      if (f.numRecursos === 0) return 'rgba(158, 158, 158, 0.8)'
+      // Si hay recursos, usar el color según el SLA
+      const color = getIndicadorColor(f)
+      if (color === 'positive') return 'rgba(76, 175, 80, 0.8)'
+      if (color === 'negative') return 'rgba(244, 67, 54, 0.8)'
+      return 'rgba(158, 158, 158, 0.8)'
+    })
+
+    const borderColors = filasConDatos.map((f) => {
+      // Si no hay recursos, mostrar gris
+      if (f.numRecursos === 0) return 'rgba(158, 158, 158, 1)'
+      // Si hay recursos, usar el color según el SLA
+      const color = getIndicadorColor(f)
+      if (color === 'positive') return 'rgba(76, 175, 80, 1)'
+      if (color === 'negative') return 'rgba(244, 67, 54, 1)'
+      return 'rgba(158, 158, 158, 1)'
+    })
+
+    console.log('Creando Chart con datos:', { labels, data, numRecursos })
+
+    // Determinar si se debe rotar los labels del eje X
+    // Si hay muchos roles (más de 5), rotar 45 grados
+    const debeRotar = labels.length > 5
+    const maxRotation = debeRotar ? 45 : 0
+    const minRotation = debeRotar ? 45 : 0
+
+    chartInstance = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels,
+        datasets: [
+          {
+            label: 'SLA (%)',
+            data,
+            backgroundColor: backgroundColors,
+            borderColor: borderColors,
+            borderWidth: 2,
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+          },
+          tooltip: {
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            padding: 12,
+            titleFont: {
+              size: 14,
+            },
+            bodyFont: {
+              size: 13,
+            },
+            callbacks: {
+              title: (context) => {
+                return `Rol: ${context[0].label}`
+              },
+              label: (context) => {
+                const index = context.dataIndex
+                const slaValue = context.parsed.y
+                const numSolicitudes = numRecursos[index]
+                return [`SLA: ${slaValue}%`, `Solicitudes: ${numSolicitudes}`]
+              },
+              afterLabel: () => '',
+            },
+          },
+        },
+        scales: {
+          x: {
+            title: {
+              display: true,
+              text: 'Roles/Áreas',
+            },
+            ticks: {
+              maxRotation,
+              minRotation,
+            },
+          },
+          y: {
+            beginAtZero: true,
+            max: 100,
+            title: {
+              display: true,
+              text: 'SLA (%)',
+            },
+            ticks: {
+              callback: (value) => `${value}%`,
+            },
+          },
+        },
+      },
+    })
+
+    console.log('Chart creado exitosamente')
+  } catch (error) {
+    console.error('Error en crearGrafico:', error)
+    throw error
+  }
 }
 
 // Limpiar filtros y reporte
@@ -710,8 +880,11 @@ const limpiarFiltros = () => {
     mes: mesesDisponibles[new Date().getMonth()],
     anio: new Date().getFullYear(),
     codigoSla: null,
-    roles: []
   }
+
+  // Restablecer roles a todos seleccionados
+  selectedRoles.value = [...rolesDisponibles.value]
+  selectTodos.value = true
 
   filasTabla.value = []
   resumen.value = { totalRecursos: 0, promedioSla: 0, rolesIncluidos: 0 }
@@ -727,7 +900,7 @@ const limpiarFiltros = () => {
   $q.notify({
     type: 'info',
     message: 'Filtros y resultados restablecidos',
-    position: 'top-right'
+    position: 'top-right',
   })
 }
 
@@ -735,8 +908,6 @@ const limpiarFiltros = () => {
 const removerFiltro = (key) => {
   if (key === 'codigoSla') {
     filtros.value.codigoSla = null
-  } else if (key === 'roles') {
-    filtros.value.roles = []
   }
 }
 
@@ -746,7 +917,7 @@ const exportarExcel = async () => {
     $q.notify({
       type: 'warning',
       message: 'No hay datos para exportar',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
@@ -763,8 +934,8 @@ const exportarExcel = async () => {
       filtrosJson: JSON.stringify({
         CodigoSla: filtros.value.codigoSla,
         Anio: filtros.value.anio,
-        Mes: getMesNumero(filtros.value.mes)
-      })
+        Mes: getMesNumero(filtros.value.mes),
+      }),
     }
 
     const res = await api.post('/api/reporte/generar', payload)
@@ -782,7 +953,7 @@ const exportarExcel = async () => {
       message:
         'Error al generar o descargar el Excel. Verifica el endpoint /api/reporte/generar y la publicación de /reports.',
       position: 'top-right',
-      timeout: 5000
+      timeout: 5000,
     })
   } finally {
     exportandoExcel.value = false
@@ -795,7 +966,7 @@ const exportarPdf = async () => {
     $q.notify({
       type: 'warning',
       message: 'No hay contenido para exportar a PDF',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
@@ -803,10 +974,46 @@ const exportarPdf = async () => {
   exportandoPdf.value = true
 
   try {
+    // Primero, registrar el reporte en el backend
+    const ids = solicitudesFiltradas.value.map((s) => s.idSolicitud)
+
+    const payload = {
+      tipoReporte: 'SLA_MENSUAL',
+      formato: 'PDF',
+      idsSolicitudes: ids,
+      filtrosJson: JSON.stringify({
+        mes: filtros.value.mes,
+        anio: filtros.value.anio,
+        codigoSla: filtros.value.codigoSla,
+      }),
+    }
+
+    try {
+      const res = await api.post('/api/reporte/generar', payload)
+      console.log('Respuesta del backend:', res.data)
+      console.log('Reporte generado en backend:', res.data)
+      $q.notify({
+        type: 'info',
+        message: 'Reporte registrado en el backend',
+        position: 'top-right',
+        timeout: 2000,
+      })
+    } catch (apiError) {
+      console.error('Error en API:', apiError)
+      // El interceptor maneja 401 y redirige automáticamente
+      if (apiError.response?.status === 401) {
+        throw new Error('Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
+      } else if (apiError.response?.status !== 401) {
+        // Solo lanzar si no es 401 (que será manejado por interceptor)
+        throw apiError
+      }
+    }
+
+    // Luego generar el PDF en el frontend
     const elemento = reporteRef.value
 
     const canvas = await html2canvas(elemento, {
-      scale: 2
+      scale: 2,
     })
 
     const imgData = canvas.toDataURL('image/png')
@@ -826,12 +1033,19 @@ const exportarPdf = async () => {
       filtros.value.anio
     }.pdf`
     pdf.save(fileName)
+
+    $q.notify({
+      type: 'positive',
+      message: 'PDF exportado exitosamente',
+      position: 'top-right',
+    })
   } catch (error) {
     console.error('Error al exportar PDF:', error)
+    console.error('Detalles del error:', error.response?.data || error.message)
     $q.notify({
       type: 'negative',
-      message: 'Error al generar el PDF',
-      position: 'top-right'
+      message: `Error al generar o descargar el PDF: ${error.response?.data?.message || error.message}`,
+      position: 'top-right',
     })
   } finally {
     exportandoPdf.value = false
@@ -845,7 +1059,7 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
     $q.notify({
       type: 'warning',
       message: 'Ingresa al menos un correo destinatario',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
@@ -863,14 +1077,14 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
       type: 'info',
       message: 'Funcionalidad de envío por correo pendiente de implementación en el backend.',
       position: 'top-right',
-      timeout: 4000
+      timeout: 4000,
     })
   } catch (error) {
     console.error('Error al enviar correo:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al enviar correo',
-      position: 'top-right'
+      position: 'top-right',
     })
   } finally {
     enviandoCorreo.value = false
@@ -888,7 +1102,7 @@ onMounted(async () => {
       const parsed = JSON.parse(saved)
       filtros.value = {
         ...filtros.value,
-        ...parsed
+        ...parsed,
       }
       await verReporte()
     } catch (e) {
@@ -920,6 +1134,24 @@ onBeforeUnmount(() => {
 
 .filters-card {
   background: white;
+}
+
+.roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-checkbox-item {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.role-checkbox-item:hover {
+  background-color: #f5f5f5;
+  border-color: #d0d0d0;
 }
 
 .chart-wrapper {
