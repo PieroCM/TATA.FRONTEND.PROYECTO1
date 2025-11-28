@@ -591,19 +591,14 @@ watch(rolesActivos, (nuevosRoles) => {
 })
 
 // Métodos
-const cargarAniosDisponibles = async () => {
-  // Inicializar inmediatamente con años recientes para no bloquear UI
+const cargarAniosDisponibles = () => {
+  // Inicializar inmediatamente con años recientes (no bloqueante)
   const currentYear = new Date().getFullYear()
-  if (aniosDisponibles.value.length === 0) {
-    aniosDisponibles.value = [currentYear, currentYear - 1]
-  }
+  aniosDisponibles.value = [currentYear, currentYear - 1]
 
-  try {
-    // Obtener años desde las solicitudes (en segundo plano si es necesario)
-    const solicitudes = await slaStore.fetchSolicitudes()
-
+  // Cargar años reales en segundo plano
+  slaStore.fetchSolicitudes().then((solicitudes) => {
     if (solicitudes && solicitudes.length > 0) {
-      // Extraer años únicos de las fechas de solicitud
       const aniosUnicos = [
         ...new Set(
           solicitudes
@@ -612,26 +607,30 @@ const cargarAniosDisponibles = async () => {
         ),
       ].sort((a, b) => b - a)
 
-      aniosDisponibles.value = aniosUnicos.length > 0 ? aniosUnicos : [new Date().getFullYear()]
+      if (aniosUnicos.length > 0) {
+        aniosDisponibles.value = aniosUnicos
+      }
     }
-  } catch (error) {
+  }).catch((error) => {
     console.log('Usando años por defecto:', error.message)
-    // Ya tenemos valores por defecto, no es necesario hacer nada más
-  }
+  })
 }
 
-const cargarRolesDisponibles = async () => {
-  try {
-    // Usar tu endpoint de RolRegistro (roles técnicos)
-    const roles = await slaStore.fetchRoles()
+const cargarRolesDisponibles = () => {
+  // Establecer roles por defecto inmediatamente (no bloqueante)
+  rolesDisponibles.value = [
+    'Desarrollador Sr.',
+    'QA Analyst',
+    'DevOps Engineer',
+  ]
+  rolesSeleccionados.value = rolesDisponibles.value.slice(0, 3)
 
+  // Cargar roles reales en segundo plano
+  slaStore.fetchRoles().then((roles) => {
     if (roles && roles.length > 0) {
-      // Filtrar solo roles activos
       const rolesActivos = roles.filter((r) => r.esActivo !== false)
-
       rolesDisponibles.value = rolesActivos.map((r) => r.nombreRol)
 
-      // Si no hay roles seleccionados, seleccionar los primeros 3
       if (rolesSeleccionados.value.length === 0 && rolesDisponibles.value.length > 0) {
         rolesSeleccionados.value = rolesDisponibles.value.slice(
           0,
@@ -639,29 +638,19 @@ const cargarRolesDisponibles = async () => {
         )
       }
 
-      // Actualizar todosLosRoles para los chips
       todosLosRoles.value = rolesActivos.map((r) => ({
         nombre: r.nombreRol,
-        cantidad: 0, // Se actualizará con las solicitudes
+        cantidad: 0,
         activo: rolesSeleccionados.value.includes(r.nombreRol),
       }))
+
+      // Recargar dashboard con los roles correctos
+      cargarDashboard()
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error('Error al cargar roles:', error)
-    // Roles por defecto
-    rolesDisponibles.value = [
-      'Desarrollador Sr.',
-      'QA Analyst',
-      'DevOps Engineer',
-      'Project Manager',
-      'Business Analyst',
-      'Data Engineer',
-      'Scrum Master',
-    ]
-    if (rolesSeleccionados.value.length === 0) {
-      rolesSeleccionados.value = rolesDisponibles.value.slice(0, 3)
-    }
-  }
+    // Mantener roles por defecto ya establecidos
+  })
 }
 
 const cargarDashboard = async () => {
@@ -670,11 +659,11 @@ const cargarDashboard = async () => {
   try {
     const mesNumero = mesesDisponibles.indexOf(filtros.value.mes) + 1
 
-    // Obtener todas las solicitudes y roles
+    // Obtener todas las solicitudes y roles (usar caché agresivamente)
     const [solicitudesData, rolesData, configSlaData] = await Promise.all([
-      slaStore.fetchSolicitudes(),
-      slaStore.fetchRoles(),
-      slaStore.fetchConfigSla(),
+      slaStore.fetchSolicitudes(false), // false = usar caché si existe
+      slaStore.fetchRoles(false),
+      slaStore.fetchConfigSla(false),
     ])
 
     const todasSolicitudes = solicitudesData || []
@@ -728,9 +717,10 @@ const cargarDashboard = async () => {
       return { ...s, cumpleSla, diasUmbral, estadoSla }
     })
 
-    // Calcular SLA Global
-    const totalSolicitudes = solicitudesConSla.length
-    const solicitudesCumplen = solicitudesConSla.filter((s) => s.cumpleSla).length
+    // Calcular SLA Global - Solo solicitudes completadas para estabilidad
+    const solicitudesCompletadas = solicitudesConSla.filter((s) => s.fechaIngreso)
+    const totalSolicitudes = solicitudesCompletadas.length
+    const solicitudesCumplen = solicitudesCompletadas.filter((s) => s.cumpleSla).length
     slaGlobal.value =
       totalSolicitudes > 0
         ? parseFloat(((solicitudesCumplen / totalSolicitudes) * 100).toFixed(1))
@@ -740,22 +730,31 @@ const cargarDashboard = async () => {
     const mesAnterior = mesNumero === 1 ? 12 : mesNumero - 1
     const anioAnterior = mesNumero === 1 ? filtros.value.anio - 1 : filtros.value.anio
 
-    const solicitudesMesAnterior = todasSolicitudes
-      .filter((s) => {
-        if (!s.fechaSolicitud) return false
-        const fecha = new Date(s.fechaSolicitud)
-        return fecha.getFullYear() === anioAnterior && fecha.getMonth() + 1 === mesAnterior
+    // Filtrar solicitudes del mes anterior (aplicando los mismos filtros de roles)
+    let solicitudesMesAnteriorBase = todasSolicitudes.filter((s) => {
+      if (!s.fechaSolicitud) return false
+      const fecha = new Date(s.fechaSolicitud)
+      return fecha.getFullYear() === anioAnterior && fecha.getMonth() + 1 === mesAnterior
+    })
+
+    // Aplicar filtro de roles si hay roles seleccionados
+    if (rolesSeleccionados.value.length > 0) {
+      solicitudesMesAnteriorBase = solicitudesMesAnteriorBase.filter((s) => {
+        const rol = todosRoles.find((r) => r.idRolRegistro === s.idRolRegistro)
+        return rol && rolesSeleccionados.value.includes(rol.nombreRol)
       })
+    }
+
+    // Filtrar solo solicitudes completadas del mes anterior para cálculo estable
+    const solicitudesMesAnterior = solicitudesMesAnteriorBase
+      .filter((s) => s.fechaIngreso) // Solo solicitudes completadas
       .map((s) => {
         const config = configsSla.find((c) => c.idSla === s.idSla)
         const diasUmbral = config?.diasUmbral || 0
-        let cumpleSla = false
-        if (s.fechaSolicitud && s.fechaIngreso) {
-          const fechaSol = new Date(s.fechaSolicitud)
-          const fechaIng = new Date(s.fechaIngreso)
-          const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
-          cumpleSla = diasTranscurridos <= diasUmbral
-        }
+        const fechaSol = new Date(s.fechaSolicitud)
+        const fechaIng = new Date(s.fechaIngreso)
+        const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
+        const cumpleSla = diasTranscurridos <= diasUmbral
         return { cumpleSla }
       })
 
@@ -1364,16 +1363,27 @@ const detenerAutoRefresh = () => {
 }
 
 // Inicialización
-onMounted(async () => {
-  await cargarAniosDisponibles()
-  await cargarRolesDisponibles()
-  await cargarDashboard()
+onMounted(() => {
+  // Pre-cargar datos en caché en paralelo (sin bloquear)
+  Promise.all([
+    slaStore.fetchSolicitudes(false),
+    slaStore.fetchRoles(false),
+    slaStore.fetchConfigSla(false),
+  ]).then(() => {
+    // Marcar como cargado para otras vistas
+    appStore.markAsLoaded()
+  })
+
+  // Cargar configuraciones iniciales (no bloqueante)
+  cargarAniosDisponibles()
+  cargarRolesDisponibles()
+
+  // Cargar dashboard (usará datos en caché si ya están disponibles)
+  cargarDashboard()
 
   // Iniciar actualización automática
   iniciarAutoRefresh()
-})
-
-// Limpiar intervalo al desmontar
+})// Limpiar intervalo al desmontar
 onBeforeUnmount(() => {
   detenerAutoRefresh()
 })
