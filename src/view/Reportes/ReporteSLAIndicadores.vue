@@ -103,14 +103,15 @@
           </div>
 
           <!-- Chips de selección actual -->
-          <div v-if="filtrosActivos.length > 0" class="q-mt-md">
-            <div class="text-caption text-grey-7 q-mb-sm">Filtros aplicados:</div>
+          <div v-if="filtrosActivos.length > 0" class="q-mt-md filters-summary">
+            <div class="filters-summary-title text-caption q-mb-sm">Filtros aplicados:</div>
             <div class="row q-gutter-sm">
               <q-chip
                 v-for="chip in filtrosActivos"
                 :key="chip.key"
-                :color="chip.color"
+                color="grey-7"
                 text-color="white"
+                class="chip-padding"
                 :icon="chip.icon"
                 :removable="chip.removable"
                 @remove="removerFiltro(chip.key)"
@@ -191,6 +192,7 @@
                 row-key="rol"
                 flat
                 bordered
+                class="sla-report-table"
                 :pagination="{ rowsPerPage: 10 }"
               >
                 <!-- SLA -->
@@ -239,7 +241,7 @@
             <div class="row q-col-gutter-md q-mt-xl">
               <div class="col-12 col-md-auto">
                 <q-btn
-                  color="positive"
+                  color="primary"
                   icon="file_download"
                   label="Exportar a Excel"
                   :loading="exportandoExcel"
@@ -257,7 +259,6 @@
               </div>
               <div class="col-12 col-md-auto">
                 <q-btn
-                  outline
                   color="primary"
                   icon="email"
                   label="Enviar por correo"
@@ -1475,6 +1476,11 @@ onBeforeUnmount(() => {
   width: 100% !important;
 }
 
+/* Encabezado de la tabla del reporte: fondo azul muy claro */
+:deep(.sla-report-table thead tr th) {
+  background-color: #eaf2f9 !important;
+}
+
 /* Color de texto específico solo para la etiqueta del botón Roles/Áreas (sin afectar el ícono) */
 :deep(.filter-button .q-btn__content span) {
   color: rgba(0, 0, 0, 0.87) !important;
@@ -1496,5 +1502,8 @@ onBeforeUnmount(() => {
 :deep(.filter-button.q-btn--outline:active:before) {
   border-color: #ab4545 !important;
   border: 0px solid !important;
+}
+.chip-padding {
+  padding: 17px 20px !important; /* vertical | horizontal */
 }
 </style>
