@@ -278,7 +278,6 @@ export default {
           position: 'bottom',
           timeout: 5000,
         })
-
       } catch (error) {
         this.$q.notify({
           type: 'negative',

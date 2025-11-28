@@ -757,10 +757,24 @@ export default {
     }
 
     const crearCuentaParaPersonal = async (personal) => {
+      // Verificar que tenga correo corporativo
+      if (!personal.correoCorporativo) {
+        $q.notify({
+          type: 'warning',
+          message: 'No se puede crear cuenta',
+          caption:
+            'El personal debe tener un correo corporativo registrado para recibir el enlace de activación',
+          icon: 'email',
+          position: 'top',
+          timeout: 5000,
+        })
+        return
+      }
+
       // Mostrar diálogo de confirmación con inputs
       $q.dialog({
         title: 'Crear Cuenta de Usuario',
-        message: `Crear cuenta de acceso al sistema para: ${personal.nombres} ${personal.apellidos}`,
+        message: `<p>Se creará una cuenta de acceso al sistema para:</p><p><strong>${personal.nombres} ${personal.apellidos}</strong></p><p class="text-caption text-grey-7">Se enviará un correo a: ${personal.correoCorporativo}</p>`,
         html: true,
         prompt: {
           model: '',
@@ -780,7 +794,7 @@ export default {
           color: 'grey',
         },
         ok: {
-          label: 'Crear Cuenta',
+          label: 'Crear y Enviar Correo',
           color: 'primary',
         },
         persistent: true,
@@ -812,10 +826,11 @@ export default {
           $q.notify({
             type: 'positive',
             message: 'Cuenta de usuario creada exitosamente',
-            caption: `Se ha vinculado la cuenta "${username}" al personal`,
-            icon: 'person_add',
+            caption: `Se ha enviado un correo de activación a ${personal.correoCorporativo}. El enlace es válido por 24 horas.`,
+            icon: 'mark_email_read',
             position: 'top',
-            timeout: 4000,
+            timeout: 6000,
+            actions: [{ icon: 'close', color: 'white' }],
           })
 
           // Recargar la lista
@@ -824,9 +839,10 @@ export default {
           $q.notify({
             type: 'negative',
             message: 'Error al crear cuenta de usuario',
-            caption: error.message || 'Intenta con otro nombre de usuario',
+            caption: error.message || 'Verifica que el nombre de usuario no esté en uso',
             icon: 'error',
             position: 'top',
+            timeout: 5000,
           })
         } finally {
           loading.value = false
