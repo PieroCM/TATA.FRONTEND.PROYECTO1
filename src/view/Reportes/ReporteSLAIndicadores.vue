@@ -92,12 +92,13 @@
             <div class="col-12 col-md-3">
               <q-btn
                 outline
-                color="primary"
-                icon="people"
-                label="Roles/Áreas"
                 :badge="selectedRoles.length > 0 ? selectedRoles.length : undefined"
                 @click="dialogRoles = true"
-              />
+                class="filter-button w-full"
+              >
+                <q-icon name="people" color="primary" class="q-mr-sm" />
+                <span>Roles/Áreas</span>
+              </q-btn>
             </div>
           </div>
 
@@ -219,17 +220,11 @@
                 <!-- Leyenda fuera del gráfico -->
                 <div class="legend-container q-mb-md">
                   <div class="legend-item">
-                    <div
-                      class="legend-color"
-                      style="background-color: rgba(76, 175, 80, 0.8)"
-                    ></div>
+                    <div class="legend-color" style="background-color: #21ba45"></div>
                     <span>SLA Cumplido (100%)</span>
                   </div>
                   <div class="legend-item">
-                    <div
-                      class="legend-color"
-                      style="background-color: rgba(244, 67, 54, 0.8)"
-                    ></div>
+                    <div class="legend-color" style="background-color: #f60008"></div>
                     <span>SLA Incumplido (&lt;100%)</span>
                   </div>
                 </div>
@@ -502,9 +497,9 @@ const getIndicadorColor = (row) => {
   // Gris cuando es NA (sin recursos)
   if (row.sla === 'NA') return 'grey-5'
   // Verde cuando es 100%
-  if (row.sla === 100) return 'positive'
+  if (row.sla === 100) return 'green-custom'
   // Rojo cuando es menor al 100%
-  return 'negative'
+  return 'red-custom'
 }
 
 const getIndicadorTexto = (row) => {
@@ -816,16 +811,20 @@ const crearGrafico = () => {
           {
             label: 'SLA Cumplido (100%)',
             data: dataCumple,
-            backgroundColor: 'rgba(76, 175, 80, 0.8)',
-            borderColor: 'rgba(76, 175, 80, 1)',
+            backgroundColor: '#21ba45',
+            borderColor: '#21ba45',
             borderWidth: 2,
+            hoverBackgroundColor: '#21ba45',
+            hoverBorderColor: '#21ba45',
           },
           {
             label: 'SLA Incumplido (<100%)',
             data: dataIncumple,
-            backgroundColor: 'rgba(244, 67, 54, 0.8)',
-            borderColor: 'rgba(244, 67, 54, 1)',
+            backgroundColor: '#f60008',
+            borderColor: '#f60008',
             borderWidth: 2,
+            hoverBackgroundColor: '#f60008',
+            hoverBorderColor: '#f60008',
           },
         ],
       },
@@ -1157,11 +1156,11 @@ const exportarPdf = async () => {
 
       // Añadir leyenda compacta
       pdf.setFontSize(9)
-      pdf.setFillColor(76, 175, 80)
+      pdf.setFillColor(33, 186, 69)
       pdf.rect(10, currentY, 3, 3, 'F')
       pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
 
-      pdf.setFillColor(244, 67, 54)
+      pdf.setFillColor(246, 0, 8)
       pdf.rect(85, currentY, 3, 3, 'F')
       pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
       currentY += 6
@@ -1264,11 +1263,11 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
 
       // Añadir leyenda compacta
       pdf.setFontSize(9)
-      pdf.setFillColor(76, 175, 80)
+      pdf.setFillColor(33, 186, 69)
       pdf.rect(10, currentY, 3, 3, 'F')
       pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
 
-      pdf.setFillColor(244, 67, 54)
+      pdf.setFillColor(246, 0, 8)
       pdf.rect(85, currentY, 3, 3, 'F')
       pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
       currentY += 6
@@ -1437,5 +1436,65 @@ onBeforeUnmount(() => {
 :deep(.q-table th),
 :deep(.q-table td) {
   font-size: 14px;
+}
+
+:deep(.text-red-custom) {
+  color: #f60008 !important;
+}
+
+:deep(.bg-red-custom) {
+  background-color: #f60008 !important;
+}
+
+:deep(.text-green-custom) {
+  color: #21ba45 !important;
+}
+
+:deep(.bg-green-custom) {
+  background-color: #21ba45 !important;
+}
+
+.filter-button {
+  height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 4px !important;
+  font-size: 14px !important;
+  text-transform: none !important;
+  font-weight: 400 !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.filter-button:hover {
+  background-color: rgba(33, 150, 243, 0.08) !important;
+}
+
+.w-full {
+  width: 100% !important;
+}
+
+/* Color de texto específico solo para la etiqueta del botón Roles/Áreas (sin afectar el ícono) */
+:deep(.filter-button .q-btn__content span) {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Borde gris consistente con selects outlined */
+:deep(.filter-button.q-btn--outline) {
+  border: 0.5px solid #b6b6b6 !important;
+  background-color: #ffffff !important;
+}
+
+/* Controlar el borde real que Quasar dibuja con el pseudo-elemento :before */
+:deep(.filter-button.q-btn--outline:before) {
+  border: 0px solid #434343 !important; /* gris neutro en lugar de negro */
+}
+
+:deep(.filter-button.q-btn--outline:hover:before),
+:deep(.filter-button.q-btn--outline:focus:before),
+:deep(.filter-button.q-btn--outline:active:before) {
+  border-color: #ab4545 !important;
+  border: 0px solid !important;
 }
 </style>
