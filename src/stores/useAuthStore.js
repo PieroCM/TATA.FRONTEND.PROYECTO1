@@ -6,8 +6,8 @@ import { ref, computed } from 'vue'
  * Maneja sesión, token y datos del usuario logueado
  */
 export const useAuthStore = defineStore('auth', () => {
-  // Estado - Usar 'authToken' como clave en localStorage para consistencia con axios.js
-  const token = ref(localStorage.getItem('authToken') || null)
+  // Estado
+  const token = ref(localStorage.getItem('token') || null)
   const usuario = ref(JSON.parse(localStorage.getItem('usuario') || 'null'))
 
   // Getters
@@ -24,8 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = authToken
     usuario.value = userData
 
-    // Usar 'authToken' como clave para que axios.js pueda leerlo
-    localStorage.setItem('authToken', authToken)
+    localStorage.setItem('token', authToken)
     localStorage.setItem('usuario', JSON.stringify(userData))
   }
 
@@ -36,8 +35,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     usuario.value = null
 
-    // Limpiar ambas claves por compatibilidad
-    localStorage.removeItem('authToken')
+    localStorage.removeItem('token')
     localStorage.removeItem('usuario')
   }
 
@@ -45,7 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
    * Restaura la sesión desde localStorage
    */
   const restoreSession = () => {
-    const storedToken = localStorage.getItem('authToken')
+    const storedToken = localStorage.getItem('token')
     const storedUser = localStorage.getItem('usuario')
 
     if (storedToken && storedUser) {

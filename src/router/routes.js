@@ -14,11 +14,6 @@ const routes = [
     component: () => import('src/view/InicioSesion/ForgotPassword.vue'),
   },
   {
-    // Ruta de activación de cuenta (con parámetros de query: email y token)
-    path: '/activacion-cuenta',
-    component: () => import('src/view/InicioSesion/ActivacionCuentaPage.vue'),
-  },
-  {
     // Ruta del sistema con MainLayout
     path: '/sistema',
     component: () => import('layouts/MainLayout.vue'),
