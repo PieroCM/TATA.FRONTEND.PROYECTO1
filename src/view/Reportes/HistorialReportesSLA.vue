@@ -45,15 +45,9 @@
 
             <template v-slot:body-cell-filtrosJson="props">
               <q-td :props="props">
-                <span v-if="props.row.filtrosJson">
-                  <q-tooltip>
-                    {{ props.row.filtrosJson }}
-                  </q-tooltip>
-                  <span class="text-caption text-grey-8 ellipsis">
-                    {{ props.row.filtrosJson }}
-                  </span>
+                <span class="text-body2">
+                  {{ formatFiltros(props.row.filtrosJson) }}
                 </span>
-                <span v-else class="text-grey-6">Sin filtros</span>
               </q-td>
             </template>
 
@@ -150,6 +144,22 @@ const formatFecha = (valor) => {
   if (!valor) return ''
   const d = new Date(valor)
   return d.toLocaleString()
+}
+
+const formatFiltros = (filtrosJson) => {
+  if (!filtrosJson) return 'Sin filtros'
+  try {
+    const filtros = typeof filtrosJson === 'string' ? JSON.parse(filtrosJson) : filtrosJson
+    const partes = []
+
+    if (filtros.mes) partes.push(filtros.mes)
+    if (filtros.anio) partes.push(filtros.anio)
+    if (filtros.codigoSla) partes.push(`SLA ${filtros.codigoSla.replace(/SLA/, '')}`)
+
+    return partes.length > 0 ? partes.join(' - ') : 'Sin filtros'
+  } catch (e) {
+    return filtrosJson
+  }
 }
 
 const cargarHistorial = async () => {

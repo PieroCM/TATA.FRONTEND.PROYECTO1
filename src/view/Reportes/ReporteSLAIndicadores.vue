@@ -214,7 +214,26 @@
 
               <!-- Gráfico dinámico -->
               <div class="q-mt-xl">
-                <div class="text-subtitle1 text-weight-medium q-mb-sm">Gráfico de SLA por Rol</div>
+                <div class="text-subtitle1 text-weight-medium q-mb-md">Gráfico de SLA por Rol</div>
+
+                <!-- Leyenda fuera del gráfico -->
+                <div class="legend-container q-mb-md">
+                  <div class="legend-item">
+                    <div
+                      class="legend-color"
+                      style="background-color: rgba(76, 175, 80, 0.8)"
+                    ></div>
+                    <span>SLA Cumplido (100%)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div
+                      class="legend-color"
+                      style="background-color: rgba(244, 67, 54, 0.8)"
+                    ></div>
+                    <span>SLA Incumplido (&lt;100%)</span>
+                  </div>
+                </div>
+
                 <div class="chart-wrapper" style="position: relative; width: 100%; height: 500px">
                   <canvas ref="chartCanvasRef" data-chart="sla" style="display: block"></canvas>
                 </div>
@@ -320,12 +339,14 @@ import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import { Chart, registerables } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
+import * as XLSX from 'xlsx'
 import { useAppStore } from 'stores/app-store'
 import EnviarReporteDialog from 'components/Reportes/EnviarReporteDialog.vue'
 
-Chart.register(...registerables)
+Chart.register(...registerables, ChartDataLabels)
 
 const $q = useQuasar()
 const appStore = useAppStore()
@@ -765,30 +786,21 @@ const crearGrafico = () => {
 
     const labels = filasConDatos.map((f) => f.rol)
     // Para datos, mostrar el SLA o 0 si no hay recursos
-    const data = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
+    const dataBruto = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
     const numRecursos = filasConDatos.map((f) => f.numRecursos)
 
-    const backgroundColors = filasConDatos.map((f) => {
-      // Si no hay recursos, mostrar gris
-      if (f.numRecursos === 0) return 'rgba(158, 158, 158, 0.8)'
-      // Si hay recursos, usar el color según el SLA
-      const color = getIndicadorColor(f)
-      if (color === 'positive') return 'rgba(76, 175, 80, 0.8)'
-      if (color === 'negative') return 'rgba(244, 67, 54, 0.8)'
-      return 'rgba(158, 158, 158, 0.8)'
+    // Crear dos datasets: uno para cumplimiento (verde) y otro para incumplimiento (rojo)
+    const dataCumple = dataBruto.map((val, idx) => {
+      if (filasConDatos[idx].numRecursos === 0) return 0
+      return val === 100 ? val : 0
     })
 
-    const borderColors = filasConDatos.map((f) => {
-      // Si no hay recursos, mostrar gris
-      if (f.numRecursos === 0) return 'rgba(158, 158, 158, 1)'
-      // Si hay recursos, usar el color según el SLA
-      const color = getIndicadorColor(f)
-      if (color === 'positive') return 'rgba(76, 175, 80, 1)'
-      if (color === 'negative') return 'rgba(244, 67, 54, 1)'
-      return 'rgba(158, 158, 158, 1)'
+    const dataIncumple = dataBruto.map((val, idx) => {
+      if (filasConDatos[idx].numRecursos === 0) return 0
+      return val < 100 && val !== 'NA' ? val : 0
     })
 
-    console.log('Creando Chart con datos:', { labels, data, numRecursos })
+    console.log('Creando Chart con datos:', { labels, dataCumple, dataIncumple, numRecursos })
 
     // Determinar si se debe rotar los labels del eje X
     // Si hay muchos roles (más de 5), rotar 45 grados
@@ -802,10 +814,17 @@ const crearGrafico = () => {
         labels,
         datasets: [
           {
-            label: 'SLA (%)',
-            data,
-            backgroundColor: backgroundColors,
-            borderColor: borderColors,
+            label: 'SLA Cumplido (100%)',
+            data: dataCumple,
+            backgroundColor: 'rgba(76, 175, 80, 0.8)',
+            borderColor: 'rgba(76, 175, 80, 1)',
+            borderWidth: 2,
+          },
+          {
+            label: 'SLA Incumplido (<100%)',
+            data: dataIncumple,
+            backgroundColor: 'rgba(244, 67, 54, 0.8)',
+            borderColor: 'rgba(244, 67, 54, 1)',
             borderWidth: 2,
           },
         ],
@@ -815,8 +834,21 @@ const crearGrafico = () => {
         maintainAspectRatio: false,
         plugins: {
           legend: {
-            display: true,
-            position: 'top',
+            display: false,
+          },
+          datalabels: {
+            anchor: 'end',
+            align: 'top',
+            offset: 10,
+            font: {
+              weight: 'bold',
+              size: 12,
+            },
+            color: '#333',
+            formatter: function (value) {
+              if (value === 0) return ''
+              return value + '%'
+            },
           },
           tooltip: {
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
@@ -835,10 +867,16 @@ const crearGrafico = () => {
                 const index = context.dataIndex
                 const slaValue = context.parsed.y
                 const numSolicitudes = numRecursos[index]
-                return [`SLA: ${slaValue}%`, `Solicitudes: ${numSolicitudes}`]
+                const tipo = context.dataset.label
+                return [`${tipo}: ${slaValue}%`, `Solicitudes: ${numSolicitudes}`]
               },
               afterLabel: () => '',
             },
+          },
+        },
+        layout: {
+          padding: {
+            top: 40,
           },
         },
         scales: {
@@ -851,6 +889,7 @@ const crearGrafico = () => {
               maxRotation,
               minRotation,
             },
+            stacked: true,
           },
           y: {
             beginAtZero: true,
@@ -862,6 +901,7 @@ const crearGrafico = () => {
             ticks: {
               callback: (value) => `${value}%`,
             },
+            stacked: true,
           },
         },
       },
@@ -911,9 +951,9 @@ const removerFiltro = (key) => {
   }
 }
 
-// Exportar a Excel usando /api/reporte/generar
+// Exportar a Excel desde el frontend sin tocar backend
 const exportarExcel = async () => {
-  if (!solicitudesFiltradas.value.length) {
+  if (!filasTabla.value.length) {
     $q.notify({
       type: 'warning',
       message: 'No hay datos para exportar',
@@ -925,33 +965,84 @@ const exportarExcel = async () => {
   exportandoExcel.value = true
 
   try {
-    const ids = solicitudesFiltradas.value.map((s) => s.idSolicitud)
+    // Crear un nuevo workbook
+    const wb = XLSX.utils.book_new()
 
-    const payload = {
-      tipoReporte: 'SLA_MENSUAL',
-      formato: 'XLSX',
-      idsSolicitudes: ids,
-      filtrosJson: JSON.stringify({
-        CodigoSla: filtros.value.codigoSla,
-        Anio: filtros.value.anio,
-        Mes: getMesNumero(filtros.value.mes),
-      }),
+    // Preparar datos de la tabla principal
+    const datosTabla = filasTabla.value.map((fila) => ({
+      ROL: fila.rol,
+      NUM_RECURSOS: fila.numRecursos,
+      'SLA (%)': fila.sla === 'NA' ? 'NA' : fila.sla,
+      INDICADOR: getIndicadorTexto(fila),
+    }))
+
+    // Crear hoja de tabla
+    const wsTabla = XLSX.utils.json_to_sheet(datosTabla)
+    XLSX.utils.book_append_sheet(wb, wsTabla, 'Reporte')
+
+    // Preparar datos del resumen
+    const datosResumen = [
+      ['RESUMEN DEL REPORTE'],
+      [],
+      ['Periodo:', `${filtros.value.mes} ${filtros.value.anio}`],
+      ['Código SLA:', filtros.value.codigoSla],
+      ['Roles Incluidos:', selectedRoles.value.join(', ')],
+      [],
+      ['INDICADORES CONSOLIDADOS'],
+      ['Total Recursos:', resumen.value.totalRecursos],
+      ['SLA Promedio:', `${resumen.value.promedioSla}%`],
+      ['Roles Únicos:', resumen.value.rolesIncluidos],
+      [],
+      ['DESGLOSE POR ESTADO SLA'],
+    ]
+
+    // Calcular estadísticas
+    const cumplimiento = filasTabla.value.filter((f) => f.sla === 100).length
+    const incumplimiento = filasTabla.value.filter((f) => f.sla !== 'NA' && f.sla < 100).length
+    const sinRecursos = filasTabla.value.filter((f) => f.sla === 'NA').length
+
+    datosResumen.push(
+      ['SLA Cumplido (100%):', cumplimiento],
+      ['SLA Incumplido (<100%):', incumplimiento],
+      ['Sin Recursos (NA):', sinRecursos],
+    )
+
+    // Crear hoja de resumen
+    const wsResumen = XLSX.utils.aoa_to_sheet(datosResumen)
+    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
+
+    // Preparar datos de solicitudes filtradas
+    if (solicitudesFiltradas.value.length > 0) {
+      const datosSolicitudes = solicitudesFiltradas.value.map((sol) => ({
+        ID: sol.idSolicitud,
+        ROL: sol.nombreRol || 'N/A',
+        FECHA: sol.fechaSolicitud || 'N/A',
+        'ESTADO SLA': sol.estadoCumplimientoSla || 'N/A',
+        'TIPO SOLICITUD': sol.tipoSolicitud || 'N/A',
+      }))
+
+      const wsSolicitudes = XLSX.utils.json_to_sheet(datosSolicitudes)
+      XLSX.utils.book_append_sheet(wb, wsSolicitudes, 'Solicitudes')
     }
 
-    const res = await api.post('/api/reporte/generar', payload)
-    const reporte = res.data
+    // Generar nombre del archivo
+    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
+      filtros.value.anio
+    }.xlsx`
 
-    const baseUrl = api.defaults.baseURL || ''
-    const normalizedPath = (reporte.rutaArchivo || '').replace(/\\/g, '/')
-    const urlDescarga = `${baseUrl}${normalizedPath}`
+    // Descargar el archivo
+    XLSX.writeFile(wb, fileName)
 
-    window.open(urlDescarga, '_blank')
+    $q.notify({
+      type: 'positive',
+      message: 'Excel exportado exitosamente',
+      position: 'top-right',
+    })
   } catch (error) {
     console.error('Error al exportar a Excel:', error)
     $q.notify({
       type: 'negative',
-      message:
-        'Error al generar o descargar el Excel. Verifica el endpoint /api/reporte/generar y la publicación de /reports.',
+      message: 'Error al generar el archivo Excel',
       position: 'top-right',
       timeout: 5000,
     })
@@ -1009,25 +1100,75 @@ const exportarPdf = async () => {
       }
     }
 
-    // Luego generar el PDF en el frontend
-    const elemento = reporteRef.value
-
-    const canvas = await html2canvas(elemento, {
-      scale: 2,
-    })
-
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF('l', 'mm', 'a4')
-
+    // Crear PDF con tabla y gráfico en una sola página A4
+    const pdf = new jsPDF('p', 'mm', 'a4')
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
+    let currentY = 10
 
-    const imgWidth = pageWidth
-    const imgHeight = (canvas.height * imgWidth) / canvas.width
+    // Añadir título
+    pdf.setFontSize(14)
+    pdf.text('Reporte Indicadores SLA', 10, currentY)
+    currentY += 8
 
-    const y = imgHeight > pageHeight ? 0 : (pageHeight - imgHeight) / 2
+    pdf.setFontSize(10)
+    pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, currentY)
+    currentY += 5
+    pdf.text(`Código SLA: ${filtros.value.codigoSla}`, 10, currentY)
+    currentY += 7
 
-    pdf.addImage(imgData, 'PNG', 0, y, imgWidth, imgHeight)
+    // Tabla
+    const tableElement = reporteRef.value.querySelector('table')
+    if (tableElement) {
+      const tableCanvas = await html2canvas(tableElement, {
+        scale: 1,
+      })
+      const tableImgData = tableCanvas.toDataURL('image/png')
+      const tableImgWidth = pageWidth - 20
+      const tableImgHeight = (tableCanvas.height * tableImgWidth) / tableCanvas.width
+
+      // Ajustar altura de tabla si es muy grande
+      const maxTableHeight = 60
+      const adjustedTableHeight = Math.min(tableImgHeight, maxTableHeight)
+
+      pdf.addImage(tableImgData, 'PNG', 10, currentY, tableImgWidth, adjustedTableHeight)
+      currentY += adjustedTableHeight + 5
+    }
+
+    // Gráfico con leyenda en la misma página
+    const chartElement = reporteRef.value.querySelector('.chart-wrapper')
+    if (chartElement) {
+      const chartCanvas = await html2canvas(chartElement, {
+        scale: 1,
+      })
+      const chartImgData = chartCanvas.toDataURL('image/png')
+      const chartImgWidth = pageWidth - 20
+
+      // Calcular altura disponible restante en la página
+      const remainingHeight = pageHeight - currentY - 15
+      const chartImgHeight = (chartCanvas.height * chartImgWidth) / chartCanvas.width
+      const adjustedChartHeight = Math.min(chartImgHeight, remainingHeight)
+
+      // Añadir título del gráfico con separación
+      currentY += 15
+      pdf.setFontSize(11)
+      pdf.text('Gráfico de SLA por Rol', 10, currentY)
+      currentY += 6
+
+      // Añadir leyenda compacta
+      pdf.setFontSize(9)
+      pdf.setFillColor(76, 175, 80)
+      pdf.rect(10, currentY, 3, 3, 'F')
+      pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
+
+      pdf.setFillColor(244, 67, 54)
+      pdf.rect(85, currentY, 3, 3, 'F')
+      pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
+      currentY += 6
+
+      // Añadir gráfico
+      pdf.addImage(chartImgData, 'PNG', 10, currentY, chartImgWidth, adjustedChartHeight)
+    }
 
     const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
       filtros.value.anio
@@ -1066,25 +1207,114 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
 
   enviandoCorreo.value = true
   try {
-    // Aquí conectarás con tu futuro endpoint, por ejemplo:
-    // await api.post('/api/reporte/enviar', {
-    //   destinatarios: correos,
-    //   mensaje,
-    //   filtros: filtros.value
-    // })
+    // Generar PDF con tabla y gráfico en una sola página A4
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+    let currentY = 10
+
+    // Añadir título
+    pdf.setFontSize(14)
+    pdf.text('Reporte Indicadores SLA', 10, currentY)
+    currentY += 8
+
+    pdf.setFontSize(10)
+    pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, currentY)
+    currentY += 5
+    pdf.text(`Código SLA: ${filtros.value.codigoSla}`, 10, currentY)
+    currentY += 7
+
+    // Tabla
+    const tableElement = reporteRef.value.querySelector('table')
+    if (tableElement) {
+      const tableCanvas = await html2canvas(tableElement, {
+        scale: 1,
+      })
+      const tableImgData = tableCanvas.toDataURL('image/png')
+      const tableImgWidth = pageWidth - 20
+      const tableImgHeight = (tableCanvas.height * tableImgWidth) / tableCanvas.width
+
+      // Ajustar altura de tabla si es muy grande
+      const maxTableHeight = 60
+      const adjustedTableHeight = Math.min(tableImgHeight, maxTableHeight)
+
+      pdf.addImage(tableImgData, 'PNG', 10, currentY, tableImgWidth, adjustedTableHeight)
+      currentY += adjustedTableHeight + 5
+    }
+
+    // Gráfico con leyenda en la misma página
+    const chartElement = reporteRef.value.querySelector('.chart-wrapper')
+    if (chartElement) {
+      const chartCanvas = await html2canvas(chartElement, {
+        scale: 1,
+      })
+      const chartImgData = chartCanvas.toDataURL('image/png')
+      const chartImgWidth = pageWidth - 20
+
+      // Calcular altura disponible restante en la página
+      const remainingHeight = pageHeight - currentY - 15
+      const chartImgHeight = (chartCanvas.height * chartImgWidth) / chartCanvas.width
+      const adjustedChartHeight = Math.min(chartImgHeight, remainingHeight)
+
+      // Añadir título del gráfico con separación
+      currentY += 15
+      pdf.setFontSize(11)
+      pdf.text('Gráfico de SLA por Rol', 10, currentY)
+      currentY += 6
+
+      // Añadir leyenda compacta
+      pdf.setFontSize(9)
+      pdf.setFillColor(76, 175, 80)
+      pdf.rect(10, currentY, 3, 3, 'F')
+      pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
+
+      pdf.setFillColor(244, 67, 54)
+      pdf.rect(85, currentY, 3, 3, 'F')
+      pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
+      currentY += 6
+
+      // Añadir gráfico
+      pdf.addImage(chartImgData, 'PNG', 10, currentY, chartImgWidth, adjustedChartHeight)
+    }
+
+    // Convertir PDF a base64
+    const pdfBase64 = pdf.output('datauristring').split(',')[1]
+
+    // Generar nombre de archivo
+    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
+      filtros.value.anio
+    }.pdf`
+
+    // Preparar payload para envío de correos
+    const payload = {
+      tos: correos,
+      subject: `Reporte SLA - ${filtros.value.mes} ${filtros.value.anio}`,
+      message: `<p>Adjunto encontrará el reporte de indicadores SLA para ${filtros.value.mes} ${filtros.value.anio}.</p><p><strong>Código SLA:</strong> ${filtros.value.codigoSla}</p>`,
+      pdfBase64: pdfBase64,
+      fileName: fileName,
+    }
+
+    // Enviar correos
+    const res = await api.post('/api/reporte/enviar-correo', payload)
+
+    console.log('Respuesta del envío de correos:', res.data)
 
     $q.notify({
-      type: 'info',
-      message: 'Funcionalidad de envío por correo pendiente de implementación en el backend.',
+      type: 'positive',
+      message: `Reporte enviado exitosamente a ${correos.length} destinatario(s)`,
       position: 'top-right',
       timeout: 4000,
     })
+
+    // Cerrar diálogo
+    dialogCorreo.value = false
   } catch (error) {
     console.error('Error al enviar correo:', error)
     $q.notify({
       type: 'negative',
-      message: 'Error al enviar correo',
+      message: error.response?.data?.message || 'Error al enviar el reporte por correo',
       position: 'top-right',
+      timeout: 5000,
     })
   } finally {
     enviandoCorreo.value = false
@@ -1178,5 +1408,34 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.legend-container {
+  display: flex;
+  gap: 24px;
+  align-items: center;
+  justify-content: center;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+:deep(.q-table__card) {
+  font-size: 14px;
+}
+
+:deep(.q-table th),
+:deep(.q-table td) {
+  font-size: 14px;
 }
 </style>
