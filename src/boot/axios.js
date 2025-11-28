@@ -1,17 +1,26 @@
 import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
-import { Notify } from 'quasar'
 
 const api = axios.create({ baseURL: 'http://localhost:5260' })
 
 // Agregar interceptor para incluir token de autenticación
 api.interceptors.request.use(
   (config) => {
-    // Buscar token en localStorage
-    const token = localStorage.getItem('token') || localStorage.getItem('auth_token')
+    // Obtener el token desde localStorage usando la clave 'authToken'
+    const token = localStorage.getItem('authToken')
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
+      console.log('📤 Request con token:', {
+        url: config.url,
+        method: config.method,
+        hasToken: true,
+      })
+    } else {
+      console.warn('⚠️ Request SIN token:', {
+        url: config.url,
+        method: config.method,
+      })
     }
 
     return config
@@ -21,24 +30,31 @@ api.interceptors.request.use(
   },
 )
 
-// Interceptor de respuesta para manejar 401
+// Interceptor de respuesta para manejar errores
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expirado o inválido
-      console.warn('Token expirado o inválido (401)')
+    const status = error.response?.status
 
-      // Limpiar token
+    if (status === 401) {
+      // Token expirado o inválido
+      console.warn('🔒 Token expirado o inválido (401)')
+
+      // Limpiar token y datos del usuario
+      localStorage.removeItem('authToken')
       localStorage.removeItem('token')
-      localStorage.removeItem('auth_token')
+      localStorage.removeItem('usuario')
+      localStorage.removeItem('userEmail')
+      localStorage.removeItem('username')
 
       // Redirigir al login si no estamos ya ahí
-      if (window.location.pathname !== '/login') {
+      const currentPath = window.location.pathname
+      if (currentPath !== '/' && currentPath !== '/login') {
         console.log('Redirigiendo a login...')
         window.location.href = '/login'
       }
     }
+
     return Promise.reject(error)
   },
 )
