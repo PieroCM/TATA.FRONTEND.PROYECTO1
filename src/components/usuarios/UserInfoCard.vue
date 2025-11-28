@@ -21,15 +21,6 @@
         <label class="field-label">Documento de Identidad</label>
         <div class="field-value">{{ documento }}</div>
       </div>
-
-      <!-- Departamento -->
-      <div class="info-field">
-        <label class="field-label">Departamento</label>
-        <div class="field-value">
-          <q-icon name="business" size="18px" color="grey-6" class="department-icon" />
-          {{ departamento }}
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -53,10 +44,6 @@ const nombreCompleto = computed(() => {
 
 const documento = computed(() => {
   return props.usuario.personal?.documento || ''
-})
-
-const departamento = computed(() => {
-  return props.usuario.rol?.nombre || ''
 })
 </script>
 
