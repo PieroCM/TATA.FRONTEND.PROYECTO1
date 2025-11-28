@@ -5,18 +5,51 @@ import { api } from 'src/boot/axios'
  */
 const usuarioService = {
   /**
-   * Obtiene la información completa de un usuario (usuario + personal + rol)
-   * @param {number} id - ID del usuario
-   * @returns {Promise} Datos combinados del usuario
+   * Obtiene la información completa de un personal (personal + usuario + rol)
+   * @param {number} idPersonal - ID del personal
+   * @returns {Promise} Datos del personal con usuario y rol
    */
-  async getUsuario(id) {
+  async getUsuario(idPersonal) {
     try {
-      console.log('🔍 Llamando a:', `/api/Usuario/${id}`)
-      const response = await api.get(`/api/Usuario/${id}`)
-      console.log('✅ Respuesta exitosa:', response.data)
-      return response.data
+      console.log('🔍 Llamando a:', `/api/Personal/${idPersonal}`)
+      const personalResponse = await api.get(`/api/Personal/${idPersonal}`)
+      const personalData = personalResponse.data
+      console.log('✅ Personal obtenido:', personalData)
+
+      // Si tiene usuario vinculado, obtener datos completos del usuario con rol
+      if (personalData.idUsuario) {
+        console.log('🔍 Obteniendo datos de usuario:', personalData.idUsuario)
+        const usuarioResponse = await api.get(`/api/Usuario/${personalData.idUsuario}`)
+        const usuarioData = usuarioResponse.data
+        console.log('✅ Usuario obtenido:', usuarioData)
+
+        // Obtener información del rol del sistema
+        let rolData = null
+        if (usuarioData.idRolSistema) {
+          console.log('🔍 Obteniendo rol del sistema:', usuarioData.idRolSistema)
+          try {
+            const rolResponse = await api.get(`/api/RolesSistema/${usuarioData.idRolSistema}`)
+            rolData = rolResponse.data
+            console.log('✅ Rol obtenido:', rolData)
+          } catch (rolError) {
+            console.warn('⚠️ No se pudo obtener el rol:', rolError)
+          }
+        }
+
+        // Combinar datos de Personal, Usuario y Rol
+        return {
+          ...personalData,
+          username: usuarioData.username,
+          estadoCuentaAcceso: usuarioData.estado,
+          idRolSistema: usuarioData.idRolSistema,
+          rol: rolData, // Incluir el rol completo del sistema
+        }
+      }
+
+      // Si no tiene usuario, devolver solo datos de personal
+      return personalData
     } catch (error) {
-      console.error('❌ Error obteniendo usuario:', error)
+      console.error('❌ Error obteniendo datos:', error)
       console.error('📍 Status:', error.response?.status)
       console.error('📄 Mensaje:', error.response?.data)
       throw error
@@ -93,13 +126,16 @@ const usuarioService = {
    */
   async validatePassword(correo, password) {
     try {
+      console.log('🔍 Validando contraseña para:', correo)
       // Intentamos hacer signin para validar la contraseña
       const response = await api.post('/api/Usuario/signin', {
-        correo,
-        password,
+        email: correo, // El backend espera 'email', no 'correo'
+        password: password,
       })
+      console.log('✅ Contraseña válida')
       return response.data.token ? true : false
     } catch (error) {
+      console.error('❌ Contraseña inválida:', error.response?.data)
       return false
     }
   },

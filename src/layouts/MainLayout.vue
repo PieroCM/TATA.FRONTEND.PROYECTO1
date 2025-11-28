@@ -134,11 +134,6 @@
             }}</span>
           </div>
 
-          <!-- Notificaciones -->
-          <q-btn round flat dense icon="notifications">
-            <q-badge color="red" floating>3</q-badge>
-          </q-btn>
-
           <!-- Usuario -->
           <q-btn flat dense no-caps class="user-btn">
             <!-- Modo ultra pequeño: solo ícono -->

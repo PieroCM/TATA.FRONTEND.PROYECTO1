@@ -97,21 +97,55 @@ const cargarUsuario = async () => {
   error.value = null
 
   try {
-    // Obtener el ID del usuario desde localStorage o store
+    // Obtener el ID del personal desde localStorage
     const userData = JSON.parse(localStorage.getItem('user') || '{}')
-    const userId = userData.id_usuario || 1
+    const personalId = userData.id_personal || 1
 
-    console.log('📥 Intentando cargar usuario con ID:', userId)
-    const data = await usuarioService.getUsuario(userId)
-    console.log('✅ Usuario cargado exitosamente')
-    usuario.value = data
+    console.log('📥 Intentando cargar personal con ID:', personalId)
+    const data = await usuarioService.getUsuario(personalId)
+    console.log('✅ Personal cargado exitosamente:', data)
+    console.log('🔍 Datos del rol recibido:', data.rol)
+
+    // Transformar la respuesta del backend al formato esperado por los componentes
+    usuario.value = {
+      id_usuario: data.idUsuario,
+      username: data.username,
+      correo: data.correoCorporativo,
+      estado: data.estadoCuentaAcceso || data.estado,
+      personal: {
+        id_personal: data.idPersonal,
+        nombres: data.nombres,
+        apellidos: data.apellidos,
+        correo_corporativo: data.correoCorporativo,
+        documento: data.documento,
+      },
+      // Mapear el rol desde la respuesta del usuario
+      rol: data.rol
+        ? {
+            id_rol_sistema: data.rol.idRolSistema,
+            codigo: data.rol.codigo,
+            nombre: data.rol.nombre,
+            descripcion: data.rol.descripcion,
+          }
+        : data.nombreRol
+          ? {
+              nombre: data.nombreRol,
+            }
+          : null,
+      // Datos adicionales del Personal
+      tieneCuentaUsuario: data.tieneCuentaUsuario,
+      cuentaActivada: data.cuentaActivada,
+    }
+
+    console.log('🎯 Usuario mapeado final:', usuario.value)
+    console.log('🎯 Rol mapeado:', usuario.value.rol)
   } catch (err) {
     console.error('❌ Error en cargarUsuario:', err)
     console.error('📍 Detalles:', err.response?.status, err.response?.data)
 
-    // Verificar si es error 404 (usuario no existe) o error de conexión
+    // Verificar si es error 404 (personal no existe) o error de conexión
     if (err.response?.status === 404) {
-      error.value = 'Usuario no encontrado en el sistema'
+      error.value = 'Personal no encontrado en el sistema'
     } else if (!err.response) {
       // Backend no disponible - usar datos de prueba TEMPORALES
       console.warn('⚠️ Backend no disponible. Usando datos de PRUEBA temporales')
@@ -128,8 +162,6 @@ const cargarUsuario = async () => {
           documento: '00000000-0',
         },
         rol: {
-          id_rol_sistema: 1,
-          codigo: 'ADMIN',
           nombre: 'Administrador',
         },
       }
@@ -160,7 +192,7 @@ onMounted(() => {
 --------------------------------*/
 const activarEdicionEmail = () => {
   editandoEmail.value = true
-  emailEditado.value = usuario.value.personal?.correo_corporativo || usuario.value.correo
+  emailEditado.value = usuario.value.personal?.correo_corporativo || usuario.value.correo || ''
 }
 
 const cancelarEdicion = () => {
@@ -183,48 +215,74 @@ const mostrarDialogConfirmar = () => {
 
 const confirmarCambioEmail = async (password) => {
   try {
-    // Validar contraseña
-    const isValid = await usuarioService.validatePassword(usuario.value.correo, password)
+    console.log('🔄 Iniciando actualización de correo...')
+
+    // Validar contraseña usando el correo actual del usuario
+    const correoParaValidar = usuario.value.correo || usuario.value.personal.correo_corporativo
+    console.log('🔍 Validando contraseña con correo:', correoParaValidar)
+
+    const isValid = await usuarioService.validatePassword(correoParaValidar, password)
 
     if (!isValid) {
+      console.error('❌ Contraseña incorrecta')
       throw new Error('Contraseña incorrecta')
     }
 
+    console.log('✅ Contraseña validada correctamente')
+
     // Actualizar email en Personal
     if (usuario.value.personal) {
+      console.log('📝 Actualizando correo en Personal...')
       await usuarioService.updatePersonal(usuario.value.personal.id_personal, {
-        correo_corporativo: emailEditado.value,
+        nombres: usuario.value.personal.nombres,
+        apellidos: usuario.value.personal.apellidos,
+        documento: usuario.value.personal.documento,
+        correoCorporativo: emailEditado.value, // Usar camelCase como espera el backend
+        estado: usuario.value.estado,
       })
+      console.log('✅ Correo actualizado en Personal')
     }
 
     // Registrar alerta
-    await usuarioService.createAlerta({
-      id_solicitud: null,
-      tipo_alerta: 'ACTUALIZACION',
-      nivel: 'INFO',
-      mensaje: `Usuario ${usuario.value.username} actualizó su correo corporativo`,
-      estado: 'PENDIENTE',
-      enviado_email: false,
-    })
+    try {
+      await usuarioService.createAlerta({
+        id_solicitud: null,
+        tipo_alerta: 'ACTUALIZACION',
+        nivel: 'INFO',
+        mensaje: `Personal ${usuario.value.personal.nombres} ${usuario.value.personal.apellidos} actualizó su correo corporativo`,
+        estado: 'PENDIENTE',
+        enviado_email: false,
+      })
+      console.log('✅ Alerta registrada')
+    } catch (alertError) {
+      console.warn('⚠️ No se pudo registrar la alerta:', alertError)
+      // Continuar aunque falle la alerta
+    }
 
     $q.notify({
       type: 'positive',
-      message: 'Correo actualizado. Por favor inicia sesión nuevamente',
+      message: 'Correo actualizado exitosamente. Redirigiendo al inicio de sesión...',
       position: 'top',
-      timeout: 2000,
+      timeout: 2500,
     })
 
     editandoEmail.value = false
     dialogConfirmarPassword.value = false
 
     // Redirigir al login después de 2 segundos
+    console.log('🔄 Redirigiendo al login...')
     setTimeout(() => {
+      // Limpiar localStorage
       localStorage.removeItem('user')
-      localStorage.removeItem('token')
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('userEmail')
+      localStorage.removeItem('username')
+
+      // Redirigir al login
       router.push('/login')
-    }, 2000)
+    }, 2500)
   } catch (err) {
-    console.error('Error actualizando email:', err)
+    console.error('❌ Error en confirmarCambioEmail:', err)
     throw err // Para que el dialog maneje el error
   }
 }
@@ -239,7 +297,7 @@ const mostrarDialogPassword = () => {
 const guardarNuevaPassword = async ({ currentPassword, newPassword }) => {
   try {
     await usuarioService.changePassword({
-      correo: usuario.value.correo,
+      correo: usuario.value.correo || usuario.value.personal.correo_corporativo,
       passwordActual: currentPassword,
       passwordNuevo: newPassword,
     })
@@ -249,7 +307,7 @@ const guardarNuevaPassword = async ({ currentPassword, newPassword }) => {
       id_solicitud: null,
       tipo_alerta: 'SEGURIDAD',
       nivel: 'WARNING',
-      mensaje: `Usuario ${usuario.value.username} cambió su contraseña`,
+      mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
       estado: 'PENDIENTE',
       enviado_email: true,
     })
