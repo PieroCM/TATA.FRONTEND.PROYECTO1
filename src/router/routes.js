@@ -83,7 +83,7 @@ const routes = [
     ],
   },
 
-  // Always leave this as last one
+  // Siempre dejar esta al final
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

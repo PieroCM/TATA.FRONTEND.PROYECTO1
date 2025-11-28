@@ -1,12 +1,5 @@
 <template>
-  <q-expansion-item
-    dense-toggle
-    expand-separator
-    :label="label"
-    :icon="icon"
-    class="menu-group"
-    switch-toggle-side
-  >
+  <q-expansion-item dense-toggle expand-separator :label="label" :icon="icon" class="menu-group">
     <slot />
   </q-expansion-item>
 </template>
@@ -20,13 +13,41 @@ defineProps({
 
 <style scoped>
 .menu-group {
-  color: #4a5568 !important;
-  font-weight: 500;
+  border-radius: 0;
+}
+
+.menu-group :deep(.q-item) {
+  min-height: 44px;
+  padding: 8px 16px;
+}
+
+.menu-group :deep(.q-item__section--avatar) {
+  min-width: 40px;
+  padding-right: 12px;
+}
+
+.menu-group :deep(.q-item__label) {
+  color: #374151;
+  font-weight: 400;
   font-size: 14px;
 }
 
-/* El grupo nunca se pondrá azul */
-.menu-group.q-expansion-item--active {
+.menu-group :deep(.q-icon) {
+  color: #6b7280;
+  font-size: 20px;
+}
+
+.menu-group :deep(.q-expansion-item__toggle-icon) {
+  margin-left: auto;
+}
+
+/* Hover del grupo */
+.menu-group :deep(.q-item:hover) {
+  background: #f3f4f6 !important;
+}
+
+/* Cuando el grupo está expandido */
+.menu-group :deep(.q-expansion-item--expanded > .q-expansion-item__container > .q-item) {
   background: transparent !important;
 }
 </style>

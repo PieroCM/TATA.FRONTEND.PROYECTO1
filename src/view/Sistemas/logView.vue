@@ -308,6 +308,7 @@ const exportPDF = () => {
   gap: 20px;
   margin-top: 30px;
   flex-wrap: wrap;
+  justify-content: center;
 }
 
 /* Filter panel */
@@ -369,10 +370,13 @@ const exportPDF = () => {
     justify-content: center;
   }
 
+  /* 2 arriba + 2 abajo, centrados */
   .summary-row {
-    flex-direction: column;
     gap: 12px;
     margin-top: 20px;
+    max-width: 460px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .filter-panel {
@@ -391,7 +395,8 @@ const exportPDF = () => {
   }
 }
 
-@media (min-width: 600px) and (max-width: 900px) {
+/* 600px → 1055px: 2 arriba + 2 abajo centrados */
+@media (min-width: 600px) and (max-width: 1055px) {
   .logs-container {
     padding: 18px 24px;
   }
@@ -400,9 +405,12 @@ const exportPDF = () => {
     font-size: 24px;
   }
 
+  /* Forzar 2 columnas máximo */
   .summary-row {
     gap: 16px;
-    justify-content: space-between;
+    max-width: 480px;
+    margin-left: auto;
+    margin-right: auto;
   }
 
   .filter-panel {
@@ -415,6 +423,18 @@ const exportPDF = () => {
 
   .filter-select {
     flex: 1;
+  }
+}
+
+/* 1056px en adelante: 4 cuadros en fila horizontal centrados */
+@media (min-width: 1056px) {
+  .summary-row {
+    flex-wrap: nowrap;
+    justify-content: center;
+    gap: 20px;
+    max-width: 960px;
+    margin-left: auto;
+    margin-right: auto;
   }
 }
 

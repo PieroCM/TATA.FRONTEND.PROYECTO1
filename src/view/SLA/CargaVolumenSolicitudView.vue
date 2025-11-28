@@ -15,32 +15,35 @@
 
       <!-- Card Plantilla Excel -->
       <q-card flat bordered class="q-pa-md q-mb-lg card-plantilla">
-        <div class="row items-center no-wrap">
-          <div class="col-auto q-mr-md">
+        <div class="row items-center q-col-gutter-md plantilla-content">
+          <div class="col-auto plantilla-icon">
             <q-icon name="description" size="md" color="primary" />
           </div>
-          <div class="col">
+          <div class="col-12 col-sm plantilla-text">
             <div class="text-subtitle1 text-weight-medium">Plantilla Excel</div>
             <div class="text-body2 text-grey-7">
               Descarga la plantilla para asegurar que tu archivo tiene el formato correcto con todos
               los campos requeridos.
             </div>
           </div>
-          <div class="col-auto">
+          <div class="col-12 col-sm-auto plantilla-button">
             <q-btn
               color="primary"
               unelevated
               icon="download"
               label="Descargar Plantilla"
+              class="full-width-mobile"
               @click="handleDownloadTemplate"
             />
           </div>
         </div>
       </q-card>
 
-      <!-- Card de carga -->
+      <!-- Card de carga / Archivo cargado -->
       <q-card flat bordered class="q-pa-xl q-mb-lg card-upload">
+        <!-- Zona de carga (cuando NO hay archivo) -->
         <div
+          v-if="!selectedFileName"
           class="upload-drop-area column items-center justify-center"
           :class="{ 'upload-drop-area--dragging': isDragging }"
           @dragover.prevent="onDragOver"
@@ -61,53 +64,119 @@
             @change="onFileSelected"
           />
         </div>
+
+        <!-- Card de archivo cargado -->
+        <div v-else class="file-loaded-card">
+          <div class="row items-center q-mb-md">
+            <q-icon name="insert_drive_file" size="36px" color="positive" class="q-mr-md" />
+            <div class="col">
+              <div class="text-subtitle1 text-weight-medium">{{ selectedFileName }}</div>
+              <div class="text-caption text-grey-7">{{ totalRows }} filas detectadas</div>
+            </div>
+            <q-btn
+              flat
+              round
+              dense
+              icon="close"
+              color="grey-7"
+              @click="limpiarArchivo"
+              class="q-ml-sm"
+            >
+              <q-tooltip>Eliminar archivo</q-tooltip>
+            </q-btn>
+          </div>
+
+          <!-- Botones de acción -->
+          <div class="row q-col-gutter-sm action-buttons">
+            <div class="col-12 col-sm-6">
+              <q-btn
+                unelevated
+                :color="mostrarPreview ? 'grey-7' : 'secondary'"
+                :icon="mostrarPreview ? 'visibility_off' : 'visibility'"
+                :label="mostrarPreview ? 'Ocultar Previsualización' : 'Previsualizar Datos'"
+                class="full-width"
+                :disable="totalRows === 0"
+                @click="togglePrevisualizacion"
+              />
+            </div>
+            <div class="col-12 col-sm-6">
+              <q-btn
+                unelevated
+                color="primary"
+                icon="send"
+                label="Procesar Archivo"
+                class="full-width"
+                :loading="isProcessing"
+                :disable="isProcessing || totalRows === 0 || allRows.length === 0"
+                @click="procesarArchivo"
+              />
+            </div>
+          </div>
+
+          <!-- Botón para seleccionar otro archivo -->
+          <div class="text-center q-mt-md">
+            <q-btn
+              flat
+              dense
+              color="primary"
+              label="Seleccionar otro archivo"
+              icon="sync"
+              size="sm"
+              @click="triggerFileSelect"
+            />
+            <input
+              ref="fileInputRef"
+              type="file"
+              class="hidden-file-input"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              @change="onFileSelected"
+            />
+          </div>
+        </div>
       </q-card>
 
       <!-- Card de previsualización -->
-      <q-card v-if="totalRows > 0" flat bordered class="q-pa-md card-preview">
-        <div class="row items-center justify-between q-mb-md">
-          <div class="text-subtitle2 text-weight-medium">Previsualización de archivo</div>
-          <div class="text-caption text-grey-7">
-            Archivo: <strong>{{ selectedFileName }}</strong> · Filas totales:
-            <strong>{{ totalRows }}</strong>
+      <q-card v-if="mostrarPreview && totalRows > 0" flat bordered class="q-pa-md card-preview">
+        <div class="preview-header q-mb-md">
+          <div class="row items-center justify-between">
+            <div class="col-12 col-md-auto">
+              <div class="text-h6 text-weight-bold text-dark">Previsualización de Datos</div>
+              <div class="text-caption text-grey-7 q-mt-xs">
+                Archivo: <strong>{{ selectedFileName }}</strong>
+              </div>
+            </div>
+            <div class="col-12 col-md-auto q-mt-sm q-mt-md-none">
+              <q-chip color="primary" text-color="white" icon="table_chart">
+                {{ previewRows.length }} de {{ totalRows }} filas
+              </q-chip>
+            </div>
           </div>
         </div>
 
-        <div class="q-mb-md text-caption text-grey-7">
-          Mostrando las primeras {{ previewRows.length }} filas de {{ totalRows }}.
-        </div>
-
-        <!-- Botón de procesamiento -->
-        <div class="row justify-end q-mb-md">
-          <q-btn
-            color="primary"
-            unelevated
-            icon="send"
-            label="Procesar archivo"
-            :loading="isProcessing"
-            :disable="isProcessing || totalRows === 0 || allRows.length === 0"
-            @click="procesarArchivo"
-          />
-        </div>
-
-        <!-- Tabla simple -->
-        <div class="preview-table-wrapper">
+        <!-- Tabla responsive con scroll horizontal -->
+        <div class="table-scroll-wrapper">
           <table class="preview-table">
             <thead>
               <tr>
-                <th v-for="col in previewColumns" :key="col">
-                  {{ col }}
+                <th v-for="col in previewColumns" :key="col" class="table-header">
+                  {{ formatColumnName(col) }}
                 </th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="(row, rowIndex) in previewRows" :key="rowIndex">
                 <td v-for="col in previewColumns" :key="col">
-                  {{ row[col] }}
+                  {{ formatCellValue(row[col]) }}
                 </td>
               </tr>
             </tbody>
           </table>
+        </div>
+
+        <div class="q-mt-md text-caption text-grey-7 text-center">
+          <q-icon name="info" size="16px" class="q-mr-xs" />
+          Mostrando las primeras {{ previewRows.length }} filas. El archivo completo tiene
+          {{ totalRows }} filas.
         </div>
       </q-card>
 
@@ -189,10 +258,48 @@ const isDragging = ref(false)
 const fileInputRef = ref(null)
 const isProcessing = ref(false)
 const resultadoCarga = ref(null) // Resultado completo del backend
+const mostrarPreview = ref(false) // Control de previsualización
 
 // Disparar selector de archivo
 const triggerFileSelect = () => {
   fileInputRef.value?.click()
+}
+
+// Limpiar archivo cargado
+const limpiarArchivo = () => {
+  selectedFileName.value = ''
+  totalRows.value = 0
+  previewRows.value = []
+  previewColumns.value = []
+  allRows.value = []
+  mostrarPreview.value = false
+  resultadoCarga.value = null
+  if (fileInputRef.value) {
+    fileInputRef.value.value = ''
+  }
+}
+
+// Toggle previsualización (mostrar/ocultar)
+const togglePrevisualizacion = () => {
+  mostrarPreview.value = !mostrarPreview.value
+}
+
+// Formatear nombre de columna (capitalizar y reemplazar guiones bajos)
+const formatColumnName = (columnName) => {
+  if (!columnName) return ''
+  return columnName
+    .toString()
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+// Formatear valor de celda
+const formatCellValue = (value) => {
+  if (value === null || value === undefined || value === '') return '-'
+  if (typeof value === 'number') {
+    return value.toLocaleString('es-PE')
+  }
+  return value.toString()
 }
 
 // Manejar archivo seleccionado desde input
@@ -235,8 +342,9 @@ const handleFile = (file) => {
 
   selectedFileName.value = file.name
 
-  // Limpiar resultado anterior al cargar un nuevo archivo
+  // Limpiar resultado y preview anterior al cargar un nuevo archivo
   resultadoCarga.value = null
+  mostrarPreview.value = false
 
   const reader = new FileReader()
   reader.onload = (e) => {
@@ -326,6 +434,12 @@ const procesarArchivo = async () => {
 
   isProcessing.value = true
   try {
+    console.log('📤 Enviando datos al backend:', {
+      totalFilas: allRows.value.length,
+      primeraFila: allRows.value[0],
+      columnas: Object.keys(allRows.value[0] || {}),
+    })
+
     // Llamar al backend
     const response = await api.post('/api/SubidaVolumen/solicitudes', allRows.value)
 
@@ -350,22 +464,50 @@ const procesarArchivo = async () => {
       timeout: 6000,
     })
   } catch (error) {
-    console.error('Error al procesar carga masiva:', error)
+    console.error('❌ Error al procesar carga masiva:', error)
+    console.error('📋 Detalles del error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      headers: error.response?.headers,
+    })
 
     let caption = 'Revisa los datos del archivo o el log del servidor.'
-    if (error.response && error.response.data) {
-      caption =
-        typeof error.response.data === 'string'
-          ? error.response.data
-          : error.response.data.message || caption
+    let detailMessage = ''
+
+    if (error.response?.data) {
+      const errorData = error.response.data
+
+      // Si es un objeto con propiedades específicas
+      if (typeof errorData === 'object') {
+        detailMessage = errorData.message || errorData.title || JSON.stringify(errorData)
+
+        // Si hay errores de validación (ModelState)
+        if (errorData.errors) {
+          const validationErrors = Object.entries(errorData.errors)
+            .map(
+              ([field, messages]) =>
+                `${field}: ${Array.isArray(messages) ? messages.join(', ') : messages}`,
+            )
+            .join(' | ')
+          caption = `Errores de validación: ${validationErrors}`
+        } else {
+          caption = detailMessage
+        }
+      } else {
+        caption = String(errorData)
+      }
     }
 
     $q.notify({
       type: 'negative',
       message: 'Error al procesar la carga masiva',
-      caption,
+      caption: caption || 'Revisa la consola del navegador para más detalles',
       position: 'top-right',
-      timeout: 8000,
+      timeout: 10000,
+      actions: [
+        { label: 'Ver consola', color: 'white', handler: () => console.table(allRows.value) },
+      ],
     })
   } finally {
     isProcessing.value = false
@@ -462,43 +604,206 @@ const procesarArchivo = async () => {
   display: none;
 }
 
-.preview-table-wrapper {
+/* Card de archivo cargado */
+.file-loaded-card {
+  padding: 16px;
+  background-color: #f0fdf4;
+  border: 2px solid #86efac;
+  border-radius: 12px;
+}
+
+.action-buttons {
+  margin-top: 16px;
+}
+
+/* Tabla de previsualización con scroll horizontal */
+.table-scroll-wrapper {
   overflow-x: auto;
   border: 1px solid #e5e7eb;
   border-radius: 8px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar {
+  height: 8px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-track {
+  background: #f3f4f6;
+  border-radius: 4px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+  border-radius: 4px;
+}
+
+.table-scroll-wrapper::-webkit-scrollbar-thumb:hover {
+  background: #6b7280;
 }
 
 .preview-table {
   width: 100%;
+  min-width: 800px;
   border-collapse: collapse;
   font-size: 13px;
 }
 
 .preview-table thead {
-  background-color: #f3f4f6;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  position: sticky;
+  top: 0;
+  z-index: 10;
 }
 
-.preview-table th {
-  padding: 10px;
+.preview-table .table-header {
+  padding: 14px 12px;
   border-bottom: 2px solid #e5e7eb;
   text-align: left;
   font-weight: 600;
-  color: #374151;
+  color: #ffffff;
   white-space: nowrap;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
 }
 
 .preview-table td {
-  padding: 10px;
+  padding: 12px;
   border-bottom: 1px solid #e5e7eb;
   text-align: left;
   color: #1f2937;
+  background-color: #ffffff;
 }
 
-.preview-table tbody tr:hover {
+.preview-table tbody tr:nth-child(even) td {
   background-color: #f9fafb;
+}
+
+.preview-table tbody tr:hover td {
+  background-color: #f3f4f6;
+}
+
+.preview-header {
+  border-bottom: 2px solid #e5e7eb;
+  padding-bottom: 16px;
 }
 
 .text-dark {
   color: #1a1a1a;
+}
+
+/* Card plantilla responsive */
+.plantilla-content {
+  align-items: center;
+}
+
+.plantilla-icon {
+  display: none;
+}
+
+.full-width-mobile {
+  width: auto;
+}
+
+/* Responsive */
+@media (min-width: 769px) {
+  .plantilla-icon {
+    display: block;
+  }
+}
+
+@media (max-width: 768px) {
+  .max-width-page {
+    padding: 16px;
+  }
+
+  .q-pa-xl {
+    padding: 16px !important;
+  }
+
+  .upload-drop-area {
+    min-height: 200px;
+    padding: 24px 16px;
+  }
+
+  .file-loaded-card {
+    padding: 12px;
+  }
+
+  .preview-table {
+    min-width: 600px;
+    font-size: 12px;
+  }
+
+  .preview-table .table-header {
+    padding: 10px 8px;
+    font-size: 11px;
+  }
+
+  .preview-table td {
+    padding: 10px 8px;
+  }
+
+  .preview-header .text-h6 {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .max-width-page {
+    padding: 12px;
+  }
+
+  .card-plantilla,
+  .card-upload,
+  .card-preview,
+  .card-result {
+    padding: 12px !important;
+  }
+
+  .plantilla-button {
+    margin-top: 8px;
+  }
+
+  .full-width-mobile {
+    width: 100%;
+  }
+
+  .plantilla-text .text-subtitle1 {
+    font-size: 15px;
+  }
+
+  .plantilla-text .text-body2 {
+    font-size: 12px;
+  }
+
+  .upload-drop-area {
+    min-height: 180px;
+    padding: 20px 12px;
+  }
+
+  .preview-table {
+    min-width: 500px;
+    font-size: 11px;
+  }
+
+  .preview-table .table-header {
+    padding: 8px 6px;
+    font-size: 10px;
+  }
+
+  .preview-table td {
+    padding: 8px 6px;
+  }
+
+  .action-buttons .q-btn {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .result-stat {
+    padding: 8px;
+  }
 }
 </style>
