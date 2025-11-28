@@ -3,14 +3,22 @@
     <!-- ========== SIDEBAR ========== -->
     <q-drawer
       v-model="drawerOpen"
-      :mini="drawerMini"
+      :mini="drawerMini && isDesktopMode"
+      :overlay="isMobile"
+      :behavior="isDesktopMode ? 'desktop' : 'mobile'"
       show-if-above
-      :width="250"
-      :breakpoint="1024"
+      :width="260"
+      :mini-width="56"
+      :breakpoint="600"
       bordered
       class="sidebar"
     >
-      <q-scroll-area class="fit">
+      <!-- Botón cerrar solo en mobile -->
+      <div v-if="isMobile" class="mobile-header">
+        <q-btn flat round dense icon="close" class="close-btn" @click="drawerOpen = false" />
+      </div>
+
+      <q-scroll-area class="fit" :style="isMobile ? 'height: calc(100% - 56px)' : ''">
         <q-list padding>
           <!-- GRUPO: Dashboard -->
           <SidebarGroup
@@ -65,15 +73,20 @@
 
           <!-- GRUPO: Alertas SLA -->
           <SidebarGroup
-            icon="warning_amber"
+            icon="notifications_active"
             label="Alertas SLA"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/alertas', '/sistema/alertas/email']"
+            :childrenRoutes="['/sistema/alertas', '/sistema/alertas/config-email']"
           >
             <SidebarItemChild
-              icon="warning_amber"
-              label="Gestión de alertas"
+              icon="notifications"
+              label="Gestión de Alertas"
               to="/sistema/alertas"
+            />
+            <SidebarItemChild
+              icon="email"
+              label="Configurar Email"
+              to="/sistema/alertas/config-email"
             />
           </SidebarGroup>
 
@@ -84,9 +97,10 @@
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/log-view']"
+            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios']"
           >
             <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
+            <SidebarItemChild icon="people" label="Gestión de Usuarios" to="/sistema/usuarios" />
           </SidebarGroup>
         </q-list>
       </q-scroll-area>
@@ -115,7 +129,9 @@
           <!-- Fecha -->
           <div class="row items-center no-wrap">
             <q-icon name="event" size="18px" class="q-mr-xs" />
-            <span class="text-body2 text-grey-8">{{ currentMonthLabel }}</span>
+            <span v-show="!isSmallMobile" class="text-body2 text-grey-8">{{
+              currentMonthLabel
+            }}</span>
           </div>
 
           <!-- Notificaciones -->
@@ -125,14 +141,22 @@
 
           <!-- Usuario -->
           <q-btn flat dense no-caps class="user-btn">
-            <q-avatar size="32px" class="q-mr-sm">
-              <img src="https://i.pravatar.cc/150?img=47" />
-            </q-avatar>
+            <!-- Modo ultra pequeño: solo ícono -->
+            <q-icon v-if="isUltraSmall" name="person" size="20px" class="q-mr-xs" />
 
-            <div class="column items-start q-mr-xs">
-              <span class="text-body2 text-weight-medium">Ana García</span>
-              <span class="text-caption text-grey">Administrador</span>
-            </div>
+            <!-- Modo normal: avatar + info -->
+            <template v-else>
+              <q-avatar size="32px" class="q-mr-sm">
+                <q-icon name="person" size="30px" class="q-mr-xs" />
+              </q-avatar>
+
+              <div class="column items-start q-mr-xs">
+                <span class="text-body2 text-weight-medium">{{
+                  authStore.userName || 'Usuario'
+                }}</span>
+                <span class="text-caption text-grey">{{ authStore.usuario?.rol || 'Rol' }}</span>
+              </div>
+            </template>
 
             <q-icon name="expand_more" size="18px" />
 
@@ -168,11 +192,18 @@
                   </q-item-section>
                   <q-item-section>Seguridad</q-item-section>
                 </q-item>
+                <!-- Usuario -->
+                <q-item clickable v-ripple class="user-option" @click="irAPerfil" v-close-popup>
+                  <q-item-section avatar>
+                    <q-icon name="person" color="grey-7" />
+                  </q-item-section>
+                  <q-item-section>Perfil de usuario</q-item-section>
+                </q-item>
 
                 <q-separator />
 
                 <!-- Cerrar sesión -->
-                <q-item clickable v-ripple class="logout-option">
+                <q-item clickable v-ripple class="logout-option" @click="cerrarSesion">
                   <q-item-section>Cerrar Sesión</q-item-section>
                 </q-item>
               </q-list>
@@ -192,6 +223,7 @@
 <script>
 import SidebarGroup from 'src/components/compMainLayout/SidebarGroup.vue'
 import SidebarItemChild from 'src/components/compMainLayout/SidebarItemChild.vue'
+import { useAuthStore } from 'stores/useAuthStore'
 
 export default {
   name: 'MainLayout',
@@ -199,6 +231,11 @@ export default {
   components: {
     SidebarGroup,
     SidebarItemChild,
+  },
+
+  setup() {
+    const authStore = useAuthStore()
+    return { authStore }
   },
 
   data() {
@@ -216,12 +253,27 @@ export default {
         year: 'numeric',
       })
     },
+    isMobile() {
+      return this.$q.screen.lt.sm
+    },
+    isTablet() {
+      return this.$q.screen.width >= 768 && this.$q.screen.width <= 1023
+    },
+    isDesktopMode() {
+      return !this.isMobile
+    },
+    isSmallMobile() {
+      return this.$q.screen.width < 521
+    },
+    isUltraSmall() {
+      return this.$q.screen.width <= 457
+    },
   },
 
   watch: {
     $route() {
       // En pantallas pequeñas, cerrar el drawer al cambiar de ruta
-      if (this.$q.screen.lt.lg) {
+      if (this.isMobile) {
         this.drawerOpen = false
       }
     },
@@ -229,19 +281,37 @@ export default {
 
   methods: {
     toggleMini() {
-      // En pantallas pequeñas, toggle del drawer completo (abrir/cerrar)
-      if (this.$q.screen.lt.lg) {
+      // En mobile real (<600px), toggle del drawer completo (abrir/cerrar)
+      if (this.isMobile) {
         this.drawerOpen = !this.drawerOpen
       } else {
-        // En pantallas grandes, toggle del modo mini (expandir/contraer)
+        // En tablet y desktop (>=600px), toggle del modo mini (expandir/contraer)
         this.drawerMini = !this.drawerMini
       }
     },
     handleDrawerClick() {
-      // En pantallas pequeñas, cerrar drawer al hacer click en cualquier item del menú
-      if (this.$q.screen.lt.lg) {
+      // Solo cerrar drawer en mobile real (<600px)
+      if (this.isMobile) {
         this.drawerOpen = false
       }
+    },
+    irAPerfil() {
+      this.$router.push('/sistema/usuario')
+    },
+    cerrarSesion() {
+      // Limpiar sesión
+      this.authStore.clearAuth()
+
+      // Notificar al usuario
+      this.$q.notify({
+        type: 'info',
+        message: 'Sesión cerrada exitosamente',
+        position: 'bottom',
+        timeout: 1500,
+      })
+
+      // Redirigir al login
+      this.$router.push('/')
     },
   },
 }
@@ -252,349 +322,286 @@ export default {
   font-family: 'Inter', sans-serif;
 }
 
-/* ------------------ VARIABLES FIGMA ------------------ */
+/* ------------------ COLORES BASE ------------------ */
 :root {
-  --gray-icon: #6b7280; /* íconos apagados */
-  --gray-text: #374151; /* texto normal */
-  --gray-border: #e5e7eb; /* bordes */
-  --hover-blue: #f0f6ff; /* hover azul claro */
-  --active-blue: #e8f0fe; /* seleccionado */
-  --blue-primary: #1a73e8; /* azul GOOGLE/Figma */
+  --sidebar-bg: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #374151;
+  --text-secondary: #6b7280;
+  --icon-default: #6b7280;
+  --hover-bg: #f3f4f6;
+  --active-bg: #dbeafe;
+  --active-color: #2563eb;
+  --active-border: #2563eb;
 }
 
 /* ------------------ SIDEBAR ------------------ */
 .q-drawer {
   background: white !important;
-  border-right: 1px solid var(--gray-border);
-  z-index: 2000 !important; /* Debajo del header */
+  border-right: 1px solid #e5e7eb;
+  z-index: 2000 !important;
 }
 
-.menu-item,
-.menu-group,
-.menu-child {
-  color: var(--gray-text);
-  font-weight: 400;
+.q-drawer :deep(.q-scrollarea__content) {
+  padding: 0 !important;
 }
 
-/* ícono apagado */
-.menu-icon {
-  color: var(--gray-icon) !important;
+.q-drawer :deep(.q-list) {
+  padding: 4px 0 !important;
 }
 
-/* hover igual Figma (celeste suave) */
-.menu-item:hover,
-.menu-child:hover,
-.menu-group:hover {
-  background-color: var(--hover-blue) !important;
+/* Header mobile con botón cerrar */
+.mobile-header {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  padding: 12px 16px;
+  height: 56px;
+  border-bottom: 1px solid #e5e7eb;
 }
 
-/* ------------------ ITEM SELECCIONADO ------------------ */
-/* SidebarItem.vue */
-.router-link-active,
-.q-item--active {
-  background-color: var(--active-blue) !important;
+.close-btn {
+  color: #6b7280;
 }
 
-.router-link-active .menu-label,
-.q-item--active .menu-label {
-  color: var(--blue-primary) !important;
+.close-btn:hover {
+  color: #2563eb;
+  background: #f3f4f6;
 }
 
-.router-link-active .menu-icon,
-.q-item--active .menu-icon {
-  color: var(--blue-primary) !important;
+/* Controlar el espaciado de los iconos globalmente */
+.q-drawer :deep(.q-item__section--avatar) {
+  min-width: 40px !important;
+  padding-right: 12px !important;
+}
+
+.q-drawer :deep(.q-item) {
+  padding-left: 16px !important;
+  padding-right: 16px !important;
 }
 
 /* ------------------ FLECHAS DE EXPANSIÓN ------------------ */
 .q-expansion-item__toggle-icon {
-  color: var(--gray-icon) !important;
+  color: #9ca3af !important;
+  font-size: 16px !important;
+}
+
+.q-expansion-item :deep(.q-item__section--side) {
+  padding-left: 0 !important;
 }
 
 /* ------------------ MINI SIDEBAR (CONTRAÍDO - SOLO ICONOS) ------------------ */
-/* Ocultar textos en modo mini */
+.q-drawer--mini {
+  border-right: 1px solid #e5e7eb !important;
+  background: white !important;
+}
+
 .q-drawer--mini .q-item__label,
 .q-drawer--mini .q-expansion-item__toggle-icon {
   display: none !important;
 }
 
-/* Centrar iconos en modo mini */
 .q-drawer--mini .q-item {
   justify-content: center !important;
-  padding: 12px 0 !important;
+  padding: 10px 0 !important;
+  min-height: 48px !important;
+  margin: 2px 0 !important;
 }
 
 .q-drawer--mini .q-item__section--avatar {
-  min-width: auto !important;
-  padding-right: 0 !important;
+  min-width: 100% !important;
+  padding: 0 !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
-/* Iconos en modo mini */
+.q-drawer--mini .q-item__section--main {
+  display: none !important;
+}
+
 .q-drawer--mini .q-icon {
-  color: var(--gray-icon) !important;
-  font-size: 24px !important;
+  color: #6b7280 !important;
+  font-size: 20px !important;
+}
+
+.q-drawer--mini .q-item:hover {
+  background-color: #f3f4f6 !important;
 }
 
 .q-drawer--mini .q-item:hover .q-icon {
-  color: var(--blue-primary) !important;
-}
-
-.q-drawer--mini .q-item--active .q-icon,
-.q-drawer--mini .router-link-active .q-icon {
-  color: var(--blue-primary) !important;
-}
-
-/* Hover en modo mini */
-.q-drawer--mini .q-item:hover {
-  background-color: var(--hover-blue) !important;
+  color: #2563eb !important;
 }
 
 /* Activo en modo mini */
-.q-drawer--mini .q-item--active,
-.q-drawer--mini .router-link-active {
-  background-color: var(--active-blue) !important;
-  border-left: 3px solid var(--blue-primary);
+.q-drawer--mini .active-item,
+.q-drawer--mini .menu-child--active {
+  background-color: #dbeafe !important;
+  border-left: 3px solid #2563eb !important;
+  border-radius: 0 !important;
 }
 
-/* Espaciado entre items en modo mini */
+.q-drawer--mini .active-item .q-icon,
+.q-drawer--mini .menu-child--active .q-icon {
+  color: #2563eb !important;
+}
+
 .q-drawer--mini .q-expansion-item {
   padding: 0 !important;
+  margin: 0 !important;
+}
+
+.q-drawer--mini .q-expansion-item__content {
+  display: none !important;
 }
 
 .q-drawer--mini .q-list {
   padding: 8px 0 !important;
 }
 
-.menu-item-mini q-icon {
-  color: var(--gray-icon) !important;
+.q-drawer--mini .q-scrollarea__content {
+  width: 56px !important;
 }
 
 /* ------------------ TOPBAR ------------------ */
 .topbar {
   background: white !important;
-  border-bottom: 1px solid var(--gray-border);
-  height: 56px;
-  z-index: 3000 !important; /* Asegura que el header esté encima del drawer */
-}
-
-.header-bar {
-  min-height: 56px;
-  height: 56px;
+  border-bottom: 1px solid #e5e7eb;
+  height: 64px;
   z-index: 3000 !important;
 }
 
-.hamburger {
-  color: var(--gray-icon) !important;
+.header-bar {
+  min-height: 64px;
+  height: 64px;
+  z-index: 3000 !important;
+  padding: 0 12px;
 }
+
+.hamburger {
+  color: #6b7280 !important;
+}
+
 .hamburger:hover {
-  color: var(--blue-primary) !important;
+  color: #2563eb !important;
+  background: #f3f4f6;
 }
 
 /* ------------------ RESPONSIVIDAD ------------------ */
-@media (max-width: 1023px) {
-  /* En pantallas pequeñas, el drawer se comporta como overlay */
+@media (max-width: 599px) {
+  /* Solo móviles reales (<600px): drawer modal con overlay */
   .q-drawer {
-    z-index: 6000 !important; /* Por encima del header en móvil */
+    z-index: 6000 !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
   }
 
   .topbar {
-    z-index: 5500 !important; /* Header debajo del drawer en móvil */
+    z-index: 5500 !important;
   }
 
   .q-layout__backdrop {
     z-index: 5000 !important;
+    background: rgba(0, 0, 0, 0.5) !important;
+  }
+
+  /* Drawer ocupa altura completa en mobile */
+  .sidebar {
+    height: 100vh !important;
   }
 }
 
-/* Para pantallas mayores (desktop), mantener jerarquía original */
-@media (min-width: 1024px) {
+/* Para tablets (600-1023px) y desktop (>=1024px): comportamiento fijo */
+@media (min-width: 600px) {
   .q-drawer {
-    z-index: 2000 !important; /* Debajo del header en desktop */
+    z-index: 2000 !important;
   }
 
   .topbar {
-    z-index: 3000 !important; /* Header encima del drawer en desktop */
+    z-index: 3000 !important;
+  }
+
+  /* Ocultar botón cerrar en tablet y desktop */
+  .mobile-header {
+    display: none !important;
+  }
+
+  /* No overlay en tablet y desktop */
+  .q-layout__backdrop {
+    display: none !important;
   }
 }
 
-/* ------------------ OCULTAR SCROLLBAR ------------------ */
-.q-scrollarea__thumb {
-  display: none !important;
-}
 /* ===========================
-   TITULOS DE GRUPO (Datos SLA, Reportes, etc.)
+   EXPANSION ITEMS - LIMPIEZA
    =========================== */
-
-/* Texto del grupo */
-.q-expansion-item .q-item__section--main {
-  color: #6b7280 !important; /* gris slate-500 del figma */
-  font-weight: 400 !important;
-  font-size: 14px !important;
+.q-expansion-item {
+  border-radius: 0 !important;
 }
 
-/* Icono del grupo */
-.q-expansion-item .q-item__section--avatar i {
-  color: #6b7280 !important; /* mismo gris */
-}
-
-/* Hover del grupo (la fila superior) */
-.q-expansion-item .q-item.q-item-type.row:hover {
-  background-color: #eef6ff !important; /* celeste suave del figma */
-}
-
-/* Grupo activo (cuando está expandido) */
-.q-expansion-item--expanded > .q-expansion-item__container > .q-item {
-  background-color: #eef6ff !important; /* celeste suave */
-}
-
-/* Flecha (toggle) */
-.q-expansion-item__toggle-icon {
-  color: #6b7280 !important;
+.q-expansion-item .q-item {
+  border-radius: 0 !important;
 }
 /* ==================================
-   ESTADOS ACTIVOS (ITEM Y GRUPOS)
+   ITEMS GENERALES
    ================================== */
-
-/* Fondo celeste al estar seleccionado */
-.q-item--active,
-.q-item--active:hover {
-  background-color: #d8e7ff !important; /* celeste figma */
+.q-item {
+  border-radius: 0 !important;
 }
 
-/* Texto azul cuando está activo */
-.q-item--active .q-item__section--main,
-.q-item--active .menu-label,
-.q-item--active .menu-child-label {
-  color: #1a73e8 !important; /* azul figma */
-  font-weight: 400 !important;
-}
-
-/* Icono azul cuando está activo */
-.q-item--active .q-item__section--avatar i {
-  color: #1a73e8 !important;
-}
-
-/* Para grupos (Datos SLA, Reportes, etc.) */
-.q-expansion-item--expanded > .q-expansion-item__container > .q-item {
-  background-color: #d8e7ff !important;
-}
-
-.q-expansion-item--expanded .q-item__section--main {
-  color: #1a73e8 !important;
-  font-weight: 400 !important;
-}
-
-.q-expansion-item--expanded .q-item__section--avatar i {
-  color: #1a73e8 !important;
-}
-
-/* Flecha azul cuando el grupo está activo */
-.q-expansion-item--expanded .q-expansion-item__toggle-icon {
-  color: #1a73e8 !important;
-}
-
-/* --- MENÚ DE USUARIO (ESTILO FIGMA) --- */
-
+/* --- MENÚ DE USUARIO --- */
 .user-menu {
-  border-radius: 10px;
-  padding: 4px 0;
-  box-shadow: 0px 8px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  padding: 8px;
+  box-shadow: 0px 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .menu-title {
-  font-weight: 400;
-  font-size: 14px;
-  color: #111827;
+  font-weight: 500;
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 12px;
 }
-
-.user-option {
-  padding: 10px 12px;
-  color: #374151;
-  font-size: 14px;
-}
-
-.user-option:hover {
-  background: #f3f4f6;
-}
-
-.logout-option {
-  padding: 12px;
-  color: #dc2626 !important; /* rojo */
-  font-weight: 400;
-}
-
-.logout-option:hover {
-  background: #fee2e2;
-}
-/* --- HOVER EXACTO DEL FIGMA EN MENÚ DE USUARIO --- */
 
 .user-option {
   padding: 10px 12px;
   color: #374151;
   font-size: 14px;
   border-radius: 6px;
+  margin-bottom: 2px;
   transition: all 0.15s ease;
 }
 
 .user-option:hover {
-  background: #e8f1ff; /* celeste suave del Figma */
-  color: #1967d2 !important; /* azul del Figma */
+  background: #dbeafe !important;
+  color: #2563eb !important;
 }
 
 .user-option:hover .q-icon {
-  color: #1967d2 !important; /* icono azul cuando se hace hover */
+  color: #2563eb !important;
 }
 
 .logout-option {
-  padding: 12px;
+  padding: 10px 12px;
   color: #dc2626 !important;
   border-radius: 6px;
   font-weight: 400;
+  margin-top: 4px;
 }
 
 .logout-option:hover {
-  background: #fee2e2; /* rosado suave */
+  background: #fee2e2 !important;
 }
 </style>
 
 <style>
-/* --- GRUPOS --- */
-.q-expansion-item {
-  padding-left: 12px;
-}
-
-.q-expansion-item__container .q-item__label {
-  font-size: 14px;
-  font-weight: 400;
-  color: #4a5568;
-}
-
-/* --- ÍCONOS GRUPO --- */
-.q-expansion-item__container .q-item__section--avatar .q-icon {
-  color: #4a5568 !important;
-}
-
-/* --- MINI MODE ICONOS --- */
-.menu-item-mini q-icon {
-  color: #6b7280 !important;
-  font-size: 22px;
-  margin: 12px 0;
-}
-/* Ítem hijo ACTIVO (seleccionado) */
-.active-child {
-  background: #e8f0fe !important;
-  border-left: 3px solid #1a73e8;
-  color: #1a73e8 !important;
-}
-
-.active-child .menu-child-label {
-  color: #1a73e8 !important;
-  font-weight: 400;
-}
-
-.active-child .child-icon {
-  color: #1a73e8 !important;
-}
+/* --- SCROLLBAR OCULTO --- */
 .q-drawer__content::-webkit-scrollbar {
   width: 0 !important;
+}
+
+.q-scrollarea__thumb {
+  display: none !important;
 }
 </style>

@@ -1,6 +1,5 @@
 <template>
   <div class="row" style="height: 100vh; overflow: hidden">
-    <!-- SECCIÓN IZQUIERDA (SLIDER) -->
     <div class="col-7 left-section">
       <q-carousel
         v-model="slide"
@@ -29,39 +28,46 @@
       </q-carousel>
     </div>
 
-    <!-- SECCIÓN DERECHA (LOGIN) -->
     <div class="col-5 flex flex-center bg-page">
       <q-card class="login-card shadow-4 q-pa-xl">
-        <!-- Avatar -->
         <div class="column items-center">
           <q-avatar size="80px" color="primary" text-color="white" class="q-mb-md">
-            <q-icon name="person" size="40px" />
+            <q-icon name="verified_user" size="40px" />
           </q-avatar>
 
-          <div class="text-h5 text-primary text-weight-bold q-mb-sm">Iniciar sesión</div>
-          <div class="text-body2 text-grey-7 q-mb-xl">Ingresa tus credenciales para continuar</div>
+          <div class="text-h5 text-primary text-weight-bold q-mb-sm">Activar Cuenta</div>
+
+          <div class="text-body2 text-grey-7 q-mb-xl">
+            Establece tu contraseña para completar la activación de tu cuenta.
+          </div>
         </div>
 
-        <!-- CORREO -->
-        <q-input v-model="correo" label="Correo Electrónico" filled dense class="q-mb-md">
+        <!-- Email informativo (solo lectura) -->
+        <q-input
+          :model-value="email"
+          label="Correo Electrónico"
+          filled
+          dense
+          readonly
+          class="q-mb-md"
+        >
           <template #prepend>
             <q-icon name="mail" />
           </template>
         </q-input>
 
-        <!-- PASSWORD + SHOW/HIDE -->
+        <!-- Nueva Contraseña -->
         <q-input
-          v-model="password"
+          v-model="newPassword"
           :type="isPwd ? 'password' : 'text'"
-          label="Contraseña"
+          label="Nueva Contraseña"
           filled
           dense
-          class="q-mb-sm"
+          class="q-mb-md"
         >
           <template #prepend>
             <q-icon name="lock" />
           </template>
-
           <template #append>
             <q-icon
               :name="isPwd ? 'visibility_off' : 'visibility'"
@@ -71,21 +77,43 @@
           </template>
         </q-input>
 
-        <!-- OLVIDASTE -->
-        <div class="text-right q-mb-lg">
-          <a class="text-primary cursor-pointer" @click="$router.push('/forgot-password')">
-            ¿Olvidaste tu contraseña?
-          </a>
-        </div>
+        <!-- Confirmar Contraseña -->
+        <q-input
+          v-model="confirmPassword"
+          :type="isPwd ? 'password' : 'text'"
+          label="Confirmar Contraseña"
+          filled
+          dense
+          class="q-mb-md"
+        >
+          <template #prepend>
+            <q-icon name="lock" />
+          </template>
+          <template #append>
+            <q-icon
+              :name="isPwd ? 'visibility_off' : 'visibility'"
+              class="cursor-pointer"
+              @click="isPwd = !isPwd"
+            />
+          </template>
+        </q-input>
 
-        <!-- BOTÓN LOGIN -->
+        <!-- Botón Activar -->
         <q-btn
-          label="Ingresar"
+          label="Activar Cuenta"
           color="primary"
           unelevated
           class="full-width q-mb-md"
-          @click="login"
+          :loading="loading"
+          @click="activarCuenta"
         />
+
+        <div class="text-center text-caption text-grey-7 q-mt-sm">
+          ¿Ya tienes cuenta?
+          <span class="text-primary cursor-pointer" @click="$router.push('/login')">
+            Inicia sesión aquí
+          </span>
+        </div>
 
         <div class="text-center text-grey-7 text-caption q-mt-md">
           Credenciales demo:<br />
@@ -93,36 +121,24 @@
         </div>
       </q-card>
     </div>
-
-    <!-- DIALOG RESET PASSWORD -->
-    <q-dialog v-model="showResetDialog">
-      <q-card class="q-pa-lg" style="width: 400px">
-        <div class="text-h6 text-primary q-mb-md">Restablecer contraseña</div>
-
-        <q-input v-model="resetEmail" label="Ingresa tu correo" filled dense type="email" />
-
-        <div class="row justify-end q-mt-md">
-          <q-btn flat label="Cancelar" color="grey" v-close-popup />
-          <q-btn label="Enviar" color="primary" @click="sendResetEmail" />
-        </div>
-      </q-card>
-    </q-dialog>
   </div>
 </template>
 
 <script>
 export default {
-  name: 'LoginForm',
+  name: 'ActivacionCuentaPage',
 
   data() {
     return {
       slide: 0,
-      correo: '',
-      password: '',
-      isPwd: true, // 👈 Ocultar/mostrar contraseña
-      resetEmail: '',
-      showResetDialog: false,
+      email: '', // Correo recibido de la URL
+      token: '', // Token recibido de la URL
+      newPassword: '', // Nueva contraseña
+      confirmPassword: '', // Confirmación de nueva contraseña
+      isPwd: true, // Para ocultar/mostrar contraseña
+      loading: false, // Estado de carga para el botón
 
+      // Mismos slides que ForgotPassword
       slides: [
         {
           img: 'https://plus.unsplash.com/premium_photo-1661963212517-830bbb7d76fc?auto=format&fit=crop&w=1600&q=80',
@@ -148,99 +164,74 @@ export default {
     }
   },
 
+  mounted() {
+    // Capturar parámetros de la URL (soporta email o username)
+    const { email, username, token } = this.$route.query
+
+    // Usar email si existe, sino username (para compatibilidad)
+    this.email = email || username || ''
+    this.token = token || ''
+  },
+
   methods: {
-    async login() {
-      if (!this.correo || !this.password) {
+    async activarCuenta() {
+      // Validaciones básicas
+      if (!this.newPassword || !this.confirmPassword) {
         return this.$q.notify({
           type: 'warning',
-          message: 'Por favor completa todos los campos',
+          message: 'Por favor, completa todos los campos.',
           position: 'bottom',
         })
       }
 
-      try {
-        const response = await this.$api.post('/api/usuario/signin', {
-          email: this.correo,
-          password: this.password,
-        })
-
-        // Validar que la respuesta contenga el token
-        if (!response.data?.token) {
-          console.error('La respuesta del backend no contiene token:', response.data)
-          throw new Error('El servidor no devolvió un token válido')
-        }
-
-        // Guardar token en localStorage con la clave 'authToken'
-        localStorage.setItem('authToken', response.data.token)
-
-        // Opcional: guardar información adicional del usuario si viene en la respuesta
-        if (response.data.correo) {
-          localStorage.setItem('userEmail', response.data.correo)
-        }
-        if (response.data.username) {
-          localStorage.setItem('username', response.data.username)
-        }
-
-        console.log('Token guardado exitosamente en localStorage')
-
-        this.$q.notify({
-          type: 'positive',
-          message: 'Inicio de sesión exitoso',
-          position: 'bottom',
-          timeout: 1500,
-        })
-
-        // Redirigir al sistema (MainLayout)
-        this.$router.push('/sistema')
-      } catch (error) {
-        console.error('Error en login:', error)
-        console.error('Detalles del error:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          enviado: {
-            usuarioNombre: this.correo,
-            usuarioContrasena: this.password,
-          },
-        })
-        this.$q.notify({
+      if (this.newPassword !== this.confirmPassword) {
+        return this.$q.notify({
           type: 'negative',
-          message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
-          caption: error.response?.data?.errors
-            ? Object.values(error.response.data.errors).flat().join(', ')
-            : '',
+          message: 'Las contraseñas no coinciden.',
           position: 'bottom',
         })
       }
-    },
 
-    async sendResetEmail() {
-      if (!this.resetEmail) {
+      if (this.newPassword.length < 6) {
         return this.$q.notify({
           type: 'warning',
-          message: 'Ingresa un correo válido',
+          message: 'La contraseña debe tener al menos 6 caracteres.',
           position: 'bottom',
         })
       }
 
+      this.loading = true
       try {
-        await this.$api.post('/api/usuario/reset-password-request', {
-          correo: this.resetEmail,
+        await this.$api.post('/api/usuario/activar-cuenta', {
+          Email: this.email,
+          Token: this.token,
+          NuevaPassword: this.newPassword,
         })
 
         this.$q.notify({
           type: 'positive',
-          message: 'Si el correo existe, se envió un enlace',
+          message: '¡Cuenta activada exitosamente!',
           position: 'bottom',
+          timeout: 2000,
         })
 
-        this.showResetDialog = false
-        this.resetEmail = ''
+        // Limpiar campos
+        this.newPassword = ''
+        this.confirmPassword = ''
+
+        // Redirigir al login después de 1.5s
+        setTimeout(() => {
+          this.$router.push('/login')
+        }, 1500)
       } catch (error) {
         this.$q.notify({
           type: 'negative',
-          message: error.response?.data?.message || 'Error al enviar solicitud',
+          message:
+            error.response?.data?.message || 'Error al activar la cuenta. Verifica el enlace.',
           position: 'bottom',
         })
+      } finally {
+        this.loading = false
       }
     },
   },
@@ -248,6 +239,7 @@ export default {
 </script>
 
 <style scoped>
+/* Mismos estilos que ForgotPassword */
 .left-section {
   position: relative;
 }

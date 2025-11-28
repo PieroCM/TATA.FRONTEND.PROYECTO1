@@ -1,216 +1,478 @@
 <template>
-  <q-page padding>
-    <!-- Header -->
-    <div class="q-mb-md">
-      <h4 class="q-my-none text-weight-bold text-primary">Alertas SLA</h4>
-      <div class="text-grey-7">
-        Monitoreo de vencimientos y alertas de incumplimiento de tiempos de atención
+  <q-page class="gestion-alertas-page">
+    <!-- Indicador de Carga Global -->
+    <q-inner-loading :showing="isLoading" class="loading-overlay">
+      <div class="loading-content">
+        <q-spinner-hourglass size="50px" color="primary" />
+        <div class="loading-text q-mt-md">
+          <div class="text-h6 text-weight-bold">{{ mensajeCarga }}</div>
+          <div class="text-caption text-grey-7 q-mt-xs">Por favor espera...</div>
+        </div>
+      </div>
+    </q-inner-loading>
+
+    <!-- Encabezado Principal -->
+    <div class="page-header q-mb-lg">
+      <div class="header-content">
+        <q-icon name="notifications_active" color="primary" size="40px" class="q-mr-md" />
+        <div class="header-text">
+          <h1 class="text-h4 text-weight-bold q-ma-none">Gestión de Alertas SLA</h1>
+          <p class="subtitle text-grey-7 q-ma-none q-mt-xs">
+            Monitoreo y gestión de alertas de vencimiento de solicitudes.
+          </p>
+        </div>
       </div>
     </div>
 
-    <!-- Tabla Principal -->
-    <q-table
-      flat
-      bordered
-      :rows="store.alertas"
-      :columns="columns"
-      row-key="idAlerta"
-      :loading="store.loading"
-      :pagination="pagination"
-      class="alertas-table"
-    >
-      <!-- Columna Solicitud: Formato Sol-{id} -->
-      <template v-slot:body-cell-solicitud="props">
-        <q-td :props="props">
-          <div class="text-weight-bold text-primary">
-            {{ formatSolicitud(props.row.solicitud?.idSolicitud) }}
-          </div>
-        </q-td>
-      </template>
+    <!-- Tarjeta de Filtros Avanzados -->
+    <q-card flat bordered class="filtros-card q-mb-lg">
+      <q-card-section>
+        <div class="card-header q-mb-md">
+          <q-icon name="filter_list" color="primary" size="24px" class="q-mr-sm" />
+          <h2 class="text-h6 text-weight-semibold text-primary q-ma-none">Filtros Avanzados</h2>
+        </div>
 
-      <!-- Columna Rol: Acceso a rolRegistro.nombreRol -->
-      <template v-slot:body-cell-rol="props">
-        <q-td :props="props">
-          {{ props.row.solicitud?.rolRegistro?.nombreRol || 'Sin Asignar' }}
-        </q-td>
-      </template>
-
-      <!-- Columna Tipo SLA: Badge Outline (Azul=SLA1, Verde=SLA2) -->
-      <template v-slot:body-cell-tipoSla="props">
-        <q-td :props="props">
-          <q-badge
-            outline
-            :color="props.row.solicitud?.configSla?.codigoSla === 'SLA1' ? 'primary' : 'positive'"
-            :label="props.row.solicitud?.configSla?.codigoSla || 'N/A'"
-            class="q-px-sm"
-          />
-        </q-td>
-      </template>
-
-      <!-- Columna Fecha Solicitud: Formato DD/MM/YYYY -->
-      <template v-slot:body-cell-fechaSolicitud="props">
-        <q-td :props="props">
-          {{ formatFecha(props.row.solicitud?.fechaSolicitud) }}
-        </q-td>
-      </template>
-
-      <!-- Columna Umbral: Desde configSla.diasUmbral -->
-      <template v-slot:body-cell-umbral="props">
-        <q-td :props="props">
-          <div class="text-center text-weight-medium">
-            {{ props.row.solicitud?.configSla?.diasUmbral || 0 }}
-          </div>
-        </q-td>
-      </template>
-
-      <!-- Columna Días Transcurridos: Cálculo desde fechaSolicitud -->
-      <template v-slot:body-cell-diasTranscurridos="props">
-        <q-td :props="props">
-          <div class="text-center">
-            {{ calcularDiasTranscurridos(props.row.solicitud?.fechaSolicitud) }}
-          </div>
-        </q-td>
-      </template>
-
-      <!-- Columna Días Restantes: Umbral - Transcurridos (Rojo si < 0, Naranja si <= 2) -->
-      <template v-slot:body-cell-diasRestantes="props">
-        <q-td :props="props">
-          <div class="text-center" :class="getColorDiasRestantes(calcularDiasRestantes(props.row))">
-            {{ calcularDiasRestantes(props.row) }}
-          </div>
-        </q-td>
-      </template>
-
-      <!-- Columna Nivel: Chip Outline (Warning=Naranja, Critical=Rojo) -->
-      <template v-slot:body-cell-nivel="props">
-        <q-td :props="props">
-          <q-chip
-            outline
+        <!-- Fila 1: Búsqueda y Acciones Principales -->
+        <div class="filtros-fila-1 q-mb-lg">
+          <!-- Input de Búsqueda (Expandible) -->
+          <q-input
+            outlined
+            v-model="filtros.busqueda"
+            placeholder="Buscar por Solicitud, Mensaje..."
             dense
-            :color="props.row.nivel === 'CRITICAL' ? 'negative' : 'warning'"
-            :text-color="props.row.nivel === 'CRITICAL' ? 'negative' : 'warning'"
-            class="text-capitalize"
+            class="search-input-expandible"
           >
-            {{ props.row.nivel }}
-          </q-chip>
-        </q-td>
-      </template>
+            <template v-slot:prepend>
+              <q-icon name="search" color="grey-6" />
+            </template>
+          </q-input>
 
-      <!-- Columna Estado: Badge simple -->
-      <template v-slot:body-cell-estado="props">
-        <q-td :props="props">
-          <q-badge
-            :color="props.row.estado === 'NUEVA' ? 'blue' : 'grey'"
-            :label="props.row.estado"
-            class="text-capitalize"
-          />
-        </q-td>
-      </template>
-
-      <!-- Columna Mensaje: Texto truncado con ellipsis -->
-      <template v-slot:body-cell-mensaje="props">
-        <q-td :props="props">
-          <div class="mensaje-truncado">
-            {{ props.row.mensaje }}
-          </div>
-        </q-td>
-      </template>
-
-      <!-- Columna Acciones: Botones Ver y Eliminar alineados a la derecha -->
-      <template v-slot:body-cell-acciones="props">
-        <q-td :props="props">
-          <div class="row justify-end q-gutter-xs no-wrap">
+          <!-- Botones de Acción -->
+          <div class="acciones-buttons">
             <q-btn
-              flat
-              round
-              dense
+              unelevated
+              color="grey-8"
+              text-color="white"
+              icon="clear"
+              label="Limpiar Filtros"
+              @click="limpiarFiltros"
+              no-caps
+              class="btn-limpiar-nuevo"
+            />
+            <q-btn
+              outline
               color="primary"
-              icon="visibility"
-              size="sm"
-              @click.stop="verDetalle(props.row)"
-            >
-              <q-tooltip>Ver detalle</q-tooltip>
-            </q-btn>
-            <q-btn
-              flat
-              round
-              dense
-              color="negative"
-              icon="delete"
-              size="sm"
-              @click.stop="confirmarEliminar(props.row)"
-            >
-              <q-tooltip>Eliminar</q-tooltip>
-            </q-btn>
-          </div>
-        </q-td>
-      </template>
-
-      <!-- Paginación Personalizada: "Mostrar [25] por página" -->
-      <template v-slot:bottom="props">
-        <div class="row full-width items-center justify-between q-pa-sm">
-          <!-- Selector de items por página -->
-          <div class="row items-center q-gutter-sm">
-            <span class="text-body2">Mostrar</span>
-            <q-select
-              outlined
-              dense
-              v-model="pagination.rowsPerPage"
-              :options="[10, 25, 50, 100]"
-              style="width: 70px"
-              @update:model-value="props.pagination.rowsPerPage = pagination.rowsPerPage"
-            />
-            <span class="text-body2">por página</span>
-          </div>
-
-          <!-- Controles de paginación -->
-          <div class="row items-center q-gutter-sm">
-            <span class="text-body2">
-              {{ props.pagination.rowsPerPage * (props.pagination.page - 1) + 1 }}-{{
-                Math.min(props.pagination.rowsPerPage * props.pagination.page, store.alertas.length)
-              }}
-              de {{ store.alertas.length }}
-            </span>
-            <q-btn
-              flat
-              round
-              dense
-              icon="chevron_left"
-              :disable="props.isFirstPage"
-              @click="props.prevPage"
-            />
-            <q-btn
-              flat
-              round
-              dense
-              icon="chevron_right"
-              :disable="props.isLastPage"
-              @click="props.nextPage"
+              icon="file_download"
+              label="Exportar"
+              @click="exportarDatos"
+              no-caps
+              class="btn-exportar-nuevo"
             />
           </div>
         </div>
-      </template>
 
-      <!-- Sin datos -->
-      <template v-slot:no-data>
-        <div class="full-width row flex-center text-grey-6 q-py-xl">
-          <q-icon name="notifications_none" size="3em" class="q-mr-md" />
-          <span class="text-subtitle1">No hay alertas registradas</span>
+        <!-- Fila 2: Selectores de Rango y Categoría (Grid 6 columnas) -->
+        <div class="filtros-fila-2">
+          <!-- Mes Inicio -->
+          <q-select
+            outlined
+            v-model="filtros.mesInicio"
+            :options="opcionesMeses"
+            label="Mes Inicio"
+            dense
+            class="filtro-select-nuevo"
+          >
+            <template v-slot:prepend>
+              <q-icon name="event" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Mes Fin -->
+          <q-select
+            outlined
+            v-model="filtros.mesFin"
+            :options="opcionesMeses"
+            label="Mes Fin"
+            dense
+            class="filtro-select-nuevo"
+          >
+            <template v-slot:prepend>
+              <q-icon name="event" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Año Inicio -->
+          <q-select
+            outlined
+            v-model="filtros.anioInicio"
+            :options="opcionesAnios"
+            label="Año Inicio"
+            dense
+            class="filtro-select-nuevo"
+          >
+            <template v-slot:prepend>
+              <q-icon name="calendar_month" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Año Fin -->
+          <q-select
+            outlined
+            v-model="filtros.anioFin"
+            :options="opcionesAnios"
+            label="Año Fin"
+            dense
+            class="filtro-select-nuevo"
+          >
+            <template v-slot:prepend>
+              <q-icon name="calendar_month" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Tipo SLA -->
+          <q-select
+            outlined
+            v-model="filtros.tipoSla"
+            :options="opcionesTipoSla"
+            label="Tipo SLA"
+            dense
+            class="filtro-select-nuevo"
+          >
+            <template v-slot:prepend>
+              <q-icon name="category" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Roles/Áreas -->
+          <q-select
+            outlined
+            v-model="filtros.rolResponsable"
+            :options="opcionesRoles"
+            label="Roles/Áreas"
+            dense
+            class="filtro-select-nuevo"
+          >
+            <template v-slot:prepend>
+              <q-icon name="groups" color="grey-6" size="20px" />
+            </template>
+          </q-select>
         </div>
-      </template>
-    </q-table>
+      </q-card-section>
+    </q-card>
+
+    <!-- Tarjeta de Tabla de Datos -->
+    <q-card flat bordered class="tabla-card">
+      <q-card-section>
+        <div class="tabla-header q-mb-md">
+          <h3 class="text-h6 text-weight-semibold q-ma-none">
+            Alertas Activas ({{ alertasFiltradas.length }})
+          </h3>
+          <q-badge
+            v-if="alertasCriticas > 0"
+            color="orange-2"
+            text-color="orange-9"
+            class="badge-criticas"
+          >
+            {{ alertasCriticas }} Críticas
+          </q-badge>
+        </div>
+
+        <!-- Tabla Principal -->
+        <div class="table-responsive">
+          <q-table
+            flat
+            :rows="alertasFiltradas"
+            :columns="columns"
+            row-key="idAlerta"
+            :loading="isLoading"
+            v-model:pagination="pagination"
+            :rows-per-page-options="[10, 25, 50, 100]"
+            class="alertas-table-custom"
+          >
+            <!-- Columna Solicitud -->
+            <template v-slot:body-cell-solicitud="props">
+              <q-td :props="props">
+                <div class="solicitud-cell">
+                  <div class="text-weight-bold text-primary text-body2">
+                    {{ props.row.codigoSolicitud || 'N/A' }}
+                  </div>
+                  <div class="text-grey-7 text-caption solicitud-descripcion">
+                    {{ props.row.mensaje || 'Sin mensaje' }}
+                  </div>
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Columna Responsable con Avatar -->
+            <template v-slot:body-cell-responsable="props">
+              <q-td :props="props">
+                <div class="responsable-cell">
+                  <q-avatar size="36px" color="primary" text-color="white" class="q-mr-sm">
+                    {{ getIniciales(props.row.nombreResponsable) }}
+                  </q-avatar>
+                  <span class="responsable-nombre">
+                    {{ props.row.nombreResponsable || 'Sin Asignar' }}
+                  </span>
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Columna Rol -->
+            <template v-slot:body-cell-rol="props">
+              <q-td :props="props">
+                <q-badge
+                  color="blue-grey-2"
+                  text-color="blue-grey-8"
+                  :label="props.row.nombreRol || 'Sin Rol'"
+                  class="badge-rol"
+                />
+              </q-td>
+            </template>
+
+            <!-- Columna SLA -->
+            <template v-slot:body-cell-sla="props">
+              <q-td :props="props">
+                <q-badge
+                  outline
+                  color="primary"
+                  :label="props.row.codigoSla || 'N/A'"
+                  class="badge-sla"
+                >
+                  <q-tooltip v-if="props.row.nombreSla">
+                    {{ props.row.nombreSla }}
+                  </q-tooltip>
+                </q-badge>
+              </q-td>
+            </template>
+
+            <!-- Columna Línea de Tiempo -->
+            <template v-slot:body-cell-lineaTiempo="props">
+              <q-td :props="props">
+                <div class="timeline-container">
+                  <!-- Barra de progreso: Limitar visualmente a 100% -->
+                  <q-linear-progress
+                    :value="getProgreso(props.row)"
+                    :color="getColorProgresoFromBackend(props.row)"
+                    size="10px"
+                    rounded
+                    class="q-mb-xs"
+                  />
+                  <!-- Texto: Mostrar porcentaje real (puede ser > 100%) -->
+                  <div class="timeline-info">
+                    <span class="timeline-text text-grey-7">
+                      {{ getPorcentajeProgresoTexto(props.row) }} completado
+                    </span>
+                    <span class="timeline-text text-grey-6">
+                      Umbral: {{ props.row.diasUmbral || 0 }} días
+                    </span>
+                  </div>
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Columna Días Restantes -->
+            <template v-slot:body-cell-diasRestantes="props">
+              <q-td :props="props">
+                <div class="dias-restantes-cell">
+                  <!-- Badge con sistema de semáforos -->
+                  <q-badge
+                    :style="{
+                      backgroundColor: getSlaStatus(props.row).colorBg,
+                      color: getSlaStatus(props.row).colorText,
+                      padding: '8px 16px',
+                      borderRadius: '8px',
+                      fontSize: '13px',
+                      fontWeight: '700',
+                    }"
+                  >
+                    {{ getSlaStatus(props.row).texto }}
+                  </q-badge>
+                  <!-- Número de días (solo si no está vencido) -->
+                  <span v-if="props.row.diasRestantes >= 0" class="dias-numero-detalle text-grey-7">
+                    {{ props.row.diasRestantes }} días restantes
+                  </span>
+                  <span v-else class="dias-numero-detalle text-negative">
+                    {{ Math.abs(props.row.diasRestantes) }} días de retraso
+                  </span>
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Columna Estado -->
+            <template v-slot:body-cell-estado="props">
+              <q-td :props="props">
+                <q-badge
+                  :color="
+                    props.row.estado === 'ACTIVA' || props.row.estado === 'NUEVA'
+                      ? 'red-2'
+                      : 'green-2'
+                  "
+                  :text-color="
+                    props.row.estado === 'ACTIVA' || props.row.estado === 'NUEVA'
+                      ? 'red-9'
+                      : 'green-9'
+                  "
+                  :label="props.row.estado === 'LEIDA' ? 'Leída' : 'Activa'"
+                  class="badge-estado"
+                />
+              </q-td>
+            </template>
+
+            <!-- Columna Acciones -->
+            <template v-slot:body-cell-acciones="props">
+              <q-td :props="props">
+                <div class="acciones-cell">
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="visibility"
+                    color="grey-7"
+                    size="sm"
+                    @click.stop="verDetalle(props.row)"
+                  >
+                    <q-tooltip>Ver</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="email"
+                    color="grey-7"
+                    size="sm"
+                    @click.stop="abrirModalEmail(props.row)"
+                  >
+                    <q-tooltip>Enviar Email</q-tooltip>
+                  </q-btn>
+                  <q-btn
+                    flat
+                    round
+                    dense
+                    icon="delete"
+                    color="grey-7"
+                    size="sm"
+                    @click.stop="eliminarAlerta(props.row.idAlerta)"
+                  >
+                    <q-tooltip>Eliminar</q-tooltip>
+                  </q-btn>
+                </div>
+              </q-td>
+            </template>
+
+            <!-- Sin datos -->
+            <template v-slot:no-data>
+              <div class="empty-state">
+                <q-icon name="notifications_none" size="64px" color="grey-5" />
+                <p class="text-h6 text-grey-6 q-mt-md">No hay alertas que mostrar</p>
+              </div>
+            </template>
+
+            <!-- Paginación personalizada -->
+            <template v-slot:bottom>
+              <div class="pagination-container full-width row justify-between items-center q-pa-md">
+                <div class="pagination-info text-body2 text-grey-7">
+                  Mostrando {{ paginacionInicio }} - {{ paginacionFin }} de
+                  {{ alertasFiltradas.length }} alertas
+                </div>
+                <div class="pagination-controls row items-center q-gutter-sm">
+                  <span class="text-body2 text-grey-7">Filas por página:</span>
+                  <q-select
+                    v-model="pagination.rowsPerPage"
+                    :options="[10, 25, 50, 100]"
+                    dense
+                    outlined
+                    style="width: 80px"
+                    class="rows-per-page-select"
+                  />
+                  <q-pagination
+                    v-model="pagination.page"
+                    :max="paginasTotales"
+                    :max-pages="7"
+                    direction-links
+                    boundary-links
+                    color="primary"
+                    active-color="primary"
+                    class="custom-pagination"
+                  />
+                </div>
+              </div>
+            </template>
+          </q-table>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Modal de Notificación por Email -->
+    <ModalNotificarEmail
+      v-model="modalEmailVisible"
+      :alerta="alertaSeleccionada"
+      @notificacion-enviada="handleNotificacionEnviada"
+    />
   </q-page>
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue'
-import { date, useQuasar } from 'quasar'
-import { useAlertaStore } from 'stores/useAlertaStore'
+import { onMounted, ref, computed } from 'vue'
+import { useQuasar } from 'quasar'
+import { api } from 'boot/axios'
+import ModalNotificarEmail from 'components/Alertas/ModalNotificarEmail.vue'
 
 const $q = useQuasar()
-const store = useAlertaStore()
 
-// Configuración de paginación inicial (25 items como en diseño Figma)
+// Estado local de alertas (ya no usamos store)
+const alertas = ref([])
+const isLoading = ref(false)
+const mensajeCarga = ref('Cargando alertas...')
+
+// Estado de Filtros (vacíos al inicio)
+const filtros = ref({
+  busqueda: '',
+  mesInicio: null,
+  mesFin: null,
+  anioInicio: null,
+  anioFin: null,
+  tipoSla: null,
+  rolResponsable: null,
+})
+
+// Opciones para los selectores
+const opcionesMeses = [
+  'Enero',
+  'Febrero',
+  'Marzo',
+  'Abril',
+  'Mayo',
+  'Junio',
+  'Julio',
+  'Agosto',
+  'Septiembre',
+  'Octubre',
+  'Noviembre',
+  'Diciembre',
+]
+
+const opcionesAnios = ['2023', '2024', '2025', '2026']
+
+const opcionesTipoSla = ['Todos los SLA', 'SLA1', 'SLA2', 'SLA3']
+
+/**
+ * Opciones de roles dinámicas desde las alertas cargadas
+ */
+const opcionesRoles = computed(() => {
+  const roles = new Set()
+  alertas.value.forEach((alerta) => {
+    if (alerta.nombreRol) {
+      roles.add(alerta.nombreRol)
+    }
+  })
+  return ['Todos los roles', ...Array.from(roles).sort()]
+})
+
+// Estado del modal de email
+const modalEmailVisible = ref(false)
+const alertaSeleccionada = ref(null)
+
+// Configuración de paginación inicial
 const pagination = ref({
   sortBy: 'fechaSolicitud',
   descending: true,
@@ -219,13 +481,18 @@ const pagination = ref({
 })
 
 /**
- * Definición EXACTA de columnas según diseño Figma
- * Consume estructura anidada del Backend .NET
+ * Definición de columnas para la tabla
  */
 const columns = [
   {
     name: 'solicitud',
     label: 'Solicitud',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'responsable',
+    label: 'Responsable',
     align: 'left',
     sortable: true,
   },
@@ -236,38 +503,20 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'tipoSla',
-    label: 'Tipo SLA',
+    name: 'sla',
+    label: 'SLA',
     align: 'center',
     sortable: false,
   },
   {
-    name: 'fechaSolicitud',
-    label: 'Fecha Solicitud',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'umbral',
-    label: 'Umbral (días)',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'diasTranscurridos',
-    label: 'Días Transcurridos',
-    align: 'center',
+    name: 'lineaTiempo',
+    label: 'Línea de Tiempo',
+    align: 'left',
     sortable: false,
   },
   {
     name: 'diasRestantes',
     label: 'Días Restantes',
-    align: 'center',
-    sortable: true,
-  },
-  {
-    name: 'nivel',
-    label: 'Nivel',
     align: 'center',
     sortable: true,
   },
@@ -278,90 +527,365 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'mensaje',
-    label: 'Mensaje',
-    align: 'left',
-    sortable: false,
-  },
-  {
     name: 'acciones',
     label: 'Acciones',
-    align: 'right',
+    align: 'center',
   },
 ]
 
 /**
- * Formatea ID de solicitud como Sol-{id}
- * Ejemplo: 102 → Sol-102
+ * Alertas filtradas según criterios
  */
-const formatSolicitud = (id) => {
-  return id ? `Sol-${id}` : 'N/A'
+const alertasFiltradas = computed(() => {
+  let resultado = alertas.value
+
+  // Filtro de búsqueda
+  if (filtros.value.busqueda) {
+    const busqueda = filtros.value.busqueda.toLowerCase()
+    resultado = resultado.filter((alerta) => {
+      const solicitud = (alerta.codigoSolicitud || '').toLowerCase()
+      const mensaje = (alerta.mensaje || '').toLowerCase()
+      const responsable = (alerta.nombreResponsable || '').toLowerCase()
+      return (
+        solicitud.includes(busqueda) || mensaje.includes(busqueda) || responsable.includes(busqueda)
+      )
+    })
+  }
+
+  // Filtro de SLA (solo si está seleccionado) - usar nombreSla o codigoSla
+  if (filtros.value.tipoSla && filtros.value.tipoSla !== 'Todos los SLA') {
+    resultado = resultado.filter(
+      (alerta) =>
+        alerta.nombreSla === filtros.value.tipoSla || alerta.codigoSla === filtros.value.tipoSla,
+    )
+  }
+
+  // Filtro de Rol (solo si está seleccionado)
+  if (filtros.value.rolResponsable && filtros.value.rolResponsable !== 'Todos los roles') {
+    resultado = resultado.filter((alerta) => alerta.nombreRol === filtros.value.rolResponsable)
+  }
+
+  // Filtro por rango de fechas
+  if (filtros.value.mesInicio || filtros.value.anioInicio) {
+    resultado = resultado.filter((alerta) => {
+      if (!alerta.fechaSolicitud) return false
+
+      const fechaSolicitud = new Date(alerta.fechaSolicitud)
+      const mesAlerta = fechaSolicitud.getMonth() // 0-11
+      const anioAlerta = fechaSolicitud.getFullYear()
+
+      // Validar año inicio
+      if (filtros.value.anioInicio) {
+        const anioInicio = parseInt(filtros.value.anioInicio)
+        if (anioAlerta < anioInicio) return false
+      }
+
+      // Validar año fin
+      if (filtros.value.anioFin) {
+        const anioFin = parseInt(filtros.value.anioFin)
+        if (anioAlerta > anioFin) return false
+      }
+
+      // Validar mes inicio
+      if (filtros.value.mesInicio && filtros.value.anioInicio) {
+        const mesInicio = opcionesMeses.indexOf(filtros.value.mesInicio)
+        const anioInicio = parseInt(filtros.value.anioInicio)
+
+        if (anioAlerta === anioInicio && mesAlerta < mesInicio) return false
+      }
+
+      // Validar mes fin
+      if (filtros.value.mesFin && filtros.value.anioFin) {
+        const mesFin = opcionesMeses.indexOf(filtros.value.mesFin)
+        const anioFin = parseInt(filtros.value.anioFin)
+
+        if (anioAlerta === anioFin && mesAlerta > mesFin) return false
+      }
+
+      return true
+    })
+  }
+
+  return resultado
+})
+
+/**
+ * Alertas críticas (días restantes < 0 o <= 2)
+ */
+const alertasCriticas = computed(() => {
+  return alertasFiltradas.value.filter((alerta) => {
+    return alerta.diasRestantes < 0 || alerta.diasRestantes <= 2
+  }).length
+})
+
+/**
+ * Número total de páginas
+ */
+const paginasTotales = computed(() => {
+  return Math.ceil(alertasFiltradas.value.length / pagination.value.rowsPerPage)
+})
+
+/**
+ * Índice de inicio para la paginación
+ */
+const paginacionInicio = computed(() => {
+  return (pagination.value.page - 1) * pagination.value.rowsPerPage + 1
+})
+
+/**
+ * Índice de fin para la paginación
+ */
+const paginacionFin = computed(() => {
+  const fin = pagination.value.page * pagination.value.rowsPerPage
+  return Math.min(fin, alertasFiltradas.value.length)
+})
+
+/**
+ * Obtiene iniciales de un nombre
+ */
+const getIniciales = (nombre) => {
+  if (!nombre) return '?'
+  const palabras = nombre
+    .trim()
+    .split(' ')
+    .filter((p) => p.length > 0)
+  if (palabras.length === 0) return '?'
+  if (palabras.length === 1) return palabras[0].substring(0, 2).toUpperCase()
+  return (palabras[0][0] + palabras[palabras.length - 1][0]).toUpperCase()
 }
 
 /**
- * Formatea fecha en formato DD/MM/YYYY
+ * Sistema de Semáforos: Usa flags del backend (estaVencida, esCritica, colorEstado)
+ * Retorna objeto con: clase CSS, color, texto, y estado
  */
-const formatFecha = (fechaStr) => {
-  if (!fechaStr) return 'N/A'
-  return date.formatDate(fechaStr, 'DD/MM/YYYY')
+const getSlaStatus = (alerta) => {
+  const dias = alerta.diasRestantes ?? 0
+
+  // Priorizar flags del backend si existen
+  if (alerta.estaVencida || dias < 0) {
+    return {
+      clase: 'bg-danger',
+      color: 'negative',
+      colorBg: alerta.colorEstado || '#fee2e2',
+      colorText: '#dc2626',
+      texto: 'VENCIDO',
+      estado: 'vencido',
+    }
+  } else if (alerta.esCritica || dias <= 2) {
+    return {
+      clase: 'bg-warning',
+      color: 'warning',
+      colorBg: alerta.colorEstado || '#fef3c7',
+      colorText: '#d97706',
+      texto: 'Crítico',
+      estado: 'critico',
+    }
+  } else if (dias <= 5) {
+    return {
+      clase: 'bg-orange',
+      color: 'orange',
+      colorBg: '#ffedd5',
+      colorText: '#ea580c',
+      texto: 'Riesgo',
+      estado: 'riesgo',
+    }
+  } else {
+    return {
+      clase: 'bg-success',
+      color: 'positive',
+      colorBg: '#d1fae5',
+      colorText: '#10b981',
+      texto: 'En tiempo',
+      estado: 'normal',
+    }
+  }
 }
 
 /**
- * Calcula días transcurridos desde fechaSolicitud hasta hoy
- * Lógica: Diferencia en días entre new Date() y fechaSolicitud
+ * Obtiene progreso para barra (0-1)
+ * IMPORTANTE: Limita visualmente a 100%
  */
-const calcularDiasTranscurridos = (fechaStr) => {
-  if (!fechaStr) return 0
-  const fechaSolicitud = new Date(fechaStr)
-  const hoy = new Date()
-  const diferenciaMilisegundos = hoy - fechaSolicitud
-  const diasTranscurridos = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24))
-  return diasTranscurridos
+const getProgreso = (alerta) => {
+  const porcentaje = alerta.porcentajeProgreso ?? 0
+  // Limitar a 100% para la barra visual (no romper layout)
+  return Math.min(porcentaje, 100) / 100
 }
 
 /**
- * Calcula días restantes: Umbral - Días Transcurridos
- * CRÍTICO: Este valor determina el color condicional
+ * Obtiene el porcentaje de progreso como número (puede ser > 100%)
  */
-const calcularDiasRestantes = (row) => {
-  const umbral = row.solicitud?.configSla?.diasUmbral || 0
-  const transcurridos = calcularDiasTranscurridos(row.solicitud?.fechaSolicitud)
-  return umbral - transcurridos
+const getPorcentajeProgresoTexto = (alerta) => {
+  const porcentaje = alerta.porcentajeProgreso ?? 0
+  return porcentaje.toFixed(0) + '%'
 }
 
 /**
- * Retorna clases CSS según días restantes
- * < 0: Rojo y negrita (text-negative text-weight-bold)
- * <= 2: Naranja y negrita (text-warning text-weight-bold)
+ * Determina color basado en sistema de semáforos
  */
-const getColorDiasRestantes = (dias) => {
-  if (dias < 0) return 'text-negative text-weight-bold'
-  if (dias <= 2) return 'text-warning text-weight-bold'
-  return 'text-weight-medium'
+const getColorProgresoFromBackend = (alerta) => {
+  const status = getSlaStatus(alerta)
+  return status.color
+}
+
+/**
+ * Limpia todos los filtros
+ */
+const limpiarFiltros = () => {
+  filtros.value = {
+    busqueda: '',
+    mesInicio: null,
+    mesFin: null,
+    anioInicio: null,
+    anioFin: null,
+    tipoSla: null,
+    rolResponsable: null,
+  }
+}
+
+/**
+ * Exporta datos a Excel
+ */
+const exportarDatos = () => {
+  try {
+    // Preparar datos para exportación usando campos del backend
+    const datosExportar = alertasFiltradas.value.map((alerta) => ({
+      Solicitud: alerta.codigoSolicitud || 'N/A',
+      Responsable: alerta.nombreResponsable || 'Sin Asignar',
+      Email: alerta.emailResponsable || 'Sin email',
+      Rol: alerta.nombreRol || 'N/A',
+      SLA: alerta.nombreSla || alerta.codigoSla || 'N/A',
+      'Umbral (días)': alerta.diasUmbral || 0,
+      Nivel: alerta.nivel || 'N/A',
+      'Días Restantes': alerta.diasRestantes ?? 0,
+      'Porcentaje Progreso': (alerta.porcentajeProgreso ?? 0).toFixed(2) + '%',
+      'Estado Alerta': alerta.estado || 'ACTIVA',
+      'Estado Solicitud': alerta.estadoSolicitud || 'N/A',
+      'Estado SLA': alerta.estadoCumplimientoSla || 'N/A',
+      Vencida: alerta.estaVencida ? 'SÍ' : 'NO',
+      Crítica: alerta.esCritica ? 'SÍ' : 'NO',
+      Mensaje: alerta.mensaje || '',
+      'Fecha Solicitud': alerta.fechaSolicitud
+        ? new Date(alerta.fechaSolicitud).toLocaleDateString('es-ES')
+        : 'N/A',
+      'Fecha Ingreso': alerta.fechaIngreso
+        ? new Date(alerta.fechaIngreso).toLocaleDateString('es-ES')
+        : 'N/A',
+    }))
+
+    // Crear CSV
+    const headers = Object.keys(datosExportar[0] || {})
+    const csvContent = [
+      headers.join(','),
+      ...datosExportar.map((row) => headers.map((header) => `"${row[header]}"`).join(',')),
+    ].join('\n')
+
+    // Crear blob y descargar
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const link = document.createElement('a')
+    const url = URL.createObjectURL(blob)
+    const fecha = new Date().toISOString().split('T')[0]
+
+    link.setAttribute('href', url)
+    link.setAttribute('download', `Alertas_SLA_${fecha}.csv`)
+    link.style.visibility = 'hidden'
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    $q.notify({
+      type: 'positive',
+      message: `${datosExportar.length} alertas exportadas exitosamente`,
+      position: 'top-right',
+      icon: 'file_download',
+    })
+  } catch (error) {
+    console.error('Error al exportar:', error)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al exportar datos',
+      position: 'top-right',
+    })
+  }
+}
+
+/**
+ * Abre modal de notificación por email
+ * CRÍTICO: Pre-llena el campo destinatario con emailResponsable
+ */
+const abrirModalEmail = (alerta) => {
+  console.log('📧 Abrir modal email para:', alerta)
+  console.log('📧 codigoSolicitud:', alerta.codigoSolicitud)
+  console.log('📧 emailResponsable:', alerta.emailResponsable)
+  console.log('📧 nombreResponsable:', alerta.nombreResponsable)
+
+  alertaSeleccionada.value = alerta
+  modalEmailVisible.value = true
+
+  console.log('📧 Modal visible:', modalEmailVisible.value)
+  console.log('📧 Alerta seleccionada:', alertaSeleccionada.value)
+}
+
+/**
+ * Maneja evento de notificación enviada
+ */
+const handleNotificacionEnviada = (data) => {
+  console.log('✅ Notificación enviada exitosamente:', data)
+
+  // Recargar datos para reflejar cambios
+  cargarAlertas()
 }
 
 /**
  * Acción Ver Detalle
+ * Si estado === 'ACTIVA', marca como 'LEIDA'
  */
-const verDetalle = (row) => {
-  $q.notify({
-    type: 'info',
-    message: `Ver detalle de alerta ${row.idAlerta}`,
-    position: 'top-right',
+const verDetalle = async (alerta) => {
+  console.log('👁️ Ver detalle:', alerta.codigoSolicitud)
+
+  // Mostrar mensaje en dialog
+  $q.dialog({
+    title: `Detalle: ${alerta.codigoSolicitud}`,
+    message: alerta.mensaje || 'Sin mensaje disponible',
+    html: true,
+    ok: {
+      label: 'Cerrar',
+      color: 'primary',
+    },
   })
-  console.log('Ver detalle:', row)
+
+  // Si es ACTIVA/NUEVA, marcar como LEIDA
+  if (alerta.estado === 'ACTIVA' || alerta.estado === 'NUEVA') {
+    try {
+      console.log('📝 Marcando alerta como LEIDA...')
+      await api.put(`/api/alertas/${alerta.idAlerta}`, {
+        estado: 'LEIDA',
+      })
+
+      // Actualizar localmente
+      alerta.estado = 'LEIDA'
+
+      $q.notify({
+        type: 'positive',
+        message: 'Alerta marcada como leída',
+        position: 'top-right',
+        icon: 'check_circle',
+        timeout: 1500,
+      })
+    } catch (error) {
+      console.error('❌ Error al marcar como leída:', error)
+    }
+  }
 }
 
 /**
  * Acción Eliminar con confirmación
- * Muestra dialog de Quasar con botones personalizados
  */
-const confirmarEliminar = (row) => {
-  console.log('Click en eliminar, row:', row)
+const eliminarAlerta = (idAlerta) => {
+  console.log('🗑️ Solicitud de eliminación, ID:', idAlerta)
 
   $q.dialog({
     title: 'Confirmar eliminación',
-    message: '¿Estás seguro de eliminar esta alerta?',
+    message: '¿Estás seguro de eliminar esta alerta? Esta acción no se puede deshacer.',
     cancel: {
       label: 'Cancelar',
       flat: true,
@@ -370,48 +894,486 @@ const confirmarEliminar = (row) => {
     ok: {
       label: 'Eliminar',
       color: 'negative',
+      icon: 'delete',
     },
     persistent: true,
   })
     .onOk(async () => {
-      console.log('Usuario confirmó eliminación')
+      console.log('✅ Usuario confirmó eliminación')
+
+      // Mostrar loading
+      const loading = $q.loading.show({
+        message: 'Eliminando alerta...',
+      })
+
       try {
-        await store.eliminarAlerta(row.idAlerta)
+        // Llamar al endpoint DELETE - usando /api/alerta/{id} (singular)
+        await api.delete(`/api/alerta/${idAlerta}`)
+
+        // Eliminar del array local para refresco inmediato
+        const index = alertas.value.findIndex((a) => a.idAlerta === idAlerta)
+        if (index !== -1) {
+          alertas.value.splice(index, 1)
+        }
+
         $q.notify({
           type: 'positive',
-          message: 'Alerta eliminada',
+          message: 'Alerta eliminada exitosamente',
           position: 'top-right',
+          icon: 'check_circle',
+          timeout: 2000,
         })
       } catch (error) {
-        console.error('Error al eliminar:', error)
+        console.error('❌ Error al eliminar:', error)
+
         $q.notify({
           type: 'negative',
-          message: 'Error al eliminar',
+          message: error.response?.data?.message || 'Error al eliminar la alerta',
           position: 'top-right',
+          timeout: 3000,
         })
+      } finally {
+        loading()
       }
     })
     .onCancel(() => {
-      console.log('Usuario canceló eliminación')
+      console.log('❌ Usuario canceló eliminación')
     })
+}
+
+/**
+ * Carga inicial de datos: solo dashboard (sync ya corrió en MainLayout/Login)
+ */
+const cargarAlertas = async () => {
+  isLoading.value = true
+  mensajeCarga.value = 'Cargando alertas...'
+
+  try {
+    // Cargar dashboard (datos ya sincronizados en el arranque del sistema)
+    console.log('📊 Cargando dashboard...')
+    const response = await api.get('/api/alertas/dashboard')
+
+    if (response.data && Array.isArray(response.data)) {
+      alertas.value = response.data
+      console.log(`✅ ${alertas.value.length} alertas cargadas`)
+    } else {
+      console.warn('⚠️ Respuesta inválida del backend')
+      alertas.value = []
+    }
+  } catch (error) {
+    console.error('❌ Error al cargar alertas:', error)
+    console.error('Detalles:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.message,
+      url: error.config?.url,
+    })
+
+    $q.notify({
+      type: 'negative',
+      message:
+        error.response?.status === 404
+          ? 'No se encontró el endpoint de alertas'
+          : error.response?.status === 401
+            ? 'No autorizado - verifica tu sesión'
+            : 'Error al cargar las alertas. Verifica que el backend esté corriendo.',
+      position: 'top-right',
+      timeout: 5000,
+      actions: [{ label: 'Cerrar', color: 'white' }],
+    })
+
+    alertas.value = []
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // Cargar alertas al montar el componente
 onMounted(() => {
-  store.fetchAlertas()
+  cargarAlertas()
 })
 </script>
 
 <style scoped>
-.alertas-table {
+.gestion-alertas-page {
+  padding: 24px;
+  background: #f5f7fa;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* ===== INDICADOR DE CARGA ===== */
+.loading-overlay {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loading-text {
+  text-align: center;
+  color: #1976d2;
+}
+
+/* ===== ENCABEZADO PRINCIPAL ===== */
+.page-header {
+  margin-bottom: 24px;
+}
+
+.header-content {
+  display: flex;
+  align-items: center;
+}
+
+.header-text h1 {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.subtitle {
+  color: #64748b;
+  font-size: 14px;
+}
+
+/* ===== TARJETAS ===== */
+.filtros-card,
+.tabla-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+}
+
+/* ===== FILTROS REDISEÑADOS ===== */
+
+/* Fila 1: Búsqueda y Acciones */
+.filtros-fila-1 {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.search-input-expandible {
+  flex: 1;
+}
+
+.search-input-expandible :deep(.q-field__control) {
+  background: white;
+  border: 1px solid #d1d5db;
   border-radius: 8px;
 }
 
-/* Truncar texto del mensaje con ellipsis */
-.mensaje-truncado {
-  max-width: 350px;
+.search-input-expandible :deep(.q-field__native) {
+  color: #374151;
+}
+
+.acciones-buttons {
+  display: flex;
+  gap: 12px;
+}
+
+.btn-limpiar-nuevo {
+  text-transform: none;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0 20px;
+}
+
+.btn-exportar-nuevo {
+  text-transform: none;
+  font-weight: 500;
+  border-radius: 8px;
+  padding: 0 20px;
+  border-width: 2px;
+}
+
+/* Fila 2: Grid de 6 columnas */
+.filtros-fila-2 {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 12px;
+}
+
+.filtro-select-nuevo {
+  min-width: 0;
+}
+
+.filtro-select-nuevo :deep(.q-field__control) {
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  height: 40px;
+}
+
+.filtro-select-nuevo :deep(.q-field__native) {
+  color: #374151;
+  font-size: 14px;
+}
+
+.filtro-select-nuevo :deep(.q-field__label) {
+  color: #6b7280;
+  font-size: 13px;
+}
+
+.filtro-select-nuevo :deep(.q-field__prepend) {
+  padding-right: 8px;
+}
+
+.filtro-select-nuevo :deep(.q-field__control::before) {
+  border: none;
+}
+
+/* ===== FILTROS LEGACY (ELIMINAR SI NO SE USA) ===== */
+.filtros-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-input {
+  flex: 2;
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 150px;
+}
+
+.date-input {
+  flex: 1;
+}
+
+.btn-exportar,
+.btn-limpiar {
+  text-transform: none;
+  font-weight: 500;
   white-space: nowrap;
+}
+
+/* ===== TABLA ===== */
+.tabla-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.badge-criticas {
+  padding: 6px 16px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.table-responsive {
+  overflow-x: auto;
+}
+
+.alertas-table-custom {
+  border-radius: 8px;
+}
+
+.alertas-table-custom :deep(thead tr) {
+  background: #f8fafc;
+}
+
+.alertas-table-custom :deep(th) {
+  font-size: 12px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.alertas-table-custom :deep(tbody tr) {
+  border-bottom: 1px solid #f1f5f9;
+}
+
+.alertas-table-custom :deep(tbody tr:hover) {
+  background: #f8fafc;
+}
+
+/* ===== CELDAS ESPECÍFICAS ===== */
+.solicitud-cell {
+  max-width: 300px;
+}
+
+.solicitud-descripcion {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 280px;
+  display: block;
+  margin-top: 4px;
+}
+
+.responsable-cell {
+  display: flex;
+  align-items: center;
+}
+
+.responsable-nombre {
+  color: #475569;
+  font-size: 13px;
+}
+
+.badge-rol {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.badge-sla {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Línea de Tiempo */
+.timeline-container {
+  min-width: 200px;
+}
+
+.timeline-info {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 6px;
+}
+
+.timeline-text {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+/* Días Restantes */
+.dias-restantes-cell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+
+.dias-numero-detalle {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 4px;
+}
+
+/* ===== PAGINACIÓN ===== */
+.pagination-container {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.pagination-info {
+  font-weight: 500;
+}
+
+.rows-per-page-select :deep(.q-field__control) {
+  height: 36px;
+  min-height: 36px;
+}
+
+.custom-pagination :deep(.q-btn) {
+  min-width: 32px;
+  height: 32px;
+}
+
+/* Clases de semáforo (por si se necesitan globales) */
+.bg-danger {
+  background-color: #fee2e2 !important;
+  color: #dc2626 !important;
+}
+
+.bg-warning {
+  background-color: #fef3c7 !important;
+  color: #d97706 !important;
+}
+
+.bg-orange {
+  background-color: #ffedd5 !important;
+  color: #ea580c !important;
+}
+
+.bg-success {
+  background-color: #d1fae5 !important;
+  color: #10b981 !important;
+}
+
+.dias-umbral {
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+/* Estados */
+.badge-estado {
+  padding: 6px 14px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+/* Acciones */
+.acciones-cell {
+  display: flex;
+  justify-content: center;
+  gap: 4px;
+}
+
+/* Estado vacío */
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+}
+
+/* Responsive */
+@media (max-width: 1400px) {
+  .filtros-fila-2 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+
+@media (max-width: 1200px) {
+  .filtros-fila-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .filtros-fila-1 {
+    flex-direction: column;
+  }
+
+  .search-input-expandible,
+  .acciones-buttons {
+    width: 100%;
+  }
+
+  .acciones-buttons {
+    flex-direction: column;
+  }
+
+  .acciones-buttons .q-btn {
+    width: 100%;
+  }
+
+  .filtros-fila-2 {
+    grid-template-columns: 1fr;
+  }
 }
 </style>
