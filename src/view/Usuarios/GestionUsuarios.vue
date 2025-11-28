@@ -530,8 +530,8 @@ export default {
         )
       }
       if (filtro.value.estado) {
-        // Filtrar por estado del personal (campo 'estado' de la tabla personal)
-        resultado = resultado.filter((u) => u.estado === filtro.value.estado)
+        // Filtrar por estadoCuentaAcceso (el que se muestra en la tabla)
+        resultado = resultado.filter((u) => u.estadoCuentaAcceso === filtro.value.estado)
       }
       if (filtro.value.rol) {
         // Filtrar por nombreRol que viene del campo 'nombre' de la tabla roles_sistema
