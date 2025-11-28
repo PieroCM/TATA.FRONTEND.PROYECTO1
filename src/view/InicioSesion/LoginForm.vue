@@ -160,7 +160,7 @@ export default {
 
       try {
         const response = await this.$api.post('/api/usuario/signin', {
-          correo: this.correo,
+          email: this.correo,
           password: this.password,
         })
 
