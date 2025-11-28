@@ -15,8 +15,10 @@
           </label>
           <q-select
             outlined
-            v-model="filtros.tipoSla"
+            v-model="filtros.sla"
             :options="opcionesTipoSla"
+            option-value="id"
+            option-label="nombre"
             dense
             @update:model-value="emitirFiltros"
           />
@@ -27,6 +29,8 @@
             outlined
             v-model="filtros.rol"
             :options="opcionesRol"
+            option-value="id"
+            option-label="nombre"
             dense
             @update:model-value="emitirFiltros"
           />
@@ -78,10 +82,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed, watch } from 'vue'
 
 // Props
-defineProps({
+const props = defineProps({
   usuarios: {
     type: Array,
     default: () => [],
@@ -91,25 +95,75 @@ defineProps({
 // Emits
 const emit = defineEmits(['eliminar-usuario', 'filtrar'])
 
-// Filtros
+// Filtros (ahora almacenan objetos con id y nombre)
 const filtros = ref({
-  tipoSla: 'Todos',
-  rol: 'Todos',
+  sla: { id: 'Todos', nombre: 'Todos' },
+  rol: { id: 'Todos', nombre: 'Todos' },
 })
 
-// Opciones de filtros
-const opcionesTipoSla = ['Todos', 'SLA1', 'SLA2', 'SLA3']
-const opcionesRol = ['Todos', 'Desarrollador .NET', 'Analista', 'Project Manager', 'QA Tester']
+/**
+ * Opciones de filtros generadas dinámicamente desde usuarios
+ */
+const opcionesTipoSla = computed(() => {
+  const slas = new Set()
+  props.usuarios.forEach((u) => {
+    if (u.sla && u.idSla) {
+      slas.add(JSON.stringify({ id: u.idSla, nombre: u.sla }))
+    }
+  })
+
+  const opciones = [{ id: 'Todos', nombre: 'Todos' }]
+  slas.forEach((slaStr) => {
+    opciones.push(JSON.parse(slaStr))
+  })
+
+  return opciones
+})
+
+const opcionesRol = computed(() => {
+  const roles = new Set()
+  props.usuarios.forEach((u) => {
+    if (u.rol && u.idRol) {
+      roles.add(JSON.stringify({ id: u.idRol, nombre: u.rol }))
+    }
+  })
+
+  const opciones = [{ id: 'Todos', nombre: 'Todos' }]
+  roles.forEach((rolStr) => {
+    opciones.push(JSON.parse(rolStr))
+  })
+
+  return opciones
+})
 
 /**
- * Emite evento de filtrado
+ * Emite evento de filtrado con IDs
  */
 const emitirFiltros = () => {
   emit('filtrar', {
-    tipoSla: filtros.value.tipoSla,
-    rol: filtros.value.rol,
+    idSla: filtros.value.sla.id,
+    nombreSla: filtros.value.sla.nombre,
+    idRol: filtros.value.rol.id,
+    nombreRol: filtros.value.rol.nombre,
   })
 }
+
+// Watch para resetear filtros cuando cambien los usuarios
+watch(
+  () => props.usuarios,
+  () => {
+    // Verificar si los filtros actuales siguen siendo válidos
+    const slaValida = opcionesTipoSla.value.some((opt) => opt.id === filtros.value.sla.id)
+    const rolValida = opcionesRol.value.some((opt) => opt.id === filtros.value.rol.id)
+
+    if (!slaValida) {
+      filtros.value.sla = { id: 'Todos', nombre: 'Todos' }
+    }
+    if (!rolValida) {
+      filtros.value.rol = { id: 'Todos', nombre: 'Todos' }
+    }
+  },
+)
 </script>
 
 <style scoped>

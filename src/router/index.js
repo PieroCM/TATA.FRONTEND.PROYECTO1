@@ -33,5 +33,28 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
 
+  // Guard de navegación para proteger rutas autenticadas
+  Router.beforeEach((to, from, next) => {
+    const token = localStorage.getItem('authToken')
+    const isLoginPage = to.path === '/' || to.path === '/login' || to.path === '/forgot-password'
+
+    // Si intenta acceder a una ruta protegida sin token
+    if (!isLoginPage && !token) {
+      console.warn('🔒 Acceso denegado: No hay sesión activa')
+      next('/')
+      return
+    }
+
+    // Si tiene token e intenta acceder al login, redirigir al dashboard
+    if (isLoginPage && token) {
+      console.log('✅ Sesión activa, redirigiendo al dashboard')
+      next('/sistema/dashboard')
+      return
+    }
+
+    // Permitir la navegación
+    next()
+  })
+
   return Router
 })

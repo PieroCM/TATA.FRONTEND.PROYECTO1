@@ -12,17 +12,6 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      // Log solo en desarrollo para verificar que el token se envía
-      if (process.env.DEV) {
-        console.log(`[Axios] Enviando request a ${config.url} con token`)
-      }
-    } else {
-      // Log solo en desarrollo para advertir cuando no hay token
-      if (process.env.DEV) {
-        console.warn(
-          `[Axios] Request a ${config.url} sin token (puede fallar si requiere autorización)`,
-        )
-      }
     }
 
     return config
@@ -32,18 +21,44 @@ api.interceptors.request.use(
   },
 )
 
-// Interceptor de respuesta para manejo global de errores
+// Interceptor para manejar errores de autenticación y HTTP
 api.interceptors.response.use(
   (response) => {
     // Si la respuesta es exitosa, la retornamos tal cual
     return response
   },
   (error) => {
-    // Manejo de errores HTTP
     const status = error.response?.status
     const message = error.response?.data?.message || error.message
 
-    // Notificación visual de error
+    // --- 401: No autorizado / sesión expirada ---
+    if (status === 401) {
+      Notify.create({
+        type: 'warning',
+        message: 'No autorizado (401)',
+        caption: 'Tu sesión ha expirado o no es válida. Por favor, inicia sesión nuevamente.',
+        position: 'top-right',
+        timeout: 3000,
+        actions: [{ icon: 'close', color: 'white' }],
+      })
+
+      // Token inválido o expirado - limpiar todo lo relevante
+      localStorage.removeItem('token')
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('usuario')
+      localStorage.removeItem('userEmail')
+      localStorage.removeItem('username')
+
+      // Solo redirigir si no estamos ya en la pantalla de login
+      const currentPath = window.location.pathname
+      if (!currentPath.includes('/login')) {
+        window.location.href = '/login'
+      }
+
+      return Promise.reject(error)
+    }
+
+    // --- 404: Recurso no encontrado ---
     if (status === 404) {
       Notify.create({
         type: 'negative',
@@ -53,7 +68,9 @@ api.interceptors.response.use(
         timeout: 3000,
         actions: [{ icon: 'close', color: 'white' }],
       })
-    } else if (status === 500) {
+    }
+    // --- 500: Error interno del servidor ---
+    else if (status === 500) {
       Notify.create({
         type: 'negative',
         message: 'Error interno del servidor (500)',
@@ -62,21 +79,9 @@ api.interceptors.response.use(
         timeout: 4000,
         actions: [{ icon: 'close', color: 'white' }],
       })
-    } else if (status === 401) {
-      Notify.create({
-        type: 'warning',
-        message: 'No autorizado (401)',
-        caption: 'Por favor, inicie sesión nuevamente',
-        position: 'top-right',
-        timeout: 3000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
-      // Token inválido o expirado - limpiar y redirigir al login
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userEmail')
-      localStorage.removeItem('username')
-      window.location.href = '/login'
-    } else if (status === 403) {
+    }
+    // --- 403: Acceso denegado ---
+    else if (status === 403) {
       Notify.create({
         type: 'warning',
         message: 'Acceso denegado (403)',
@@ -85,16 +90,21 @@ api.interceptors.response.use(
         timeout: 3000,
         actions: [{ icon: 'close', color: 'white' }],
       })
-    } else if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
+    }
+    // --- Errores de red / backend caído ---
+    else if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
       Notify.create({
         type: 'negative',
         message: 'Error de conexión',
-        caption: 'No se pudo conectar con el servidor. Verifique que el backend esté ejecutándose.',
+        caption:
+          'No se pudo conectar con el servidor. Verifique que el backend esté ejecutándose.',
         position: 'top-right',
         timeout: 5000,
         actions: [{ icon: 'close', color: 'white' }],
       })
-    } else if (status >= 400) {
+    }
+    // --- Otros errores 4xx/5xx genéricos ---
+    else if (status && status >= 400) {
       Notify.create({
         type: 'negative',
         message: `Error ${status}`,

@@ -56,11 +56,6 @@ const routes = [
         name: 'LogView',
         component: () => import('src/view/Sistemas/logView.vue'),
       },
-
-      {
-        path: '/reportes/sla-historial',
-        component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
-      },
       {
         path: 'usuario',
         name: 'usuario-perfil',
@@ -88,7 +83,7 @@ const routes = [
     ],
   },
 
-  // Always leave this as last one
+  // Siempre dejar esta al final
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

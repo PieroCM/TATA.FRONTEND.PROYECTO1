@@ -8,7 +8,7 @@
             <q-icon name="email" color="primary" size="28px" />
             <div>
               <div class="text-h6 text-weight-bold">
-                Notificar a Responsable - {{ formatSolicitud(alerta?.solicitud?.idSolicitud) }}
+                Notificar a Responsable - {{ alerta?.codigoSolicitud || 'N/A' }}
               </div>
               <div class="text-caption text-grey-7">
                 Envía una notificación personalizada al responsable de la solicitud.
@@ -49,7 +49,7 @@
 
           <!-- Campo Destinatarios -->
           <div>
-            <label class="text-weight-bold text-body2 q-mb-xs block"> Destinatarios </label>
+            <label class="text-weight-bold text-body2 q-mb-xs block"> Destinatario </label>
             <q-input
               outlined
               v-model="formulario.destinatarios"
@@ -59,21 +59,6 @@
             >
               <template v-slot:prepend>
                 <q-icon name="person" />
-              </template>
-            </q-input>
-          </div>
-
-          <!-- Campo CC -->
-          <div>
-            <label class="text-weight-bold text-body2 q-mb-xs block"> CC (Copia a jefes) </label>
-            <q-input
-              outlined
-              v-model="formulario.cc"
-              placeholder="jefe@empresa.com, gerente@empresa.com"
-              dense
-            >
-              <template v-slot:prepend>
-                <q-icon name="group" />
               </template>
             </q-input>
           </div>
@@ -104,20 +89,21 @@
             <div class="row q-gutter-md">
               <div class="col-12">
                 <span class="text-weight-medium">ID:</span>
-                <span class="q-ml-xs">{{ formatSolicitud(alerta?.solicitud?.idSolicitud) }}</span>
+                <span class="q-ml-xs">{{ alerta?.codigoSolicitud || 'N/A' }}</span>
                 <span class="q-mx-sm">|</span>
                 <span class="text-weight-medium">Responsable:</span>
-                <span class="q-ml-xs">{{
-                  alerta?.solicitud?.rolRegistro?.nombreRol || 'Sin Asignar'
-                }}</span>
+                <span class="q-ml-xs">{{ alerta?.nombreResponsable || 'Sin Asignar' }}</span>
               </div>
               <div class="col-12">
+                <span class="text-weight-medium">Rol:</span>
+                <span class="q-ml-xs">{{ alerta?.nombreRol || 'N/A' }}</span>
+                <span class="q-mx-sm">|</span>
                 <span class="text-weight-medium">Días restantes:</span>
                 <span
                   class="q-ml-xs text-weight-bold"
-                  :class="getColorDiasRestantes(diasRestantes)"
+                  :class="getColorDiasRestantes(alerta?.diasRestantes ?? 0)"
                 >
-                  {{ diasRestantes }}
+                  {{ alerta?.diasRestantes ?? 0 }}
                 </span>
               </div>
             </div>
@@ -175,34 +161,11 @@ const isOpen = computed({
 // Formulario
 const formulario = ref({
   destinatarios: '',
-  cc: '',
   asunto: '',
   mensaje: '',
   remitenteEmail: '', // Email del usuario logueado
   remitenteNombre: '', // Nombre del usuario logueado
 })
-
-/**
- * Calcula días restantes
- */
-const diasRestantes = computed(() => {
-  if (!props.alerta?.solicitud) return 0
-
-  const umbral = props.alerta.solicitud.configSla?.diasUmbral || 0
-  const fechaSolicitud = new Date(props.alerta.solicitud.fechaSolicitud)
-  const hoy = new Date()
-  const diferenciaMilisegundos = hoy - fechaSolicitud
-  const diasTranscurridos = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24))
-
-  return umbral - diasTranscurridos
-})
-
-/**
- * Formatea ID de solicitud
- */
-const formatSolicitud = (id) => {
-  return id ? `Sol-${id}` : 'N/A'
-}
 
 /**
  * Retorna clase de color según días restantes
@@ -219,31 +182,41 @@ const getColorDiasRestantes = (dias) => {
 watch(
   () => props.alerta,
   (newAlerta) => {
+    console.log('👀 Watch alerta triggered:', newAlerta)
+
     if (newAlerta) {
+      console.log('📝 Inicializando formulario con:', {
+        codigoSolicitud: newAlerta.codigoSolicitud,
+        emailResponsable: newAlerta.emailResponsable,
+        nombreResponsable: newAlerta.nombreResponsable,
+        diasRestantes: newAlerta.diasRestantes,
+      })
+
       // Cargar email del usuario logueado
       formulario.value.remitenteEmail = authStore.userEmail || 'sistema@empresa.com'
       formulario.value.remitenteNombre = authStore.userName || 'Sistema SLA'
 
-      // Rellenar destinatarios (email del responsable)
-      formulario.value.destinatarios =
-        newAlerta.solicitud?.rolRegistro?.email || 'responsable@empresa.com'
+      // Rellenar destinatarios con emailResponsable del backend (CRÍTICO)
+      formulario.value.destinatarios = newAlerta.emailResponsable || 'responsable@empresa.com'
 
-      // Pre-llenar asunto
-      formulario.value.asunto = `Alerta de Vencimiento: Solicitud ${formatSolicitud(newAlerta.solicitud?.idSolicitud)}`
+      // Pre-llenar asunto con codigoSolicitud del backend
+      formulario.value.asunto = `Alerta de Vencimiento: Solicitud ${newAlerta.codigoSolicitud || 'N/A'}`
 
-      // Pre-llenar mensaje
-      const dias = diasRestantes.value
+      // Pre-llenar mensaje usando diasRestantes del backend
+      const dias = newAlerta.diasRestantes ?? 0
       const estadoDias = dias < 0 ? `venció hace ${Math.abs(dias)} días` : `vencerá en ${dias} días`
 
       formulario.value.mensaje = `Hola,
 
-La solicitud ${formatSolicitud(newAlerta.solicitud?.idSolicitud)} ${estadoDias}.
+La solicitud ${newAlerta.codigoSolicitud || 'N/A'} ${estadoDias}.
 
 Por favor revisar con urgencia.
 
 Saludos,
 ${formulario.value.remitenteNombre}
 ${formulario.value.remitenteEmail}`
+
+      console.log('✅ Formulario inicializado:', formulario.value)
     }
   },
   { immediate: true },
@@ -252,7 +225,7 @@ ${formulario.value.remitenteEmail}`
 /**
  * Envía la notificación
  */
-const enviarNotificacion = () => {
+const enviarNotificacion = async () => {
   // Validación básica
   if (!formulario.value.destinatarios) {
     $q.notify({
@@ -281,29 +254,78 @@ const enviarNotificacion = () => {
     return
   }
 
-  // Aquí iría la llamada al API para enviar el email
-  console.log('Enviando notificación:', {
-    idAlerta: props.alerta?.idAlerta,
-    idSolicitud: props.alerta?.solicitud?.idSolicitud,
-    ...formulario.value,
+  // Mostrar loading
+  const loading = $q.loading.show({
+    message: 'Enviando notificación...',
   })
 
-  // Simular envío exitoso
-  $q.notify({
-    type: 'positive',
-    message: 'Notificación enviada correctamente',
-    position: 'top-right',
-    icon: 'check_circle',
-  })
+  try {
+    // Importar api dinámicamente
+    const { api } = await import('boot/axios')
 
-  // Emitir evento de éxito
-  emit('notificacionEnviada', {
-    idAlerta: props.alerta?.idAlerta,
-    ...formulario.value,
-  })
+    // Convertir mensaje de texto plano a HTML básico
+    const cuerpoHtml = `
+      <div style="font-family: Arial, sans-serif; padding: 20px;">
+        <h3>Notificación de Alerta</h3>
+        <p>${formulario.value.mensaje.replace(/\n/g, '<br>')}</p>
+        <hr style="margin: 20px 0;">
+        <div style="background-color: #f3f4f6; padding: 15px; border-radius: 8px;">
+          <h4 style="margin-top: 0;">Información de la solicitud:</h4>
+          <p><strong>ID:</strong> ${props.alerta?.codigoSolicitud || 'N/A'}</p>
+          <p><strong>Responsable:</strong> ${props.alerta?.nombreResponsable || 'Sin Asignar'}</p>
+          <p><strong>Rol:</strong> ${props.alerta?.nombreRol || 'N/A'}</p>
+          <p><strong>Días restantes:</strong> ${props.alerta?.diasRestantes ?? 0}</p>
+        </div>
+        <br>
+        <p style="color: #6b7280; font-size: 12px;">
+          Enviado por: ${formulario.value.remitenteNombre} (${formulario.value.remitenteEmail})
+        </p>
+      </div>
+    `
 
-  // Cerrar modal
-  isOpen.value = false
+    // Preparar payload según estructura del backend
+    const payload = {
+      destinatario: formulario.value.destinatarios.trim(),
+      asunto: formulario.value.asunto,
+      cuerpoHtml: cuerpoHtml,
+    }
+
+    console.log('📧 Enviando notificación con payload:', payload)
+
+    // Llamar al endpoint de email
+    const response = await api.post('/api/email/notify', payload)
+
+    console.log('✅ Respuesta del backend:', response.data)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Notificación enviada correctamente',
+      position: 'top-right',
+      icon: 'check_circle',
+      timeout: 2000,
+    })
+
+    // Emitir evento de éxito
+    emit('notificacionEnviada', {
+      idAlerta: props.alerta?.idAlerta,
+      destinatario: formulario.value.destinatarios,
+      asunto: formulario.value.asunto,
+    })
+
+    // Cerrar modal
+    isOpen.value = false
+  } catch (error) {
+    console.error('❌ Error al enviar notificación:', error)
+
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Error al enviar la notificación',
+      position: 'top-right',
+      timeout: 3000,
+    })
+  } finally {
+    loading()
+  }
 }
 </script>
 
