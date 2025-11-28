@@ -296,39 +296,72 @@ const mostrarDialogPassword = () => {
 
 const guardarNuevaPassword = async ({ currentPassword, newPassword }) => {
   try {
+    console.log('🔄 Iniciando cambio de contraseña...')
+
+    // Obtener el correo del usuario para el cambio de contraseña
+    const emailUsuario = usuario.value.correo || usuario.value.personal.correo_corporativo
+    console.log('📧 Email del usuario:', emailUsuario)
+
+    // Cambiar contraseña en el backend
     await usuarioService.changePassword({
-      correo: usuario.value.correo || usuario.value.personal.correo_corporativo,
+      email: emailUsuario,
       passwordActual: currentPassword,
-      passwordNuevo: newPassword,
+      nuevaPassword: newPassword,
     })
 
+    console.log('✅ Contraseña actualizada en el backend')
+
     // Registrar alerta
-    await usuarioService.createAlerta({
-      id_solicitud: null,
-      tipo_alerta: 'SEGURIDAD',
-      nivel: 'WARNING',
-      mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
-      estado: 'PENDIENTE',
-      enviado_email: true,
-    })
+    try {
+      await usuarioService.createAlerta({
+        id_solicitud: null,
+        tipo_alerta: 'SEGURIDAD',
+        nivel: 'WARNING',
+        mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
+        estado: 'PENDIENTE',
+        enviado_email: true,
+      })
+      console.log('✅ Alerta de seguridad registrada')
+    } catch (alertError) {
+      console.warn('⚠️ No se pudo registrar la alerta de seguridad:', alertError)
+      // Continuar aunque falle la alerta
+    }
 
     $q.notify({
       type: 'positive',
-      message: 'Contraseña actualizada. Por favor inicia sesión nuevamente',
+      message: 'Contraseña actualizada exitosamente. Redirigiendo al inicio de sesión...',
       position: 'top',
-      timeout: 2000,
+      timeout: 2500,
     })
 
     dialogCambiarPassword.value = false
 
-    // Redirigir al login después de 2 segundos
+    // Redirigir al login después de 2.5 segundos
+    console.log('🔄 Redirigiendo al login...')
     setTimeout(() => {
+      // Limpiar localStorage
       localStorage.removeItem('user')
-      localStorage.removeItem('token')
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('userEmail')
+      localStorage.removeItem('username')
+
+      // Redirigir al login
       router.push('/login')
-    }, 2000)
+    }, 2500)
   } catch (err) {
-    console.error('Error cambiando contraseña:', err)
+    console.error('❌ Error en guardarNuevaPassword:', err)
+
+    // Mostrar mensaje de error específico
+    const errorMessage =
+      err.response?.data?.message || err.message || 'Error al cambiar la contraseña'
+
+    $q.notify({
+      type: 'negative',
+      message: errorMessage,
+      position: 'top',
+      timeout: 3000,
+    })
+
     throw err // Para que el dialog maneje el error
   }
 }

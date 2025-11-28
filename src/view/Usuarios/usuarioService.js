@@ -90,15 +90,28 @@ const usuarioService = {
 
   /**
    * Cambia la contraseña del usuario
-   * @param {object} payload - { correo, passwordActual, passwordNuevo }
+   * @param {object} payload - { email, passwordActual, nuevaPassword }
    * @returns {Promise} Respuesta del servidor
    */
   async changePassword(payload) {
     try {
-      const response = await api.put('/api/Usuario/cambiar-password', payload)
+      console.log('🔍 Cambiando contraseña para:', payload.email)
+      console.log('📤 Payload enviado:', {
+        Email: payload.email,
+        PasswordActual: '***',
+        NuevaPassword: '***',
+      })
+
+      const response = await api.put('/api/Usuario/cambiar-password', {
+        Email: payload.email, // Backend espera 'Email' con mayúscula
+        PasswordActual: payload.passwordActual, // Backend espera 'PasswordActual'
+        NuevaPassword: payload.nuevaPassword, // Backend espera 'NuevaPassword'
+      })
+
+      console.log('✅ Contraseña cambiada exitosamente')
       return response.data
     } catch (error) {
-      console.error('Error cambiando contraseña:', error)
+      console.error('❌ Error cambiando contraseña:', error.response?.data)
       throw error
     }
   },
