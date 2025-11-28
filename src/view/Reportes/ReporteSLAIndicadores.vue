@@ -235,10 +235,37 @@
                     <div class="legend-color" style="background-color: #f60008"></div>
                     <span>SLA Incumplido (&lt;100%)</span>
                   </div>
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #9e9e9e"></div>
+                    <span>Sin recursos (NA)</span>
+                  </div>
                 </div>
 
                 <div class="chart-wrapper" style="position: relative; width: 100%; height: 500px">
                   <canvas ref="chartCanvasRef" data-chart="sla" style="display: block"></canvas>
+                </div>
+
+                <!-- Gráfico de torta (Resumen) -->
+                <div class="q-mt-lg">
+                  <div class="text-subtitle1 text-weight-medium q-mb-sm">Resumen del Reporte</div>
+                  <div
+                    class="chart-wrapper"
+                    style="
+                      position: relative;
+                      width: 100%;
+                      max-width: 480px;
+                      height: 260px;
+                      margin: 0 auto;
+                    "
+                  >
+                    <canvas ref="pieCanvasRef" data-chart="resumen" style="display: block"></canvas>
+                  </div>
+                  <div class="text-center text-body2 q-mt-sm">
+                    Total recursos: <b>{{ resumen.totalRecursos }}</b> | SLA promedio:
+                    <b>{{ resumen.promedioSla }}%</b> | Roles incluidos:
+                    <b>{{ resumen.rolesIncluidos }}</b> | Sin recursos (NA):
+                    <b>{{ conteoRolesNA }}</b>
+                  </div>
                 </div>
               </div>
             </div>
@@ -405,6 +432,8 @@ const solicitudesFiltradas = ref([]) // para exportar (ids)
 // Chart
 const chartCanvasRef = ref(null)
 let chartInstance = null
+const pieCanvasRef = ref(null)
+let pieChartInstance = null
 
 // Para PDF
 const reporteRef = ref(null)
@@ -520,6 +549,9 @@ const tituloReporte = computed(() => {
 
   return `Reporte Indicadores ${codigo} - ${mes}-${anio}`
 })
+
+// Conteo de roles en estado NA (sin recursos)
+const conteoRolesNA = computed(() => filasTabla.value.filter((f) => f.sla === 'NA').length)
 
 // Auxiliares
 const getMesNumero = (nombreMes) => {
@@ -697,8 +729,38 @@ const verReporte = async () => {
       solicitudes = solicitudes.filter((s) => rolesIds.includes(s.idRolRegistro))
     }
 
-    // Estados SLA válidos a considerar
-    const estadosSlaValidos = ['CUMPLE SLA1', 'NO CUMPLE SLA1', 'CUMPLE SLA2', 'NO CUMPLE SLA2']
+    // Estados SLA válidos a considerar (soporta formatos con y sin guión bajo y diferentes números)
+    let estadosSlaValidos = []
+    if (filtros.value.codigoSla) {
+      // Intentar extraer el número del código SLA (e.g., SLA4 -> 4)
+      const match = String(filtros.value.codigoSla).match(/SLA(\d+)/i)
+      const n = match ? match[1] : ''
+      estadosSlaValidos = [
+        `CUMPLE SLA${n}`,
+        `NO CUMPLE SLA${n}`,
+        `CUMPLE_SLA${n}`,
+        `NO_CUMPLE_SLA${n}`,
+      ]
+    } else {
+      // Si no hay código SLA seleccionado, derivar los números desde ConfigSla
+      const nums = Array.from(
+        new Set(
+          (configsSla || [])
+            .map((c) => String(c.codigoSla || ''))
+            .map((code) => {
+              const m = code.match(/SLA(\d+)/i)
+              return m ? m[1] : null
+            })
+            .filter((x) => x),
+        ),
+      )
+      estadosSlaValidos = nums.flatMap((n) => [
+        `CUMPLE SLA${n}`,
+        `NO CUMPLE SLA${n}`,
+        `CUMPLE_SLA${n}`,
+        `NO_CUMPLE_SLA${n}`,
+      ])
+    }
 
     // Filtrar solicitudes que tengan un estado SLA válido
     const solicitudesConEstadoValido = solicitudes.filter(
@@ -721,7 +783,7 @@ const verReporte = async () => {
       const cumplen = solicitudesRol.filter(
         (s) =>
           s.estadoCumplimientoSla &&
-          (s.estadoCumplimientoSla === 'CUMPLE SLA1' || s.estadoCumplimientoSla === 'CUMPLE SLA2'),
+          /^(CUMPLE SLA\d+|CUMPLE_SLA\d+)$/i.test(s.estadoCumplimientoSla),
       ).length
 
       let sla
@@ -788,6 +850,7 @@ const verReporte = async () => {
     await nextTick()
     try {
       crearGrafico()
+      crearGraficoResumen()
     } catch (graficoError) {
       console.error('Error al crear el gráfico:', graficoError)
     }
@@ -960,6 +1023,67 @@ const crearGrafico = () => {
   } catch (error) {
     console.error('Error en crearGrafico:', error)
     throw error
+  }
+}
+
+const crearGraficoResumen = () => {
+  try {
+    const canvasElement = document.querySelector('canvas[data-chart="resumen"]')
+    if (!canvasElement) return
+
+    if (pieChartInstance) {
+      pieChartInstance.destroy()
+    }
+
+    const ctx = canvasElement.getContext('2d')
+
+    const promedio = typeof resumen.value.promedioSla === 'number' ? resumen.value.promedioSla : 0
+    const cumple = Math.max(0, Math.min(100, parseFloat(promedio.toFixed(2))))
+    const noCumple = parseFloat((100 - cumple).toFixed(2))
+
+    pieChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['SLA promedio (cumple)', 'Resto hasta 100%'],
+        datasets: [
+          {
+            data: [cumple, noCumple],
+            backgroundColor: ['#21ba45', '#f60008'],
+            borderColor: ['#21ba45', '#f60008'],
+            borderWidth: 2,
+            hoverBackgroundColor: ['#21ba45', '#f60008'],
+            hoverBorderColor: ['#21ba45', '#f60008'],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const value = context.parsed
+                const label = context.label || ''
+                return `${label}: ${value}%`
+              },
+            },
+          },
+          datalabels: {
+            color: '#333',
+            font: { weight: 'bold', size: 12 },
+            formatter: (value) => `${Math.round(value)}%`,
+          },
+        },
+      },
+    })
+  } catch (error) {
+    console.error('Error en crearGraficoResumen:', error)
   }
 }
 
@@ -1226,6 +1350,10 @@ const exportarPdf = async () => {
       pdf.setFillColor(246, 0, 8)
       pdf.rect(85, currentY, 3, 3, 'F')
       pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
+      // Gris para NA
+      pdf.setFillColor(158, 158, 158)
+      pdf.rect(165, currentY, 3, 3, 'F')
+      pdf.text('Sin recursos (NA)', 170, currentY + 2)
       currentY += 6
 
       // Añadir gráfico
@@ -1427,6 +1555,9 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   if (chartInstance) {
     chartInstance.destroy()
+  }
+  if (pieChartInstance) {
+    pieChartInstance.destroy()
   }
 })
 </script>
