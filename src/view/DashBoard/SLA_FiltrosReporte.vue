@@ -454,43 +454,6 @@ const getChipColor = (porcentaje) => {
   return 'negative'
 }
 
-const exportarDashboard = () => {
-  if (!hayDatos.value) return
-
-  // Preparar datos para exportar
-  const lineas = []
-  lineas.push(`Dashboard Ejecutivo SLA - ${filtros.value.mes} ${filtros.value.anio}\n`)
-  lineas.push(`SLA Global Mensual: ${kpis.value.slaGlobal}%\n`)
-  lineas.push(`Variación vs Mes Anterior: ${kpis.value.variacion}%\n`)
-  lineas.push(`Mejor Rol: ${kpis.value.mejorRol.nombre} (${kpis.value.mejorRol.porcentaje}%)\n`)
-  lineas.push(`Atención Requerida: ${kpis.value.atencionRequerida.nombre} (${kpis.value.atencionRequerida.porcentaje}%)\n\n`)
-
-  tiposSlaDisponibles.value.forEach(tipoSla => {
-    const datos = datosPorTipo.value[tipoSla]
-    if (datos && datos.total > 0) {
-      lineas.push(`\n${tipoSla}\n`)
-      lineas.push(`SLA: ${datos.umbral}%, Umbral: ${datos.dias} días, Total: ${datos.total} solicitudes\n`)
-      lineas.push(`Rol,Porcentaje,Cumplidos,Total\n`)
-      datos.roles.forEach(rol => {
-        lineas.push(`${rol.nombre},${rol.porcentaje}%,${rol.cumplidos},${rol.total}\n`)
-      })
-    }
-  })
-
-  const blob = new Blob(lineas, { type: 'text/plain' })
-  const url = window.URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = `Dashboard_SLA_${filtros.value.mes}_${filtros.value.anio}.txt`
-  a.click()
-
-  $q.notify({
-    type: 'positive',
-    message: 'Dashboard exportado correctamente',
-    position: 'top-right',
-  })
-}
-
 const cargarConfiguracionesIniciales = async () => {
   try {
     const [solicitudes, roles, configSla] = await Promise.all([
