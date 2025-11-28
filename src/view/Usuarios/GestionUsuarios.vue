@@ -404,12 +404,101 @@
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- Dialog para Crear Cuenta de Usuario (Personal Existente) -->
+    <q-dialog v-model="dialogCrearCuenta" persistent>
+      <q-card style="width: 500px; max-width: 90vw">
+        <q-card-section class="row items-center q-pb-none">
+          <div class="text-h6 text-weight-bold text-primary">Crear Cuenta de Usuario</div>
+          <q-space />
+          <q-btn icon="close" flat round dense v-close-popup />
+        </q-card-section>
+
+        <q-card-section v-if="personalParaCuenta">
+          <!-- Información del Personal -->
+          <div class="q-mb-lg">
+            <div class="text-body1 q-mb-xs">Se creará una cuenta de acceso al sistema para:</div>
+            <div class="text-h6 text-weight-bold text-grey-8 q-mb-sm">
+              {{ personalParaCuenta.nombres }} {{ personalParaCuenta.apellidos }}
+            </div>
+            <div class="text-caption text-grey-7">
+              <q-icon name="email" size="16px" class="q-mr-xs" />
+              Se enviará un correo a: {{ personalParaCuenta.correoCorporativo }}
+            </div>
+          </div>
+
+          <q-separator class="q-mb-md" />
+
+          <!-- Banner Informativo -->
+          <q-banner class="bg-info text-white q-mb-md" rounded dense>
+            <template #avatar>
+              <q-icon name="info" color="white" />
+            </template>
+            <strong>Seguridad:</strong> Se enviará un correo de activación con un enlace válido por
+            24 horas para que establezca su contraseña.
+          </q-banner>
+
+          <!-- Formulario -->
+          <div class="bg-blue-1 q-pa-md rounded-borders">
+            <div class="text-subtitle1 text-weight-bold text-primary q-mb-md">
+              <q-icon name="lock" class="q-mr-xs" />
+              Datos de la Cuenta
+            </div>
+
+            <!-- Username -->
+            <q-input
+              v-model="cuentaForm.username"
+              label="Nombre de usuario (username) *"
+              outlined
+              dense
+              class="q-mb-md bg-white"
+              hint="Identificador único para iniciar sesión. Ejemplo: jperez"
+              :rules="[(val) => !!val || 'El username es obligatorio']"
+            >
+              <template #prepend>
+                <q-icon name="account_circle" />
+              </template>
+            </q-input>
+
+            <!-- Rol del Sistema -->
+            <q-select
+              v-model="cuentaForm.idRolSistema"
+              label="Rol del Sistema *"
+              outlined
+              dense
+              :options="rolesOptions"
+              emit-value
+              map-options
+              class="bg-white"
+              hint="Define los permisos del usuario"
+              :rules="[(val) => !!val || 'El rol es obligatorio']"
+            >
+              <template #prepend>
+                <q-icon name="admin_panel_settings" />
+              </template>
+            </q-select>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right" class="q-pa-md">
+          <q-btn label="Cancelar" flat color="grey" v-close-popup />
+          <q-btn
+            label="Crear y Enviar Correo"
+            color="primary"
+            unelevated
+            icon="mark_email_read"
+            @click="confirmarCrearCuenta"
+            :loading="loadingCrearCuenta"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </q-page>
 </template>
 
 <script>
 import { useUsuarioStore } from 'src/stores/useUsuarioStore'
-import { usuarioService } from 'src/services/usuarioService'
+import axios from 'axios'
 import { computed, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 
@@ -427,6 +516,15 @@ export default {
     const modoEdicion = ref(false)
     const usuarioSeleccionado = ref(null)
     const filtro = ref({ busqueda: '', estado: null, rol: null })
+
+    // Variables para el modal de crear cuenta para personal existente
+    const dialogCrearCuenta = ref(false)
+    const personalParaCuenta = ref(null)
+    const cuentaForm = ref({
+      username: '',
+      idRolSistema: 3, // Por defecto: GESTOR_ALERTA
+    })
+    const loadingCrearCuenta = ref(false)
     const formUsuario = ref({
       username: '',
       nombres: '',
@@ -771,83 +869,93 @@ export default {
         return
       }
 
-      // Mostrar diálogo de confirmación con inputs
-      $q.dialog({
-        title: 'Crear Cuenta de Usuario',
-        message: `<p>Se creará una cuenta de acceso al sistema para:</p><p><strong>${personal.nombres} ${personal.apellidos}</strong></p><p class="text-caption text-grey-7">Se enviará un correo a: ${personal.correoCorporativo}</p>`,
-        html: true,
-        prompt: {
-          model: '',
-          type: 'text',
-          label: 'Nombre de usuario *',
-          outlined: true,
-          hint: 'Ejemplo: jperez',
-        },
-        options: {
-          type: 'radio',
-          model: 3, // Por defecto Operador
-          items: rolesOptions,
-        },
-        cancel: {
-          label: 'Cancelar',
-          flat: true,
-          color: 'grey',
-        },
-        ok: {
-          label: 'Crear y Enviar Correo',
-          color: 'primary',
-        },
-        persistent: true,
-      }).onOk(async (data) => {
-        const username = data // El prompt retorna el string directamente
-        const idRolSistema = data // Las options retornan el valor seleccionado
+      // Guardar el personal seleccionado y resetear formulario
+      personalParaCuenta.value = personal
+      cuentaForm.value = {
+        username: '',
+        idRolSistema: 3, // Por defecto: GESTOR_ALERTA
+      }
 
-        // Validar username
-        if (!username || username.trim() === '') {
-          $q.notify({
-            type: 'warning',
-            message: 'Debes ingresar un nombre de usuario',
-            position: 'top',
-          })
-          return
+      // Abrir el diálogo de crear cuenta
+      dialogCrearCuenta.value = true
+    }
+
+    const confirmarCrearCuenta = async () => {
+      // Validar username
+      if (!cuentaForm.value.username || cuentaForm.value.username.trim() === '') {
+        $q.notify({
+          type: 'warning',
+          message: 'El nombre de usuario es obligatorio',
+          icon: 'account_circle',
+          position: 'top',
+        })
+        return
+      }
+
+      // Validar rol
+      if (!cuentaForm.value.idRolSistema) {
+        $q.notify({
+          type: 'warning',
+          message: 'Debes seleccionar un rol del sistema',
+          icon: 'admin_panel_settings',
+          position: 'top',
+        })
+        return
+      }
+
+      loadingCrearCuenta.value = true
+      try {
+        // ✅ LLAMADA DIRECTA AL ENDPOINT PÚBLICO SIN AUTORIZACIÓN
+        const payload = {
+          idPersonal: personalParaCuenta.value.idPersonal,
+          username: cuentaForm.value.username.trim(),
+          idRolSistema: cuentaForm.value.idRolSistema,
         }
 
-        try {
-          loading.value = true
-          // Llamar al servicio de vincular personal
-          const payload = {
-            idPersonal: personal.idPersonal,
-            username: username.trim(),
-            idRolSistema: idRolSistema || 3,
-          }
+        console.log('📤 Enviando payload a vincular-personal (sin autenticación):', payload)
 
-          await usuarioService.vincularPersonal(payload)
+        // Usar axios puro SIN interceptores, SIN headers de autorización
+        const response = await axios.post(
+          'http://localhost:5260/api/usuario/vincular-personal',
+          payload,
+          // ⚠️ NO agregar headers. El endpoint es público.
+        )
 
-          $q.notify({
-            type: 'positive',
-            message: 'Cuenta de usuario creada exitosamente',
-            caption: `Se ha enviado un correo de activación a ${personal.correoCorporativo}. El enlace es válido por 24 horas.`,
-            icon: 'mark_email_read',
-            position: 'top',
-            timeout: 6000,
-            actions: [{ icon: 'close', color: 'white' }],
-          })
+        console.log('✅ Respuesta del servidor:', response.data)
 
-          // Recargar la lista
-          await cargarUsuarios()
-        } catch (error) {
-          $q.notify({
-            type: 'negative',
-            message: 'Error al crear cuenta de usuario',
-            caption: error.message || 'Verifica que el nombre de usuario no esté en uso',
-            icon: 'error',
-            position: 'top',
-            timeout: 5000,
-          })
-        } finally {
-          loading.value = false
-        }
-      })
+        $q.notify({
+          type: 'positive',
+          message: 'Cuenta de usuario creada exitosamente',
+          caption:
+            response.data.message ||
+            `Se ha enviado un correo de activación a ${personalParaCuenta.value.correoCorporativo}. El enlace es válido por 24 horas.`,
+          icon: 'mark_email_read',
+          position: 'top',
+          timeout: 6000,
+          actions: [{ icon: 'close', color: 'white' }],
+        })
+
+        // Cerrar diálogo y recargar lista
+        dialogCrearCuenta.value = false
+        await cargarUsuarios()
+      } catch (error) {
+        console.error('❌ Error al crear cuenta:', error)
+        console.error('📄 Detalles:', error.response?.data)
+
+        const mensajeError =
+          error.response?.data?.message || error.message || 'Error desconocido al crear la cuenta'
+
+        $q.notify({
+          type: 'negative',
+          message: 'Error al crear cuenta de usuario',
+          caption: mensajeError,
+          icon: 'error',
+          position: 'top',
+          timeout: 5000,
+        })
+      } finally {
+        loadingCrearCuenta.value = false
+      }
     }
 
     const confirmarEliminar = (usuario) => {
@@ -1000,6 +1108,10 @@ export default {
       verificandoDoc,
       dialogUsuario,
       dialogEliminar,
+      dialogCrearCuenta,
+      personalParaCuenta,
+      cuentaForm,
+      loadingCrearCuenta,
       modoEdicion,
       usuarioSeleccionado,
       filtro,
@@ -1017,6 +1129,7 @@ export default {
       guardarUsuario,
       toggleEstadoCuenta,
       crearCuentaParaPersonal,
+      confirmarCrearCuenta,
       confirmarEliminar,
       eliminarUsuario,
       eliminarUsuarioYCuenta,

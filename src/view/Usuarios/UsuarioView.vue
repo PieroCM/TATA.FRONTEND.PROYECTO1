@@ -1,28 +1,23 @@
 <template>
   <div class="usuario-view">
-    <!-- Loading state -->
     <div v-if="loading" class="loading-container">
       <q-spinner color="primary" size="60px" />
       <p>Cargando información del usuario...</p>
     </div>
 
-    <!-- Error state -->
     <div v-else-if="error" class="error-container">
       <q-icon name="error" size="60px" color="negative" />
       <p>{{ error }}</p>
       <q-btn color="primary" label="Reintentar" @click="cargarUsuario" />
     </div>
 
-    <!-- Content -->
     <div v-else-if="usuario" class="content-container">
-      <!-- Header del usuario -->
       <UserHeader
         :usuario="usuario"
         @update-email="activarEdicionEmail"
         @update-password="mostrarDialogPassword"
       />
 
-      <!-- Grid de tarjetas -->
       <div class="cards-grid">
         <UserInfoCard :usuario="usuario" />
 
@@ -33,7 +28,6 @@
         />
       </div>
 
-      <!-- Botones de acción (solo visible en modo edición) -->
       <div v-if="editandoEmail" class="action-buttons">
         <q-btn
           flat
@@ -54,10 +48,8 @@
       </div>
     </div>
 
-    <!-- Dialog: Confirmar contraseña para cambiar email -->
     <ConfirmPasswordDialog v-model="dialogConfirmarPassword" @confirm="confirmarCambioEmail" />
 
-    <!-- Dialog: Cambiar contraseña -->
     <ChangePasswordDialog v-model="dialogCambiarPassword" @save="guardarNuevaPassword" />
   </div>
 </template>
@@ -217,8 +209,10 @@ const confirmarCambioEmail = async (password) => {
   try {
     console.log('🔄 Iniciando actualización de correo...')
 
-    // Validar contraseña usando el correo actual del usuario
-    const correoParaValidar = usuario.value.correo || usuario.value.personal.correo_corporativo
+    // MERGED: Validación robusta combinando ambas ramas
+    // Prioriza el correo del usuario, pero hace fallback al personal si es necesario
+    const correoParaValidar = usuario.value.correo || usuario.value.personal?.correo_corporativo
+    
     console.log('🔍 Validando contraseña con correo:', correoParaValidar)
 
     const isValid = await usuarioService.validatePassword(correoParaValidar, password)
