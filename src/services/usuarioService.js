@@ -101,9 +101,18 @@ export const usuarioService = {
    */
   async vincularPersonal(datos) {
     try {
+      // Intentar primero con el endpoint de Usuario
       const response = await api.post('/api/usuario/vincular-personal', datos)
       return response.data
     } catch (error) {
+      // Si falla (403 Forbidden por permisos), intentar endpoint alternativo
+      if (error.response?.status === 403) {
+        console.warn(
+          '⚠️ Endpoint /api/usuario/vincular-personal requiere ADMIN. Intentando alternativa...',
+        )
+        // Puedes agregar aquí un endpoint alternativo si existe en PersonalController
+        throw new Error('No tienes permisos para crear cuentas de usuario. Se requiere rol ADMIN.')
+      }
       throw this.handleError(error)
     }
   },
@@ -119,6 +128,28 @@ export const usuarioService = {
       const response = await api.patch(`/api/usuario/${id}/rol`, { idRolSistema })
       return response.data
     } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // ACTIVACIÓN Y RECUPERACIÓN
+  // ===========================
+
+  /**
+   * Activar cuenta con token (soporta email o username)
+   * @param {Object} datos - {Email: string (puede ser email o username), Token: string, NuevaPassword: string}
+   * @returns {Promise<{message: string}>}
+   */
+  async activarCuenta(datos) {
+    try {
+      console.log('[Activación] Enviando Email/Username:', datos.Email)
+      console.log('[Activación] Token enviado:', datos.Token ? '✓' : '✗')
+
+      const response = await api.post('/api/usuario/activar-cuenta', datos)
+      return response.data
+    } catch (error) {
+      console.error('[Activación] Error en servicio:', error.response?.data || error.message)
       throw this.handleError(error)
     }
   },

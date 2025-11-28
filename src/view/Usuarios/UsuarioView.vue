@@ -183,8 +183,9 @@ const mostrarDialogConfirmar = () => {
 
 const confirmarCambioEmail = async (password) => {
   try {
-    // Validar contraseña
-    const isValid = await usuarioService.validatePassword(usuario.value.correo, password)
+    // Validar contraseña usando correo corporativo
+    const emailValidacion = usuario.value.personal?.correo_corporativo || usuario.value.correo
+    const isValid = await usuarioService.validatePassword(emailValidacion, password)
 
     if (!isValid) {
       throw new Error('Contraseña incorrecta')

@@ -95,7 +95,7 @@ const usuarioService = {
     try {
       // Intentamos hacer signin para validar la contraseña
       const response = await api.post('/api/Usuario/signin', {
-        correo,
+        email: correo, // El backend espera 'email', no 'correo'
         password,
       })
       return response.data.token ? true : false
