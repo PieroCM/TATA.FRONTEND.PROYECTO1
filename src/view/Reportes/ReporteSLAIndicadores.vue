@@ -43,6 +43,7 @@
                 label="Mes *"
                 outlined
                 dense
+                behavior="menu"
                 :rules="[(val) => !!val || 'El mes es obligatorio']"
               >
                 <template v-slot:prepend>
@@ -59,6 +60,8 @@
                 label="Año *"
                 outlined
                 dense
+                behavior="menu"
+                :disable="aniosDisponibles.length === 0"
                 :rules="[(val) => !!val || 'El año es obligatorio']"
               >
                 <template v-slot:prepend>
@@ -78,6 +81,8 @@
                 clearable
                 emit-value
                 map-options
+                behavior="menu"
+                :disable="tiposSlaDisponibles.length === 0"
               >
                 <template v-slot:prepend>
                   <q-icon name="category" color="primary" />
@@ -95,6 +100,7 @@
                 :badge="selectedRoles.length > 0 ? selectedRoles.length : undefined"
                 @click="dialogRoles = true"
                 class="filter-button w-full"
+                :disable="rolesDisponibles.length === 0"
               >
                 <q-icon name="people" color="primary" class="q-mr-sm" />
                 <span>Roles/Áreas</span>
@@ -575,19 +581,28 @@ const cargarConfiguracionesIniciales = async () => {
         ),
       ].sort((a, b) => b - a)
 
-      aniosDisponibles.value = aniosUnicos.length > 0 ? aniosUnicos : [new Date().getFullYear()]
+      aniosDisponibles.value = aniosUnicos
+      // Si el año actual en filtros no está en la lista, limpiarlo
+      if (!aniosDisponibles.value.includes(filtros.value.anio)) {
+        filtros.value.anio = null
+      }
     } else {
-      const currentYear = new Date().getFullYear()
-      aniosDisponibles.value = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
+      // Sin datos: no mostrar años y limpiar selección
+      aniosDisponibles.value = []
+      filtros.value.anio = null
     }
 
     // Roles activos
     if (rolesRes.data) {
       const nombresRoles = rolesRes.data.filter((r) => r.esActivo !== false).map((r) => r.nombreRol)
       rolesDisponibles.value = nombresRoles
-      // Por defecto, seleccionar todos los roles
-      selectedRoles.value = [...nombresRoles]
-      selectTodos.value = true
+      // Seleccionar todos solo si hay roles
+      selectedRoles.value = nombresRoles.length ? [...nombresRoles] : []
+      selectTodos.value = nombresRoles.length > 0
+    } else {
+      rolesDisponibles.value = []
+      selectedRoles.value = []
+      selectTodos.value = false
     }
 
     // Tipos SLA (código SLA)
@@ -603,6 +618,13 @@ const cargarConfiguracionesIniciales = async () => {
         }
       })
       tiposSlaDisponibles.value = codigos
+      // Validar código seleccionado contra opciones disponibles
+      if (!tiposSlaDisponibles.value.some((o) => o.value === filtros.value.codigoSla)) {
+        filtros.value.codigoSla = null
+      }
+    } else {
+      tiposSlaDisponibles.value = []
+      filtros.value.codigoSla = null
     }
   } catch (error) {
     console.error('Error al cargar configuraciones iniciales:', error)
@@ -1385,6 +1407,13 @@ onMounted(async () => {
       filtros.value = {
         ...filtros.value,
         ...parsed,
+      }
+      // Validar que los filtros restaurados existan en las opciones actuales
+      if (!aniosDisponibles.value.includes(filtros.value.anio)) {
+        filtros.value.anio = null
+      }
+      if (!tiposSlaDisponibles.value.some((o) => o.value === filtros.value.codigoSla)) {
+        filtros.value.codigoSla = null
       }
       await verReporte()
     } catch (e) {
