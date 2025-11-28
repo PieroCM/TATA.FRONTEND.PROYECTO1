@@ -27,29 +27,44 @@ const isActive = computed(() => route.path === props.to)
 
 <style scoped>
 .menu-child {
-  padding-left: 32px;
+  padding: 8px 16px 8px 52px;
+  min-height: 40px;
+  border-radius: 0;
+}
+
+.menu-child :deep(.q-item__section--avatar) {
+  min-width: 32px;
+  padding-right: 12px;
 }
 
 .menu-child-icon {
-  color: #5a6473;
+  color: #6b7280;
+  font-size: 18px;
 }
 
 .menu-child-label {
-  color: #4a5568;
+  color: #374151;
   font-size: 14px;
+  font-weight: 400;
+}
+
+/* Hover */
+.menu-child:hover {
+  background: #f3f4f6 !important;
 }
 
 /* ACTIVO (HIJO SELECCIONADO) */
 .menu-child--active {
-  background: #e5f0ff !important;
+  background: #dbeafe !important;
+  border-left: 3px solid #2563eb;
 }
 
 .menu-child--active .menu-child-label {
-  color: #1976d2 !important;
-  font-weight: 600;
+  color: #2563eb !important;
+  font-weight: 500;
 }
 
 .menu-child--active .menu-child-icon {
-  color: #1976d2 !important;
+  color: #2563eb !important;
 }
 </style>

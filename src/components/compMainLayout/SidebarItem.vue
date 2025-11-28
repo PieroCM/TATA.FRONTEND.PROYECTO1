@@ -30,12 +30,45 @@ const isActive = computed(() => {
 </template>
 
 <style scoped>
+.menu-item {
+  min-height: 44px;
+  padding: 8px 16px;
+  border-radius: 0;
+}
+
+.menu-item :deep(.q-item__section--avatar) {
+  min-width: 40px;
+  padding-right: 12px;
+}
+
+.menu-icon {
+  color: #6b7280;
+  font-size: 20px;
+}
+
+.menu-label {
+  color: #374151;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+/* Hover */
+.menu-item:hover {
+  background: #f3f4f6 !important;
+}
+
+/* ACTIVO */
 .active-item {
-  background-color: #e8f0fe !important; /* celestito del figma */
-  color: #1a73e8 !important;
+  background-color: #dbeafe !important;
+  border-left: 3px solid #2563eb;
+}
+
+.active-item .menu-label {
+  color: #2563eb !important;
+  font-weight: 500;
 }
 
 .active-item .menu-icon {
-  color: #1a73e8 !important;
+  color: #2563eb !important;
 }
 </style>
