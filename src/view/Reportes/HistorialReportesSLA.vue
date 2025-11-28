@@ -160,7 +160,8 @@ const cargarHistorial = async () => {
       const usuariosRes = await api.get('/api/Usuario')
       if (usuariosRes.data && Array.isArray(usuariosRes.data)) {
         usuariosRes.data.forEach((usuario) => {
-          usuariosMap.value[usuario.idUsuario] = usuario.username || usuario.nombreCompleto || `Usuario ${usuario.idUsuario}`
+          usuariosMap.value[usuario.idUsuario] =
+            usuario.username || usuario.nombreCompleto || `Usuario ${usuario.idUsuario}`
         })
       }
     } catch (usuarioError) {
@@ -170,7 +171,7 @@ const cargarHistorial = async () => {
     const res = await api.get('/api/reporte')
     const datos = res.data || []
     console.log('Datos del API:', datos)
-    
+
     // Enriquecer datos con nombres de usuario
     const datosEnriquecidos = datos.map((reporte) => {
       let nombreUsuario = reporte.generadoPorNombre
