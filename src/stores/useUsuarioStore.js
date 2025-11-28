@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia'
+import { personalService } from 'src/services/personalService'
 import { usuarioService } from 'src/services/usuarioService'
 
 export const useUsuarioStore = defineStore('usuario', {
@@ -21,7 +22,8 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        this.usuarios = await usuarioService.getAll()
+        // Usar endpoint unificado que incluye Personal + Usuario + Rol
+        this.usuarios = await personalService.getGestionUsuarios()
       } catch (err) {
         this.error = err.message
         console.error('Error al cargar usuarios:', err)
@@ -35,7 +37,7 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        this.usuarioActual = await usuarioService.getById(id)
+        this.usuarioActual = await personalService.getById(id)
         return this.usuarioActual
       } catch (err) {
         this.error = err.message
@@ -46,14 +48,15 @@ export const useUsuarioStore = defineStore('usuario', {
       }
     },
 
-    async crearUsuario(usuario) {
+    async crearUsuario(personal) {
       this.loading = true
       this.error = null
 
       try {
-        const nuevoUsuario = await usuarioService.create(usuario)
-        this.usuarios.push(nuevoUsuario)
-        return nuevoUsuario
+        const resultado = await personalService.createWithAccount(personal)
+        // Recargar la lista completa
+        await this.fetchUsuarios()
+        return resultado
       } catch (err) {
         this.error = err.message
         console.error('Error al crear usuario:', err)
@@ -100,7 +103,24 @@ export const useUsuarioStore = defineStore('usuario', {
       } catch (err) {
         this.error = err.message
         console.error('Error al eliminar usuario:', err)
-        return false
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async eliminarPersonal(idPersonal) {
+      this.loading = true
+      this.error = null
+
+      try {
+        await personalService.delete(idPersonal)
+        this.usuarios = this.usuarios.filter((u) => u.idPersonal !== idPersonal)
+        return true
+      } catch (err) {
+        this.error = err.message
+        console.error('Error al eliminar personal:', err)
+        throw err
       } finally {
         this.loading = false
       }
@@ -111,12 +131,13 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
+        // Usar endpoint específico de toggle estado
         await usuarioService.toggleEstado(id, estado)
 
         // Actualizar en la lista local
         const index = this.usuarios.findIndex((u) => u.idUsuario === id)
         if (index !== -1) {
-          this.usuarios[index].estado = estado
+          this.usuarios[index].estadoCuentaAcceso = estado
         }
 
         return true
@@ -126,6 +147,41 @@ export const useUsuarioStore = defineStore('usuario', {
         return false
       } finally {
         this.loading = false
+      }
+    },
+
+    async actualizarRolUsuario(idUsuario, idRolSistema) {
+      this.loading = true
+      this.error = null
+
+      try {
+        // Llamar endpoint para actualizar rol
+        await usuarioService.actualizarRol(idUsuario, idRolSistema)
+
+        // Actualizar en la lista local
+        const index = this.usuarios.findIndex((u) => u.idUsuario === idUsuario)
+        if (index !== -1) {
+          this.usuarios[index].idRolSistema = idRolSistema
+          // El nombreRol se actualizará al refrescar la lista
+        }
+
+        return true
+      } catch (err) {
+        this.error = err.message
+        console.error('Error al actualizar rol:', err)
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async verificarDocumento(documento) {
+      try {
+        const resultado = await personalService.verificarDocumento(documento)
+        return resultado
+      } catch (err) {
+        console.error('Error al verificar documento:', err)
+        return { existe: false, error: err.message }
       }
     },
   },
