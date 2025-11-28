@@ -7,7 +7,7 @@ import { ref, computed } from 'vue'
  */
 export const useAuthStore = defineStore('auth', () => {
   // Estado
-  const token = ref(localStorage.getItem('token') || null)
+  const token = ref(localStorage.getItem('authToken') || null)
   const usuario = ref(JSON.parse(localStorage.getItem('usuario') || 'null'))
 
   // Getters
@@ -24,7 +24,7 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = authToken
     usuario.value = userData
 
-    localStorage.setItem('token', authToken)
+    localStorage.setItem('authToken', authToken)
     localStorage.setItem('usuario', JSON.stringify(userData))
   }
 
@@ -35,15 +35,18 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     usuario.value = null
 
+    localStorage.removeItem('authToken')
     localStorage.removeItem('token')
     localStorage.removeItem('usuario')
+    localStorage.removeItem('userEmail')
+    localStorage.removeItem('username')
   }
 
   /**
    * Restaura la sesión desde localStorage
    */
   const restoreSession = () => {
-    const storedToken = localStorage.getItem('token')
+    const storedToken = localStorage.getItem('authToken')
     const storedUser = localStorage.getItem('usuario')
 
     if (storedToken && storedUser) {

@@ -1,6 +1,5 @@
 import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
-import { Notify } from 'quasar'
 
 const api = axios.create({ baseURL: 'http://localhost:5260' })
 
@@ -12,17 +11,6 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      // Log solo en desarrollo para verificar que el token se envía
-      if (process.env.DEV) {
-        console.log(`[Axios] Enviando request a ${config.url} con token`)
-      }
-    } else {
-      // Log solo en desarrollo para advertir cuando no hay token
-      if (process.env.DEV) {
-        console.warn(
-          `[Axios] Request a ${config.url} sin token (puede fallar si requiere autorización)`,
-        )
-      }
     }
 
     return config
@@ -32,24 +20,30 @@ api.interceptors.request.use(
   },
 )
 
-export default defineBoot(({ app }) => {
-  // for use inside Vue files (Options API) through this.$axios and this.$api
-
 // Interceptor para manejar errores de autenticación
 api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Token inválido o expirado - redirigir al login
+      // Token inválido o expirado - limpiar y redirigir
+      console.warn('🔒 Sesión expirada o no autorizada')
       localStorage.removeItem('token')
-      localStorage.removeItem('user')
-      window.location.href = '/login'
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('usuario')
+      localStorage.removeItem('userEmail')
+      localStorage.removeItem('username')
+
+      // Solo redirigir si no estamos ya en el login
+      if (!window.location.pathname.includes('/login') && window.location.pathname !== '/') {
+        window.location.href = '/'
+      }
     }
     return Promise.reject(error)
   },
 )
 
 export default defineBoot(({ app }) => {
+  // for use inside Vue files (Options API) through this.$axios and this.$api
   app.config.globalProperties.$axios = axios
   app.config.globalProperties.$api = api
 })
