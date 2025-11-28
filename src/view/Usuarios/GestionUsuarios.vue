@@ -31,6 +31,19 @@
           </div>
           <div class="col-12 col-md-3">
             <q-select
+              v-model="filtro.rol"
+              outlined
+              dense
+              label="Filtrar por Rol"
+              :options="rolesFilterOptions"
+              emit-value
+              map-options
+              clearable
+              @update:model-value="filtrarUsuarios"
+            />
+          </div>
+          <div class="col-12 col-md-2">
+            <q-select
               v-model="filtro.estado"
               outlined
               dense
@@ -42,7 +55,7 @@
               @update:model-value="filtrarUsuarios"
             />
           </div>
-          <div class="col-12 col-md-3">
+          <div class="col-12 col-md-2">
             <q-btn
               color="secondary"
               icon="refresh"
@@ -66,11 +79,69 @@
         flat
         bordered
       >
+        <template #body-cell-username="props">
+          <q-td :props="props">
+            <span v-if="props.row.username" class="text-weight-medium">{{
+              props.row.username
+            }}</span>
+            <span v-else class="text-grey-6 text-italic">Sin cuenta</span>
+          </q-td>
+        </template>
+        <template #body-cell-rol="props">
+          <q-td :props="props">
+            <q-badge
+              v-if="props.row.nombreRol"
+              :color="
+                props.row.nombreRol === 'Administrador'
+                  ? 'purple'
+                  : props.row.nombreRol === 'Operador'
+                    ? 'blue'
+                    : 'grey'
+              "
+            >
+              {{ props.row.nombreRol }}
+            </q-badge>
+            <span v-else class="text-grey-6">Sin rol</span>
+          </q-td>
+        </template>
         <template #body-cell-estado="props">
           <q-td :props="props">
             <q-badge :color="props.row.estado === 'ACTIVO' ? 'positive' : 'negative'">{{
               props.row.estado
             }}</q-badge>
+          </q-td>
+        </template>
+        <template #body-cell-estadoCuenta="props">
+          <q-td :props="props">
+            <q-badge
+              v-if="props.row.idUsuario !== null"
+              :color="props.row.estadoCuentaAcceso === 'ACTIVO' ? 'positive' : 'negative'"
+            >
+              {{ props.row.estadoCuentaAcceso }}
+            </q-badge>
+            <span v-else class="text-grey-6">-</span>
+          </q-td>
+        </template>
+        <template #body-cell-tieneCuenta="props">
+          <q-td :props="props">
+            <q-icon
+              v-if="props.row.idUsuario !== null"
+              name="check_circle"
+              color="positive"
+              size="sm"
+            />
+            <q-icon v-else name="cancel" color="grey-5" size="sm" />
+          </q-td>
+        </template>
+        <template #body-cell-cuentaActivada="props">
+          <q-td :props="props">
+            <q-badge
+              v-if="props.row.idUsuario !== null"
+              :color="props.row.cuentaActivada ? 'positive' : 'warning'"
+            >
+              {{ props.row.cuentaActivada ? 'Activada' : 'Pendiente' }}
+            </q-badge>
+            <span v-else class="text-grey-6">-</span>
           </q-td>
         </template>
         <template #body-cell-acciones="props">
@@ -83,20 +154,39 @@
               color="primary"
               size="sm"
               @click="openEditDialog(props.row)"
-              ><q-tooltip>Editar</q-tooltip></q-btn
+              ><q-tooltip>Editar Personal</q-tooltip></q-btn
             >
+
+            <!-- Botón Toggle Estado: Solo si tiene cuenta de usuario -->
             <q-btn
+              v-if="props.row.idUsuario !== null"
               flat
               dense
               round
-              :icon="props.row.estado === 'ACTIVO' ? 'block' : 'check_circle'"
-              :color="props.row.estado === 'ACTIVO' ? 'orange' : 'positive'"
+              :icon="props.row.estadoCuentaAcceso === 'ACTIVO' ? 'block' : 'check_circle'"
+              :color="props.row.estadoCuentaAcceso === 'ACTIVO' ? 'orange' : 'positive'"
               size="sm"
-              @click="toggleEstado(props.row)"
+              @click="toggleEstadoCuenta(props.row)"
               ><q-tooltip>{{
-                props.row.estado === 'ACTIVO' ? 'Inhabilitar' : 'Habilitar'
+                props.row.estadoCuentaAcceso === 'ACTIVO'
+                  ? 'Inhabilitar Acceso'
+                  : 'Habilitar Acceso'
               }}</q-tooltip></q-btn
             >
+
+            <!-- Botón Crear Cuenta: Solo si NO tiene cuenta -->
+            <q-btn
+              v-else
+              flat
+              dense
+              round
+              icon="person_add"
+              color="green"
+              size="sm"
+              @click="crearCuentaParaPersonal(props.row)"
+              ><q-tooltip>Crear Cuenta de Usuario</q-tooltip></q-btn
+            >
+
             <q-btn
               flat
               dense
@@ -160,8 +250,7 @@
               outlined
               dense
               class="q-mb-md"
-              :disable="modoEdicion"
-              hint="Requerido si se crea cuenta de usuario"
+              hint="Correo electrónico corporativo"
               ><template #prepend><q-icon name="mail" /></template
             ></q-input>
           </div>
@@ -224,19 +313,55 @@
             </div>
           </template>
 
-          <!-- SECCIÓN EDICIÓN: Solo estado -->
-          <q-select
-            v-if="modoEdicion"
-            v-model="formUsuario.estado"
-            label="Estado *"
-            outlined
-            dense
-            :options="estadosOptions"
-            emit-value
-            map-options
-            class="q-mt-md"
-            ><template #prepend><q-icon name="toggle_on" /></template
-          ></q-select>
+          <!-- SECCIÓN EDICIÓN -->
+          <template v-if="modoEdicion">
+            <q-separator class="q-my-md" />
+
+            <q-select
+              v-model="formUsuario.estado"
+              label="Estado del Personal *"
+              outlined
+              dense
+              :options="estadosOptions"
+              emit-value
+              map-options
+              class="q-mb-md"
+              hint="Estado del registro de personal"
+              ><template #prepend><q-icon name="toggle_on" /></template
+            ></q-select>
+
+            <!-- Si tiene cuenta de usuario, mostrar campos adicionales -->
+            <template v-if="usuarioSeleccionado?.idUsuario">
+              <div class="text-subtitle1 text-weight-bold text-primary q-mb-md q-mt-md">
+                <q-icon name="lock" class="q-mr-xs" />
+                Datos de Cuenta de Usuario
+              </div>
+
+              <q-input
+                v-model="formUsuario.username"
+                label="Nombre de usuario (username)"
+                outlined
+                dense
+                class="q-mb-md"
+                readonly
+                hint="El username no puede ser modificado"
+                ><template #prepend><q-icon name="account_circle" /></template
+              ></q-input>
+
+              <q-select
+                v-model="formUsuario.idRolSistema"
+                label="Rol del Sistema *"
+                outlined
+                dense
+                :options="rolesOptions"
+                emit-value
+                map-options
+                class="q-mb-md"
+                hint="Puedes cambiar el rol del usuario"
+                ><template #prepend><q-icon name="admin_panel_settings" /></template
+              ></q-select>
+            </template>
+          </template>
         </q-card-section>
 
         <q-card-actions align="right" class="q-pa-md">
@@ -261,10 +386,10 @@
         </q-card-section>
         <q-card-section v-if="usuarioSeleccionado">
           <div class="text-body2">
-            <strong>Usuario:</strong> {{ usuarioSeleccionado.username }}<br />
+            <strong>Usuario:</strong> {{ usuarioSeleccionado.username || 'Sin cuenta' }}<br />
             <strong>Nombre:</strong> {{ usuarioSeleccionado.nombres }}
             {{ usuarioSeleccionado.apellidos }}<br />
-            <strong>Email:</strong> {{ usuarioSeleccionado.correoCorporativo }}
+            <strong>Email:</strong> {{ usuarioSeleccionado.correoCorporativo || 'N/A' }}
           </div>
         </q-card-section>
         <q-card-actions align="right">
@@ -284,6 +409,7 @@
 
 <script>
 import { useUsuarioStore } from 'src/stores/useUsuarioStore'
+import { usuarioService } from 'src/services/usuarioService'
 import { computed, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 
@@ -300,7 +426,7 @@ export default {
     const dialogEliminar = ref(false)
     const modoEdicion = ref(false)
     const usuarioSeleccionado = ref(null)
-    const filtro = ref({ busqueda: '', estado: null })
+    const filtro = ref({ busqueda: '', estado: null, rol: null })
     const formUsuario = ref({
       username: '',
       nombres: '',
@@ -334,20 +460,49 @@ export default {
         align: 'left',
         sortable: true,
       },
-      { name: 'estado', label: 'Estado', field: 'estado', align: 'center', sortable: true },
+      {
+        name: 'rol',
+        label: 'Rol',
+        field: 'nombreRol',
+        align: 'center',
+        sortable: true,
+      },
+      {
+        name: 'estadoCuenta',
+        label: 'Estado Cuenta',
+        field: 'estadoCuentaAcceso',
+        align: 'center',
+        sortable: true,
+      },
       {
         name: 'tieneCuenta',
         label: 'Tiene Cuenta',
-        field: 'tieneCuentaUsuario',
+        field: 'idUsuario',
         align: 'center',
         sortable: true,
-        format: (val) => (val ? 'Sí' : 'No'),
+      },
+      {
+        name: 'cuentaActivada',
+        label: 'Cuenta Activada',
+        field: 'cuentaActivada',
+        align: 'center',
+        sortable: true,
       },
       { name: 'acciones', label: 'Acciones', align: 'center' },
     ]
     const rolesOptions = [
-      { label: 'Administrador', value: 2 },
-      { label: 'Operador', value: 3 },
+      { label: 'ADMIN', value: 1 },
+      { label: 'ANALISTA_SLA', value: 2 },
+      { label: 'GESTOR_ALERTA', value: 3 },
+      { label: 'TRABAJADOR', value: 4 },
+      { label: 'CONSULTOR', value: 5 },
+    ]
+    const rolesFilterOptions = [
+      { label: 'ADMIN', value: 'ADMIN' },
+      { label: 'ANALISTA_SLA', value: 'ANALISTA_SLA' },
+      { label: 'GESTOR_ALERTA', value: 'GESTOR_ALERTA' },
+      { label: 'TRABAJADOR', value: 'TRABAJADOR' },
+      { label: 'CONSULTOR', value: 'CONSULTOR' },
     ]
     const estadosOptions = [
       { label: 'Activo', value: 'ACTIVO' },
@@ -374,7 +529,10 @@ export default {
             u.documento?.toLowerCase().includes(busqueda),
         )
       }
-      if (filtro.value.estado) resultado = resultado.filter((u) => u.estado === filtro.value.estado)
+      if (filtro.value.estado) {
+        resultado = resultado.filter((u) => u.estadoCuentaAcceso === filtro.value.estado)
+      }
+      if (filtro.value.rol) resultado = resultado.filter((u) => u.nombreRol === filtro.value.rol)
       usuariosFiltrados.value = resultado
     }
 
@@ -418,12 +576,14 @@ export default {
       usuarioSeleccionado.value = personal
       formUsuario.value = {
         id: personal.idPersonal,
+        idUsuario: personal.idUsuario, // ID del usuario si tiene cuenta
         username: personal.username,
         nombres: personal.nombres,
         apellidos: personal.apellidos,
         documento: personal.documento,
         correoCorporativo: personal.correoCorporativo,
-        estado: personal.estado,
+        estado: personal.estado || personal.estadoCuentaAcceso || 'ACTIVO',
+        idRolSistema: personal.idRolSistema || null, // Rol actual del usuario
       }
       dialogUsuario.value = true
     }
@@ -562,47 +722,252 @@ export default {
       }
     }
 
-    const toggleEstado = async (personal) => {
-      const nuevoEstado = personal.estado === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
-      const success = await usuarioStore.toggleEstado(personal.idPersonal, nuevoEstado)
+    const toggleEstadoCuenta = async (usuario) => {
+      if (!usuario.idUsuario) {
+        $q.notify({
+          type: 'warning',
+          message: 'Este personal no tiene cuenta de usuario',
+          position: 'top',
+        })
+        return
+      }
+
+      const nuevoEstado = usuario.estadoCuentaAcceso === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
+      const success = await usuarioStore.toggleEstado(usuario.idUsuario, nuevoEstado)
       if (success) {
         $q.notify({
           type: 'positive',
-          message: `Usuario ${nuevoEstado === 'ACTIVO' ? 'habilitado' : 'inhabilitado'} exitosamente`,
-          position: 'bottom',
+          message: `Acceso ${nuevoEstado === 'ACTIVO' ? 'habilitado' : 'inhabilitado'} exitosamente`,
+          icon: 'check_circle',
+          position: 'top',
         })
-        usuariosFiltrados.value = [...usuarioStore.usuarios]
-      } else
+        // Recargar lista completa
+        await cargarUsuarios()
+      } else {
         $q.notify({
           type: 'negative',
-          message: usuarioStore.error || 'Error al cambiar estado',
-          position: 'bottom',
+          message: usuarioStore.error || 'Error al cambiar estado de acceso',
+          position: 'top',
         })
+      }
+    }
+
+    const crearCuentaParaPersonal = async (personal) => {
+      // Mostrar diálogo de confirmación con inputs
+      $q.dialog({
+        title: 'Crear Cuenta de Usuario',
+        message: `Crear cuenta de acceso al sistema para: ${personal.nombres} ${personal.apellidos}`,
+        html: true,
+        prompt: {
+          model: '',
+          type: 'text',
+          label: 'Nombre de usuario *',
+          outlined: true,
+          hint: 'Ejemplo: jperez',
+        },
+        options: {
+          type: 'radio',
+          model: 3, // Por defecto Operador
+          items: rolesOptions,
+        },
+        cancel: {
+          label: 'Cancelar',
+          flat: true,
+          color: 'grey',
+        },
+        ok: {
+          label: 'Crear Cuenta',
+          color: 'primary',
+        },
+        persistent: true,
+      }).onOk(async (data) => {
+        const username = data // El prompt retorna el string directamente
+        const idRolSistema = data // Las options retornan el valor seleccionado
+
+        // Validar username
+        if (!username || username.trim() === '') {
+          $q.notify({
+            type: 'warning',
+            message: 'Debes ingresar un nombre de usuario',
+            position: 'top',
+          })
+          return
+        }
+
+        try {
+          loading.value = true
+          // Llamar al servicio de vincular personal
+          const payload = {
+            idPersonal: personal.idPersonal,
+            username: username.trim(),
+            idRolSistema: idRolSistema || 3,
+          }
+
+          await usuarioService.vincularPersonal(payload)
+
+          $q.notify({
+            type: 'positive',
+            message: 'Cuenta de usuario creada exitosamente',
+            caption: `Se ha vinculado la cuenta "${username}" al personal`,
+            icon: 'person_add',
+            position: 'top',
+            timeout: 4000,
+          })
+
+          // Recargar la lista
+          await cargarUsuarios()
+        } catch (error) {
+          $q.notify({
+            type: 'negative',
+            message: 'Error al crear cuenta de usuario',
+            caption: error.message || 'Intenta con otro nombre de usuario',
+            icon: 'error',
+            position: 'top',
+          })
+        } finally {
+          loading.value = false
+        }
+      })
     }
 
     const confirmarEliminar = (usuario) => {
       usuarioSeleccionado.value = usuario
-      dialogEliminar.value = true
+
+      // Si tiene cuenta de usuario, mostrar advertencia especial
+      if (usuario.idUsuario !== null) {
+        $q.dialog({
+          title: 'Advertencia: Personal con Cuenta de Usuario',
+          message: `<p>Este personal tiene una cuenta de usuario asociada: <strong>${usuario.username}</strong></p><p>¿Qué deseas hacer?</p>`,
+          html: true,
+          options: {
+            type: 'radio',
+            model: 'ambos',
+            items: [
+              {
+                label: 'Eliminar personal Y su cuenta de usuario',
+                value: 'ambos',
+                color: 'negative',
+              },
+              {
+                label: 'Solo eliminar el personal (mantener cuenta huérfana)',
+                value: 'solo-personal',
+                color: 'warning',
+              },
+            ],
+          },
+          cancel: {
+            label: 'Cancelar',
+            flat: true,
+            color: 'grey',
+          },
+          ok: {
+            label: 'Continuar',
+            color: 'negative',
+          },
+          persistent: true,
+        }).onOk(async (opcion) => {
+          if (opcion === 'ambos') {
+            await eliminarUsuarioYCuenta()
+          } else {
+            dialogEliminar.value = true
+          }
+        })
+      } else {
+        // Si NO tiene cuenta, eliminar directamente
+        dialogEliminar.value = true
+      }
+    }
+
+    const eliminarUsuarioYCuenta = async () => {
+      loadingEliminar.value = true
+      try {
+        console.log(
+          '🗑️ Paso 1: Eliminando cuenta de usuario con ID:',
+          usuarioSeleccionado.value.idUsuario,
+        )
+
+        // PASO 1: Eliminar el usuario (cuenta de acceso) usando DELETE /api/usuario/{id}
+        await usuarioStore.eliminarUsuario(usuarioSeleccionado.value.idUsuario)
+
+        console.log(
+          '✅ Usuario eliminado. Paso 2: Eliminando personal con ID:',
+          usuarioSeleccionado.value.idPersonal,
+        )
+
+        // PASO 2: Eliminar el personal usando DELETE /api/personal/{id}
+        await usuarioStore.eliminarPersonal(usuarioSeleccionado.value.idPersonal)
+
+        $q.notify({
+          type: 'positive',
+          message: 'Personal y cuenta de usuario eliminados exitosamente',
+          icon: 'delete_forever',
+          position: 'top',
+          timeout: 3000,
+        })
+
+        // Recargar la lista
+        await cargarUsuarios()
+      } catch (error) {
+        console.error('❌ Error al eliminar:', error)
+
+        $q.notify({
+          type: 'negative',
+          message: 'Error al eliminar',
+          caption: error.response?.data?.message || error.message || 'Intenta nuevamente',
+          icon: 'error',
+          position: 'top',
+          timeout: 5000,
+        })
+      } finally {
+        loadingEliminar.value = false
+      }
     }
 
     const eliminarUsuario = async () => {
       loadingEliminar.value = true
-      const success = await usuarioStore.eliminarUsuario(usuarioSeleccionado.value.idPersonal)
-      if (success) {
+      try {
+        console.log('🗑️ Eliminando personal con ID:', usuarioSeleccionado.value.idPersonal)
+
+        // Eliminar personal usando DELETE /api/personal/{id}
+        await usuarioStore.eliminarPersonal(usuarioSeleccionado.value.idPersonal)
+
         $q.notify({
           type: 'positive',
-          message: 'Usuario eliminado exitosamente',
-          position: 'bottom',
+          message: 'Personal eliminado exitosamente',
+          icon: 'check_circle',
+          position: 'top',
         })
+
         dialogEliminar.value = false
-        usuariosFiltrados.value = [...usuarioStore.usuarios]
-      } else
+        await cargarUsuarios()
+      } catch (error) {
+        console.error('❌ Error al eliminar personal:', error)
+
+        let mensaje = 'Error al eliminar el personal'
+        let caption = error.response?.data?.message || error.message || ''
+
+        // Si tiene cuenta de usuario asociada y falla por FK constraint
+        if (
+          usuarioSeleccionado.value.idUsuario &&
+          (caption.includes('FK_') ||
+            caption.includes('foreign key') ||
+            caption.includes('REFERENCE'))
+        ) {
+          mensaje = 'No se puede eliminar: El personal tiene una cuenta de usuario asociada'
+          caption = 'Debes usar la opción "Eliminar personal Y su cuenta de usuario"'
+        }
+
         $q.notify({
           type: 'negative',
-          message: usuarioStore.error || 'Error al eliminar usuario',
-          position: 'bottom',
+          message: mensaje,
+          caption: caption,
+          icon: 'error',
+          position: 'top',
+          timeout: 6000,
         })
-      loadingEliminar.value = false
+      } finally {
+        loadingEliminar.value = false
+      }
     }
 
     onMounted(() => cargarUsuarios())
@@ -621,6 +986,7 @@ export default {
       formUsuario,
       columns,
       rolesOptions,
+      rolesFilterOptions,
       estadosOptions,
       pagination,
       cargarUsuarios,
@@ -629,9 +995,11 @@ export default {
       verificarDocumentoDisponible,
       openEditDialog,
       guardarUsuario,
-      toggleEstado,
+      toggleEstadoCuenta,
+      crearCuentaParaPersonal,
       confirmarEliminar,
       eliminarUsuario,
+      eliminarUsuarioYCuenta,
     }
   },
 }

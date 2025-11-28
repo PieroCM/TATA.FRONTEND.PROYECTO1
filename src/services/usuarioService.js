@@ -80,16 +80,14 @@ export const usuarioService = {
   },
 
   /**
-   * Activar/Desactivar usuario
+   * Toggle estado de usuario (ACTIVO <-> INACTIVO)
    * @param {number} id - ID del usuario
-   * @param {string} estado - "ACTIVO" o "INACTIVO"
+   * @param {string} estado - Nuevo estado ('ACTIVO' | 'INACTIVO')
    * @returns {Promise<{message: string}>}
    */
   async toggleEstado(id, estado) {
     try {
-      const response = await api.patch(`/api/usuario/${id}/toggle-estado`, {
-        estado,
-      })
+      const response = await api.patch(`/api/usuario/${id}/toggle-estado`, { estado })
       return response.data
     } catch (error) {
       throw this.handleError(error)
@@ -104,6 +102,21 @@ export const usuarioService = {
   async vincularPersonal(datos) {
     try {
       const response = await api.post('/api/usuario/vincular-personal', datos)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  /**
+   * Actualizar rol de usuario
+   * @param {number} id - ID del usuario
+   * @param {number} idRolSistema - Nuevo ID de rol
+   * @returns {Promise<{message: string}>}
+   */
+  async actualizarRol(id, idRolSistema) {
+    try {
+      const response = await api.patch(`/api/usuario/${id}/rol`, { idRolSistema })
       return response.data
     } catch (error) {
       throw this.handleError(error)

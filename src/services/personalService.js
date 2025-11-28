@@ -111,6 +111,31 @@ export const personalService = {
     }
   },
 
+  /**
+   * Obtener gestión de usuarios (Personal + Usuario + Rol)
+   * Endpoint unificado que retorna personal con datos de usuario y rol asociados
+   * @returns {Promise<Array<PersonalUsuarioResponse>>}
+   * @typedef {Object} PersonalUsuarioResponse
+   * @property {number} idPersonal
+   * @property {string} nombres
+   * @property {string} apellidos
+   * @property {string|null} documento
+   * @property {string|null} correoCorporativo
+   * @property {number|null} idUsuario
+   * @property {string|null} username
+   * @property {string|null} estadoCuentaAcceso - 'ACTIVO' | 'INACTIVO' | null
+   * @property {boolean} cuentaActivada - Indica si PasswordHash != NULL
+   * @property {string|null} nombreRol
+   */
+  async getGestionUsuarios() {
+    try {
+      const response = await api.get('/api/personal/gestion-usuarios')
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
   // ===========================
   // MANEJO DE ERRORES
   // ===========================

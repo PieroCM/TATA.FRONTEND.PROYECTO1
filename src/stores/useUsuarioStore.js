@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { personalService } from 'src/services/personalService'
+import { usuarioService } from 'src/services/usuarioService'
 
 export const useUsuarioStore = defineStore('usuario', {
   state: () => ({
@@ -21,7 +22,8 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        this.usuarios = await personalService.getAll()
+        // Usar endpoint unificado que incluye Personal + Usuario + Rol
+        this.usuarios = await personalService.getGestionUsuarios()
       } catch (err) {
         this.error = err.message
         console.error('Error al cargar usuarios:', err)
@@ -69,10 +71,10 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await personalService.update(id, datosActualizar)
+        await usuarioService.update(id, datosActualizar)
 
         // Actualizar en la lista local
-        const index = this.usuarios.findIndex((u) => u.idPersonal === id)
+        const index = this.usuarios.findIndex((u) => u.idUsuario === id)
         if (index !== -1) {
           this.usuarios[index] = {
             ...this.usuarios[index],
@@ -95,13 +97,30 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await personalService.delete(id)
-        this.usuarios = this.usuarios.filter((u) => u.idPersonal !== id)
+        await usuarioService.delete(id)
+        this.usuarios = this.usuarios.filter((u) => u.idUsuario !== id)
         return true
       } catch (err) {
         this.error = err.message
         console.error('Error al eliminar usuario:', err)
-        return false
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async eliminarPersonal(idPersonal) {
+      this.loading = true
+      this.error = null
+
+      try {
+        await personalService.delete(idPersonal)
+        this.usuarios = this.usuarios.filter((u) => u.idPersonal !== idPersonal)
+        return true
+      } catch (err) {
+        this.error = err.message
+        console.error('Error al eliminar personal:', err)
+        throw err
       } finally {
         this.loading = false
       }
@@ -112,13 +131,13 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        // Personal no tiene endpoint toggle-estado, usar update
-        await personalService.update(id, { estado })
+        // Usar endpoint específico de toggle estado
+        await usuarioService.toggleEstado(id, estado)
 
         // Actualizar en la lista local
-        const index = this.usuarios.findIndex((u) => u.idPersonal === id)
+        const index = this.usuarios.findIndex((u) => u.idUsuario === id)
         if (index !== -1) {
-          this.usuarios[index].estado = estado
+          this.usuarios[index].estadoCuentaAcceso = estado
         }
 
         return true
@@ -126,6 +145,31 @@ export const useUsuarioStore = defineStore('usuario', {
         this.error = err.message
         console.error('Error al cambiar estado:', err)
         return false
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async actualizarRolUsuario(idUsuario, idRolSistema) {
+      this.loading = true
+      this.error = null
+
+      try {
+        // Llamar endpoint para actualizar rol
+        await usuarioService.actualizarRol(idUsuario, idRolSistema)
+
+        // Actualizar en la lista local
+        const index = this.usuarios.findIndex((u) => u.idUsuario === idUsuario)
+        if (index !== -1) {
+          this.usuarios[index].idRolSistema = idRolSistema
+          // El nombreRol se actualizará al refrescar la lista
+        }
+
+        return true
+      } catch (err) {
+        this.error = err.message
+        console.error('Error al actualizar rol:', err)
+        throw err
       } finally {
         this.loading = false
       }
