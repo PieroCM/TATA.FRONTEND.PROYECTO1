@@ -2019,18 +2019,20 @@ const exportarPDF = async () => {
         if (canvas) {
           try {
             const canvasImage = await html2canvas(canvas, {
-              scale: 2,
+              scale: 1,
               backgroundColor: '#ffffff',
+              logging: false,
+              useCORS: true,
             })
 
-            const imgData = canvasImage.toDataURL('image/png')
+            const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
             const imgWidth = pageWidth - 2 * margin
             const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
             const maxHeight = pageHeight - yPos - 30
             const finalHeight = Math.min(imgHeight, maxHeight)
             const finalWidth = (finalHeight * canvasImage.width) / canvasImage.height
 
-            pdf.addImage(imgData, 'PNG', margin, yPos, finalWidth, finalHeight)
+            pdf.addImage(imgData, 'JPEG', margin, yPos, finalWidth, finalHeight)
             yPos += finalHeight + 5
           } catch (error) {
             console.error('Error al capturar gráfico:', error)
@@ -2125,11 +2127,13 @@ const exportarPDF = async () => {
       if (canvasDistribucion) {
         try {
           const canvasImage = await html2canvas(canvasDistribucion, {
-            scale: 2,
+            scale: 1,
             backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true,
           })
 
-          const imgData = canvasImage.toDataURL('image/png')
+          const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
           const imgWidth = (pageWidth - 2 * margin) * 0.7
           const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
           const xOffset = margin + ((pageWidth - 2 * margin - imgWidth) / 2)
@@ -2142,7 +2146,7 @@ const exportarPDF = async () => {
             yPos += 5
           }
 
-          pdf.addImage(imgData, 'PNG', xOffset, yPos, imgWidth, imgHeight)
+          pdf.addImage(imgData, 'JPEG', xOffset, yPos, imgWidth, imgHeight)
           yPos += imgHeight + 5
         } catch (error) {
           console.error('Error al capturar gráfico de distribución:', error)
@@ -2265,11 +2269,13 @@ const exportarPDF = async () => {
       if (canvasResumen) {
         try {
           const canvasImage = await html2canvas(canvasResumen, {
-            scale: 2,
+            scale: 1,
             backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true,
           })
 
-          const imgData = canvasImage.toDataURL('image/png')
+          const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
           const imgWidth = pageWidth - 2 * margin
           const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
 
@@ -2281,7 +2287,7 @@ const exportarPDF = async () => {
             yPos += 5
           }
 
-          pdf.addImage(imgData, 'PNG', margin, yPos, imgWidth, imgHeight)
+          pdf.addImage(imgData, 'JPEG', margin, yPos, imgWidth, imgHeight)
         } catch (error) {
           console.error('Error al capturar gráfico de resumen:', error)
           pdf.setFontSize(9)
