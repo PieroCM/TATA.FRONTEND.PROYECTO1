@@ -54,7 +54,7 @@
           <template v-slot:body-cell-tipo="props">
             <q-td :props="props">
               <q-badge
-                v-if="props.row.tipo === 'Resumen'"
+                v-if="props.row.tipo === 'RESUMEN'"
                 outline
                 color="positive"
                 label="Resumen"
@@ -64,12 +64,10 @@
             </q-td>
           </template>
 
-          <!-- Columna Cantidad -->
-          <template v-slot:body-cell-cantidad="props">
+          <!-- Columna Destinatarios -->
+          <template v-slot:body-cell-destinatarios="props">
             <q-td :props="props">
-              <div class="text-center text-weight-bold text-h6">
-                {{ props.row.cantidad }}
-              </div>
+              <div class="text-caption">{{ props.row.destinatarios }}</div>
             </q-td>
           </template>
 
@@ -77,25 +75,44 @@
           <template v-slot:body-cell-estado="props">
             <q-td :props="props">
               <q-badge
-                v-if="props.row.estado === 'Enviado'"
+                v-if="props.row.estado === 'OK' || props.row.estado === 'EXITOSO'"
                 color="positive"
                 text-color="white"
                 class="badge-estado"
               >
                 <q-icon name="check_circle" size="16px" class="q-mr-xs" />
-                Enviado
+                Exitoso
               </q-badge>
-              <q-badge v-else color="negative" text-color="white" class="badge-estado">
+              <q-badge
+                v-else-if="props.row.estado === 'ERROR' || props.row.estado === 'FALLIDO'"
+                color="negative"
+                text-color="white"
+                class="badge-estado"
+              >
                 <q-icon name="cancel" size="16px" class="q-mr-xs" />
-                Falló
+                Fallido
+              </q-badge>
+              <q-badge
+                v-else-if="props.row.estado === 'PARCIAL'"
+                color="warning"
+                text-color="white"
+                class="badge-estado"
+              >
+                <q-icon name="warning" size="16px" class="q-mr-xs" />
+                Parcial
+              </q-badge>
+              <q-badge v-else color="grey" text-color="white" class="badge-estado">
+                {{ props.row.estado }}
               </q-badge>
             </q-td>
           </template>
 
-          <!-- Columna Reintentos -->
-          <template v-slot:body-cell-reintentos="props">
+          <!-- Columna Detalle -->
+          <template v-slot:body-cell-detalle="props">
             <q-td :props="props">
-              <div class="text-center text-grey-8">{{ props.row.reintentos }}</div>
+              <div class="text-caption text-grey-8">
+                {{ props.row.errorDetalle || '-' }}
+              </div>
             </q-td>
           </template>
 
@@ -115,6 +132,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { date, useQuasar } from 'quasar'
+import { api } from 'boot/axios'
 
 const $q = useQuasar()
 
@@ -146,11 +164,11 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'cantidad',
-    label: 'Cantidad',
-    align: 'center',
-    field: 'cantidad',
-    sortable: true,
+    name: 'destinatarios',
+    label: 'Destinatarios',
+    align: 'left',
+    field: 'destinatarios',
+    sortable: false,
   },
   {
     name: 'estado',
@@ -160,65 +178,16 @@ const columns = [
     sortable: true,
   },
   {
-    name: 'reintentos',
-    label: 'Reintentos',
-    align: 'center',
-    field: 'reintentos',
-    sortable: true,
+    name: 'detalle',
+    label: 'Detalle',
+    align: 'left',
+    field: 'errorDetalle',
+    sortable: false,
   },
 ]
 
-// Datos de ejemplo
-const ejecuciones = ref([
-  {
-    idEjecucion: 1,
-    fecha: '2025-11-12T10:05:00',
-    tipo: 'Inmediato',
-    cantidad: 5,
-    estado: 'Enviado',
-    reintentos: 0,
-  },
-  {
-    idEjecucion: 2,
-    fecha: '2025-11-12T06:00:00',
-    tipo: 'Resumen',
-    cantidad: 23,
-    estado: 'Enviado',
-    reintentos: 0,
-  },
-  {
-    idEjecucion: 3,
-    fecha: '2025-11-11T14:30:00',
-    tipo: 'Inmediato',
-    cantidad: 2,
-    estado: 'Enviado',
-    reintentos: 0,
-  },
-  {
-    idEjecucion: 4,
-    fecha: '2025-11-11T06:00:00',
-    tipo: 'Resumen',
-    cantidad: 18,
-    estado: 'Enviado',
-    reintentos: 0,
-  },
-  {
-    idEjecucion: 5,
-    fecha: '2025-11-10T09:15:00',
-    tipo: 'Inmediato',
-    cantidad: 3,
-    estado: 'Falló',
-    reintentos: 2,
-  },
-  {
-    idEjecucion: 6,
-    fecha: '2025-11-10T06:00:00',
-    tipo: 'Resumen',
-    cantidad: 15,
-    estado: 'Enviado',
-    reintentos: 0,
-  },
-])
+// Datos de ejecuciones desde el backend
+const ejecuciones = ref([])
 
 /**
  * Formatea fecha
@@ -235,22 +204,43 @@ const formatHora = (fechaStr) => {
 }
 
 /**
- * Carga las ejecuciones
+ * Carga las ejecuciones desde el backend
  */
 const cargarEjecuciones = async () => {
   loading.value = true
 
   try {
-    // Simular llamada API
-    await new Promise((resolve) => setTimeout(resolve, 500))
-    console.log('Ejecuciones cargadas')
+    console.log('📋 Cargando logs de ejecuciones...')
+
+    // Llamar a GET /api/email/logs
+    const response = await api.get('/api/email/logs')
+
+    // Backend devuelve { total: number, logs: array }
+    if (response.data && response.data.logs && Array.isArray(response.data.logs)) {
+      ejecuciones.value = response.data.logs
+      console.log(`✅ ${ejecuciones.value.length} de ${response.data.total} ejecuciones cargadas`)
+    } else if (response.data && Array.isArray(response.data)) {
+      // Fallback si backend devuelve array directo
+      ejecuciones.value = response.data
+      console.log(`✅ ${ejecuciones.value.length} ejecuciones cargadas`)
+    } else {
+      console.warn('⚠️ Respuesta inválida del backend')
+      ejecuciones.value = []
+    }
   } catch (error) {
-    console.error('Error al cargar ejecuciones:', error)
+    console.error('❌ Error al cargar ejecuciones:', error)
+
     $q.notify({
-      type: 'negative',
-      message: 'Error al cargar historial de ejecuciones',
+      type: 'warning',
+      message:
+        error.response?.status === 404
+          ? 'No se encontró el historial de ejecuciones'
+          : 'Error al cargar historial de ejecuciones',
       position: 'top-right',
+      timeout: 3000,
     })
+
+    ejecuciones.value = []
   } finally {
     loading.value = false
   }
@@ -258,6 +248,11 @@ const cargarEjecuciones = async () => {
 
 onMounted(() => {
   cargarEjecuciones()
+})
+
+// Exponer método para que el componente padre pueda recargar
+defineExpose({
+  cargarEjecuciones,
 })
 </script>
 

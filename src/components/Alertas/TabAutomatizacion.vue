@@ -17,7 +17,7 @@
             </label>
             <q-input
               outlined
-              v-model="configuracion.destinatario"
+              v-model="configuracion.destinatarioResumen"
               placeholder="correo@empresa.com"
               dense
               :rules="[(val) => !!val || 'Campo requerido']"
@@ -69,10 +69,12 @@
                 <label class="text-weight-medium text-body2 q-mb-xs block"> Hora de envío </label>
                 <q-input
                   outlined
-                  v-model="configuracion.horaEnvio"
+                  v-model="configuracion.horaResumen"
                   type="time"
                   dense
                   style="max-width: 200px"
+                  step="1"
+                  hint="Formato HH:mm:ss"
                 >
                   <template v-slot:prepend>
                     <q-icon name="access_time" />
@@ -108,53 +110,98 @@
     </q-card>
 
     <!-- Tarjeta Inferior: Ejecuciones (Historial) -->
-    <TablaEjecuciones />
+    <TablaEjecuciones ref="tablaEjecucionesRef" />
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { api } from 'boot/axios'
 import TablaEjecuciones from './TablaEjecuciones.vue'
 
 const $q = useQuasar()
 
-// Estado de la configuración
+// Referencia al componente hijo TablaEjecuciones
+const tablaEjecucionesRef = ref(null)
+
+// Estado de la configuración (mapea al DTO del backend)
 const configuracion = ref({
-  destinatario: 'alertas@empresa.com',
-  envioInmediato: true,
-  resumenDiario: true,
-  horaEnvio: '06:00',
+  destinatarioResumen: '',
+  envioInmediato: false,
+  resumenDiario: false,
+  horaResumen: '06:00:00', // Backend espera TimeSpan formato "HH:mm:ss"
 })
 
 // Estados de carga
 const guardando = ref(false)
 const probando = ref(false)
+const cargando = ref(false)
 
 /**
- * Guarda la configuración
+ * Carga la configuración desde el backend
+ */
+const cargarConfiguracion = async () => {
+  cargando.value = true
+
+  try {
+    console.log('📋 Cargando configuración de email...')
+    const response = await api.get('/api/email/config')
+
+    if (response.data) {
+      // Mapear respuesta del backend al estado local
+      configuracion.value = {
+        destinatarioResumen: response.data.destinatarioResumen || '',
+        envioInmediato: response.data.envioInmediato || false,
+        resumenDiario: response.data.resumenDiario || false,
+        horaResumen: response.data.horaResumen || '06:00:00',
+      }
+
+      console.log('✅ Configuración cargada:', configuracion.value)
+    }
+  } catch (error) {
+    console.error('❌ Error al cargar configuración:', error)
+
+    $q.notify({
+      type: 'warning',
+      message: 'No se pudo cargar la configuración. Usando valores por defecto.',
+      position: 'top-right',
+      timeout: 3000,
+    })
+  } finally {
+    cargando.value = false
+  }
+}
+
+/**
+ * Guarda la configuración en el backend
  */
 const guardarConfiguracion = async () => {
   guardando.value = true
 
   try {
-    // Simular llamada API
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    console.log('💾 Guardando configuración:', configuracion.value)
 
-    console.log('Guardando configuración:', configuracion.value)
+    // Llamar a PUT /api/email/config
+    await api.put('/api/email/config', configuracion.value)
 
     $q.notify({
       type: 'positive',
       message: 'Configuración guardada correctamente',
       position: 'top-right',
       icon: 'check_circle',
+      timeout: 2000,
     })
+
+    console.log('✅ Configuración guardada exitosamente')
   } catch (error) {
-    console.error('Error al guardar:', error)
+    console.error('❌ Error al guardar:', error)
+
     $q.notify({
       type: 'negative',
-      message: 'Error al guardar la configuración',
+      message: error.response?.data?.message || 'Error al guardar la configuración',
       position: 'top-right',
+      timeout: 3000,
     })
   } finally {
     guardando.value = false
@@ -162,34 +209,50 @@ const guardarConfiguracion = async () => {
 }
 
 /**
- * Prueba el envío de email
+ * Prueba el envío de resumen diario
  */
 const probarEnvio = async () => {
   probando.value = true
 
   try {
-    // Simular llamada API
-    await new Promise((resolve) => setTimeout(resolve, 1500))
+    console.log('📧 Probando envío de resumen a:', configuracion.value.destinatarioResumen)
 
-    console.log('Probando envío a:', configuracion.value.destinatario)
+    // Llamar a POST /api/email/send-summary
+    const response = await api.post('/api/email/send-summary')
 
     $q.notify({
       type: 'positive',
-      message: 'Email de prueba enviado correctamente',
+      message: 'Resumen enviado exitosamente',
       position: 'top-right',
       icon: 'send',
+      timeout: 2000,
     })
+
+    console.log('✅ Resumen enviado:', response.data)
+
+    // Recargar tabla de ejecuciones después de enviar
+    if (tablaEjecucionesRef.value && tablaEjecucionesRef.value.cargarEjecuciones) {
+      console.log('🔄 Recargando historial de ejecuciones...')
+      await tablaEjecucionesRef.value.cargarEjecuciones()
+    }
   } catch (error) {
-    console.error('Error al probar envío:', error)
+    console.error('❌ Error al probar envío:', error)
+
     $q.notify({
       type: 'negative',
-      message: 'Error al enviar email de prueba',
+      message: error.response?.data?.message || 'Error al enviar resumen de prueba',
       position: 'top-right',
+      timeout: 3000,
     })
   } finally {
     probando.value = false
   }
 }
+
+// Cargar configuración al montar el componente
+onMounted(() => {
+  cargarConfiguracion()
+})
 </script>
 
 <style scoped>

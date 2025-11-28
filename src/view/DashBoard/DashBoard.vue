@@ -1,28 +1,23 @@
 <template>
   <q-page class="dashboard-page">
-    <!-- Loading Fullscreen -->
-    <div v-if="initialLoading" class="fullscreen-loading">
-      <div class="loading-content">
-        <q-spinner-gears size="80px" color="primary" />
-        <div class="text-h6 q-mt-lg text-primary">Cargando datos del dashboard...</div>
-      </div>
-    </div>
-
-    <!-- Contenido del Dashboard -->
-    <div v-else>
-      <!-- Header del Dashboard -->
-      <div class="dashboard-header q-mb-lg">
-        <div class="row items-center justify-between">
-          <div class="row items-center">
-            <q-icon name="analytics" size="40px" color="primary" class="q-mr-md" />
-            <div>
-              <div class="text-h5 text-weight-medium">Dashboard Ejecutivo Mensual – SLA</div>
-              <div class="text-grey-7">KPIs y métricas de cumplimiento por rol</div>
-            </div>
+    <!-- Header del Dashboard -->
+     <div class="dashboard-header q-mb-lg">
+      <div class="row items-center justify-between">
+        <div class="row items-center">
+          <q-icon name="analytics" size="40px" color="primary" class="q-mr-md" />
+          <div>
+            <div class="text-h5 text-weight-medium">Dashboard Ejecutivo Mensual – SLA</div>
+            <div class="text-grey-7">KPIs y métricas de cumplimiento por rol</div>
           </div>
+        </div>
+        <div class="row items-center q-gutter-sm">
+          <q-chip v-if="loading" color="warning" text-color="white" icon="hourglass_empty">
+            Cargando datos...
+          </q-chip>
           <q-chip color="primary" text-color="white" icon="update"> Auto-refresh: 30s </q-chip>
         </div>
       </div>
+    </div>
 
       <!-- Filtros -->
       <q-card flat bordered class="filters-card q-mb-lg">
@@ -98,11 +93,62 @@
               @update:model-value="agregarRol"
             />
           </div>
+
+          <!-- Filtro por Estado SLA -->
+          <div class="q-mt-md">
+            <div class="text-subtitle2 q-mb-sm">Estado de Cumplimiento SLA</div>
+            <div class="row q-gutter-sm">
+              <q-chip
+                clickable
+                :outline="filtroEstado !== 'Todos'"
+                :color="filtroEstado === 'Todos' ? 'primary' : 'grey-4'"
+                :text-color="filtroEstado === 'Todos' ? 'white' : 'grey-8'"
+                icon="select_all"
+                @click="filtroEstado = 'Todos'"
+              >
+                Todos
+              </q-chip>
+              <q-chip
+                clickable
+                :outline="filtroEstado !== 'Cumple'"
+                :color="filtroEstado === 'Cumple' ? 'positive' : 'grey-4'"
+                :text-color="filtroEstado === 'Cumple' ? 'white' : 'grey-8'"
+                icon="check_circle"
+                @click="filtroEstado = 'Cumple'"
+              >
+                Cumple
+              </q-chip>
+              <q-chip
+                clickable
+                :outline="filtroEstado !== 'Proceso'"
+                :color="filtroEstado === 'Proceso' ? 'orange' : 'grey-4'"
+                :text-color="filtroEstado === 'Proceso' ? 'white' : 'grey-8'"
+                icon="schedule"
+                @click="filtroEstado = 'Proceso'"
+              >
+                Proceso
+              </q-chip>
+              <q-chip
+                clickable
+                :outline="filtroEstado !== 'No_cumple'"
+                :color="filtroEstado === 'No_cumple' ? 'negative' : 'grey-4'"
+                :text-color="filtroEstado === 'No_cumple' ? 'white' : 'grey-8'"
+                icon="cancel"
+                @click="filtroEstado = 'No_cumple'"
+              >
+                No cumple
+              </q-chip>
+            </div>
+          </div>
         </q-card-section>
       </q-card>
 
       <!-- Tarjetas de KPIs principales -->
-      <div class="row q-col-gutter-lg q-mb-lg">
+      <div class="row q-col-gutter-lg q-mb-lg relative-position">
+        <q-inner-loading :showing="loading">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
+
         <!-- SLA Global Mensual -->
         <div class="col-12 col-md-6 col-lg-3">
           <q-card flat bordered :class="['stat-card', getCardClass(slaGlobal)]">
@@ -191,12 +237,155 @@
         </div>
       </div>
 
+      <!-- Nuevos Gráficos de Análisis SLA -->
+      <div class="row q-col-gutter-lg q-mb-lg relative-position">
+        <q-inner-loading :showing="loading">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
+
+        <!-- Gráfico: N° de Cumplimiento por Mes -->
+        <div class="col-12 col-lg-6">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="show_chart" color="primary" class="q-mr-sm" />
+                N° de Cumplimiento por Mes
+              </div>
+              <canvas id="graficoMensual" style="max-height: 300px"></canvas>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Gráfico: Rol que Incumple Más por Tipo SLA -->
+        <div class="col-12 col-lg-6">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="bar_chart" color="negative" class="q-mr-sm" />
+                Incumplimiento por Rol y Tipo SLA
+              </div>
+              <canvas id="graficoIncumplimientoRol" style="max-height: 300px"></canvas>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- Análisis Detallado: Top 5 Roles con Más Incumplimientos -->
+      <div class="row q-col-gutter-lg q-mb-lg relative-position">
+        <q-inner-loading :showing="loading">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
+
+        <div class="col-12">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="priority_high" color="negative" class="q-mr-sm" />
+                Top 5 Roles con Mayor Incumplimiento por Tipo de SLA
+              </div>
+              <q-separator class="q-mb-md" />
+
+              <div class="row q-col-gutter-md">
+                <div
+                  v-for="tipoSla in tiposSlaDisponibles.slice(0, 3)"
+                  :key="tipoSla.idSla"
+                  class="col-12 col-md-4"
+                >
+                  <div class="tipo-sla-card">
+                    <div class="text-subtitle2 text-weight-bold q-mb-sm">
+                      {{ tipoSla.nombre }}
+                    </div>
+                    <div v-if="tipoSla.topIncumplidores && tipoSla.topIncumplidores.length > 0">
+                      <div
+                        v-for="(rol, idx) in tipoSla.topIncumplidores.slice(0, 5)"
+                        :key="idx"
+                        class="incumplidor-item q-mb-sm"
+                      >
+                        <div class="row items-center justify-between">
+                          <div class="col">
+                            <div class="text-body2">
+                              <q-badge
+                                :color="idx === 0 ? 'negative' : idx === 1 ? 'orange' : 'grey-6'"
+                                :label="idx + 1"
+                                class="q-mr-xs"
+                              />
+                              {{ rol.nombre }}
+                            </div>
+                          </div>
+                          <div class="col-auto">
+                            <q-chip
+                              dense
+                              color="negative"
+                              text-color="white"
+                              size="sm"
+                            >
+                              {{ rol.noCumplen }} incumplimientos
+                            </q-chip>
+                          </div>
+                        </div>
+                        <q-linear-progress
+                          :value="rol.noCumplen / (tipoSla.estadisticas.noCumple || 1)"
+                          color="negative"
+                          class="q-mt-xs"
+                        />
+                      </div>
+                    </div>
+                    <div v-else class="text-center text-grey-6 q-py-md">
+                      <q-icon name="check_circle" size="sm" color="positive" />
+                      <div class="text-caption">Sin incumplimientos</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- Gráfico: Distribución de Estados por Solicitud -->
+      <div class="row q-col-gutter-lg q-mb-lg relative-position">
+        <q-inner-loading :showing="loading">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
+
+        <div class="col-12 col-lg-6">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="donut_small" color="primary" class="q-mr-sm" />
+                Distribución de Estados por Solicitud
+              </div>
+              <canvas id="graficoDistribucionEstados" style="max-height: 350px"></canvas>
+              <div class="text-center text-caption text-grey-7 q-mt-sm">
+                Total de {{ totalSolicitudes }} solicitudes analizadas
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="assessment" color="primary" class="q-mr-sm" />
+                Resumen de Incumplimientos por Tipo SLA
+              </div>
+              <canvas id="graficoResumenIncumplimientos" style="max-height: 350px"></canvas>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
       <!-- Gráficos separados por Tipo de SLA -->
-      <div class="row q-col-gutter-lg q-mb-lg">
+      <div class="row q-col-gutter-lg q-mb-lg relative-position">
+        <q-inner-loading :showing="loading">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
+
         <div
-          v-for="tipoSla in tiposSlaDisponibles"
+          v-for="tipoSla in tiposSlaDisponiblesFiltrados"
           :key="tipoSla.nombre"
-          :class="tiposSlaDisponibles.length === 1 ? 'col-12' : 'col-12 col-lg-6'"
+          :class="tiposSlaDisponiblesFiltrados.length === 1 ? 'col-12' : 'col-12 col-lg-6'"
         >
           <q-card flat bordered>
             <q-card-section>
@@ -217,6 +406,43 @@
                 >
                   SLA: {{ tipoSla.slaPromedio }}%
                 </q-chip>
+              </div>
+
+              <!-- Mini-estadísticas por Estado -->
+              <div class="row q-col-gutter-sm q-mb-md">
+                <div class="col-4">
+                  <div class="mini-stat" style="background-color: #e8f5e9; border-left: 4px solid #4caf50">
+                    <div class="text-caption text-grey-7">Cumple</div>
+                    <div class="text-h6 text-weight-bold text-positive">
+                      {{ tipoSla.estadisticas.cumple }}
+                    </div>
+                    <div class="text-caption text-grey-6">
+                      {{ tipoSla.estadisticas.cumplePct }}%
+                    </div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="mini-stat" style="background-color: #fff3e0; border-left: 4px solid #ff9800">
+                    <div class="text-caption text-grey-7">Proceso</div>
+                    <div class="text-h6 text-weight-bold text-orange">
+                      {{ tipoSla.estadisticas.proceso }}
+                    </div>
+                    <div class="text-caption text-grey-6">
+                      {{ tipoSla.estadisticas.procesoPct }}%
+                    </div>
+                  </div>
+                </div>
+                <div class="col-4">
+                  <div class="mini-stat" style="background-color: #ffebee; border-left: 4px solid #f44336">
+                    <div class="text-caption text-grey-7">No cumple</div>
+                    <div class="text-h6 text-weight-bold text-negative">
+                      {{ tipoSla.estadisticas.noCumple }}
+                    </div>
+                    <div class="text-caption text-grey-6">
+                      {{ tipoSla.estadisticas.noCumplePct }}%
+                    </div>
+                  </div>
+                </div>
               </div>
 
               <q-separator class="q-mb-md" />
@@ -249,23 +475,27 @@
           </q-card>
         </div>
       </div>
-    </div>
   </q-page>
 </template>
 
 <script setup>
 import { ref, onMounted, watch, computed, onBeforeUnmount } from 'vue'
 import { useQuasar } from 'quasar'
-import { api } from 'boot/axios'
 import { useAppStore } from 'stores/app-store'
+import { useSlaStore } from 'stores/useSlaStore'
+import { Chart, registerables } from 'chart.js'
+
+// Registrar todos los componentes de Chart.js
+Chart.register(...registerables)
 
 // Obtener instancia de Quasar
 const $q = useQuasar()
 const appStore = useAppStore()
+const slaStore = useSlaStore()
 
 // Referencias reactivas
 const loading = ref(false)
-const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
+
 const autoRefresh = ref(true)
 const refreshInterval = ref(null)
 
@@ -320,9 +550,36 @@ const tiposSlaDisponibles = ref([])
 // Todos los roles para filtros
 const todosLosRoles = ref([])
 
+// Filtro por estado
+const filtroEstado = ref('Todos')
+
+// Total de solicitudes
+const totalSolicitudes = ref(0)
+
+// Instancias de gráficos Chart.js
+let graficoMensualInstance = null
+let graficoIncumplimientoRolInstance = null
+let graficoDistribucionEstadosInstance = null
+let graficoResumenIncumplimientosInstance = null
+
 // Computed para roles activos
 const rolesActivos = computed(() => {
   return todosLosRoles.value.filter((r) => r.activo).map((r) => r.nombre)
+})
+
+// Computed para filtrar tipos SLA por estado
+const tiposSlaDisponiblesFiltrados = computed(() => {
+  if (filtroEstado.value === 'Todos') {
+    return tiposSlaDisponibles.value
+  }
+
+  // Filtrar los tipos de SLA que tengan al menos una solicitud en el estado seleccionado
+  return tiposSlaDisponibles.value.filter(tipoSla => {
+    if (filtroEstado.value === 'Cumple') return tipoSla.estadisticas.cumple > 0
+    if (filtroEstado.value === 'Proceso') return tipoSla.estadisticas.proceso > 0
+    if (filtroEstado.value === 'No_cumple') return tipoSla.estadisticas.noCumple > 0
+    return true
+  })
 })
 
 // Watch para detectar cambios en los filtros de chips
@@ -334,45 +591,46 @@ watch(rolesActivos, (nuevosRoles) => {
 })
 
 // Métodos
-const cargarAniosDisponibles = async () => {
-  try {
-    // Obtener años desde las solicitudes
-    const response = await api.get('/api/Solicitud')
+const cargarAniosDisponibles = () => {
+  // Inicializar inmediatamente con años recientes (no bloqueante)
+  const currentYear = new Date().getFullYear()
+  aniosDisponibles.value = [currentYear, currentYear - 1]
 
-    if (response.data && response.data.length > 0) {
-      // Extraer años únicos de las fechas de solicitud
+  // Cargar años reales en segundo plano
+  slaStore.fetchSolicitudes().then((solicitudes) => {
+    if (solicitudes && solicitudes.length > 0) {
       const aniosUnicos = [
         ...new Set(
-          response.data
+          solicitudes
             .filter((s) => s.fechaSolicitud)
             .map((s) => new Date(s.fechaSolicitud).getFullYear()),
         ),
       ].sort((a, b) => b - a)
 
-      aniosDisponibles.value = aniosUnicos.length > 0 ? aniosUnicos : [new Date().getFullYear()]
-    } else {
-      const currentYear = new Date().getFullYear()
-      aniosDisponibles.value = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
+      if (aniosUnicos.length > 0) {
+        aniosDisponibles.value = aniosUnicos
+      }
     }
-  } catch (error) {
+  }).catch((error) => {
     console.log('Usando años por defecto:', error.message)
-    const currentYear = new Date().getFullYear()
-    aniosDisponibles.value = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
-  }
+  })
 }
 
-const cargarRolesDisponibles = async () => {
-  try {
-    // Usar tu endpoint de RolRegistro (roles técnicos)
-    const response = await api.get('/RolRegistro')
+const cargarRolesDisponibles = () => {
+  // Establecer roles por defecto inmediatamente (no bloqueante)
+  rolesDisponibles.value = [
+    'Desarrollador Sr.',
+    'QA Analyst',
+    'DevOps Engineer',
+  ]
+  rolesSeleccionados.value = rolesDisponibles.value.slice(0, 3)
 
-    if (response.data && response.data.length > 0) {
-      // Filtrar solo roles activos
-      const rolesActivos = response.data.filter((r) => r.esActivo !== false)
-
+  // Cargar roles reales en segundo plano
+  slaStore.fetchRoles().then((roles) => {
+    if (roles && roles.length > 0) {
+      const rolesActivos = roles.filter((r) => r.esActivo !== false)
       rolesDisponibles.value = rolesActivos.map((r) => r.nombreRol)
 
-      // Si no hay roles seleccionados, seleccionar los primeros 3
       if (rolesSeleccionados.value.length === 0 && rolesDisponibles.value.length > 0) {
         rolesSeleccionados.value = rolesDisponibles.value.slice(
           0,
@@ -380,29 +638,19 @@ const cargarRolesDisponibles = async () => {
         )
       }
 
-      // Actualizar todosLosRoles para los chips
       todosLosRoles.value = rolesActivos.map((r) => ({
         nombre: r.nombreRol,
-        cantidad: 0, // Se actualizará con las solicitudes
+        cantidad: 0,
         activo: rolesSeleccionados.value.includes(r.nombreRol),
       }))
+
+      // Recargar dashboard con los roles correctos
+      cargarDashboard()
     }
-  } catch (error) {
+  }).catch((error) => {
     console.error('Error al cargar roles:', error)
-    // Roles por defecto
-    rolesDisponibles.value = [
-      'Desarrollador Sr.',
-      'QA Analyst',
-      'DevOps Engineer',
-      'Project Manager',
-      'Business Analyst',
-      'Data Engineer',
-      'Scrum Master',
-    ]
-    if (rolesSeleccionados.value.length === 0) {
-      rolesSeleccionados.value = rolesDisponibles.value.slice(0, 3)
-    }
-  }
+    // Mantener roles por defecto ya establecidos
+  })
 }
 
 const cargarDashboard = async () => {
@@ -411,16 +659,16 @@ const cargarDashboard = async () => {
   try {
     const mesNumero = mesesDisponibles.indexOf(filtros.value.mes) + 1
 
-    // Obtener todas las solicitudes y roles
-    const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
-      api.get('/Solicitud'),
-      api.get('/RolRegistro'),
-      api.get('/ConfigSla'),
+    // Obtener todas las solicitudes y roles (usar caché agresivamente)
+    const [solicitudesData, rolesData, configSlaData] = await Promise.all([
+      slaStore.fetchSolicitudes(false), // false = usar caché si existe
+      slaStore.fetchRoles(false),
+      slaStore.fetchConfigSla(false),
     ])
 
-    const todasSolicitudes = solicitudesRes.data || []
-    const todosRoles = rolesRes.data || []
-    const configsSla = configSlaRes.data || []
+    const todasSolicitudes = solicitudesData || []
+    const todosRoles = rolesData || []
+    const configsSla = configSlaData || []
 
     // Filtrar solicitudes del mes y año seleccionados
     const solicitudesMes = todasSolicitudes.filter((s) => {
@@ -438,25 +686,41 @@ const cargarDashboard = async () => {
       })
     }
 
-    // Calcular cumplimiento de SLA
+    // Calcular cumplimiento de SLA con estados
     const solicitudesConSla = solicitudesFiltradas.map((s) => {
       const config = configsSla.find((c) => c.idSla === s.idSla)
       const diasUmbral = config?.diasUmbral || 0
 
       let cumpleSla = false
+      let estadoSla = 'Proceso' // Por defecto
+
       if (s.fechaSolicitud && s.fechaIngreso) {
+        // Solicitud completada
         const fechaSol = new Date(s.fechaSolicitud)
         const fechaIng = new Date(s.fechaIngreso)
         const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
         cumpleSla = diasTranscurridos <= diasUmbral
+        estadoSla = cumpleSla ? 'Cumple' : 'No_cumple'
+      } else if (s.fechaSolicitud && !s.fechaIngreso) {
+        // Solicitud en proceso
+        const fechaSol = new Date(s.fechaSolicitud)
+        const hoy = new Date()
+        const diasTranscurridos = Math.floor((hoy - fechaSol) / (1000 * 60 * 60 * 24))
+
+        if (diasTranscurridos > diasUmbral) {
+          estadoSla = 'No_cumple' // Ya excedió el umbral
+        } else {
+          estadoSla = 'Proceso' // Aún dentro del tiempo
+        }
       }
 
-      return { ...s, cumpleSla, diasUmbral }
+      return { ...s, cumpleSla, diasUmbral, estadoSla }
     })
 
-    // Calcular SLA Global
-    const totalSolicitudes = solicitudesConSla.length
-    const solicitudesCumplen = solicitudesConSla.filter((s) => s.cumpleSla).length
+    // Calcular SLA Global - Solo solicitudes completadas para estabilidad
+    const solicitudesCompletadas = solicitudesConSla.filter((s) => s.fechaIngreso)
+    const totalSolicitudes = solicitudesCompletadas.length
+    const solicitudesCumplen = solicitudesCompletadas.filter((s) => s.cumpleSla).length
     slaGlobal.value =
       totalSolicitudes > 0
         ? parseFloat(((solicitudesCumplen / totalSolicitudes) * 100).toFixed(1))
@@ -466,22 +730,31 @@ const cargarDashboard = async () => {
     const mesAnterior = mesNumero === 1 ? 12 : mesNumero - 1
     const anioAnterior = mesNumero === 1 ? filtros.value.anio - 1 : filtros.value.anio
 
-    const solicitudesMesAnterior = todasSolicitudes
-      .filter((s) => {
-        if (!s.fechaSolicitud) return false
-        const fecha = new Date(s.fechaSolicitud)
-        return fecha.getFullYear() === anioAnterior && fecha.getMonth() + 1 === mesAnterior
+    // Filtrar solicitudes del mes anterior (aplicando los mismos filtros de roles)
+    let solicitudesMesAnteriorBase = todasSolicitudes.filter((s) => {
+      if (!s.fechaSolicitud) return false
+      const fecha = new Date(s.fechaSolicitud)
+      return fecha.getFullYear() === anioAnterior && fecha.getMonth() + 1 === mesAnterior
+    })
+
+    // Aplicar filtro de roles si hay roles seleccionados
+    if (rolesSeleccionados.value.length > 0) {
+      solicitudesMesAnteriorBase = solicitudesMesAnteriorBase.filter((s) => {
+        const rol = todosRoles.find((r) => r.idRolRegistro === s.idRolRegistro)
+        return rol && rolesSeleccionados.value.includes(rol.nombreRol)
       })
+    }
+
+    // Filtrar solo solicitudes completadas del mes anterior para cálculo estable
+    const solicitudesMesAnterior = solicitudesMesAnteriorBase
+      .filter((s) => s.fechaIngreso) // Solo solicitudes completadas
       .map((s) => {
         const config = configsSla.find((c) => c.idSla === s.idSla)
         const diasUmbral = config?.diasUmbral || 0
-        let cumpleSla = false
-        if (s.fechaSolicitud && s.fechaIngreso) {
-          const fechaSol = new Date(s.fechaSolicitud)
-          const fechaIng = new Date(s.fechaIngreso)
-          const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
-          cumpleSla = diasTranscurridos <= diasUmbral
-        }
+        const fechaSol = new Date(s.fechaSolicitud)
+        const fechaIng = new Date(s.fechaIngreso)
+        const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
+        const cumpleSla = diasTranscurridos <= diasUmbral
         return { cumpleSla }
       })
 
@@ -532,7 +805,7 @@ const cargarDashboard = async () => {
         ? cumplimientoPorRol[cumplimientoPorRol.length - 1].cumplimiento
         : 0
 
-    // Calcular gráficos separados por tipo de SLA
+    // Calcular gráficos separados por tipo de SLA con estadísticas por estado
     tiposSlaDisponibles.value = configsSla
       .filter((config) => config.esActivo)
       .map((config) => {
@@ -542,6 +815,20 @@ const cargarDashboard = async () => {
         const cumplenTipoSla = solicitudesTipoSla.filter((s) => s.cumpleSla).length
         const slaPromedio =
           totalTipoSla > 0 ? parseFloat(((cumplenTipoSla / totalTipoSla) * 100).toFixed(1)) : 0
+
+        // Calcular estadísticas por estado
+        const cumpleCount = solicitudesTipoSla.filter(s => s.estadoSla === 'Cumple').length
+        const procesoCount = solicitudesTipoSla.filter(s => s.estadoSla === 'Proceso').length
+        const noCumpleCount = solicitudesTipoSla.filter(s => s.estadoSla === 'No_cumple').length
+
+        const estadisticas = {
+          cumple: cumpleCount,
+          proceso: procesoCount,
+          noCumple: noCumpleCount,
+          cumplePct: totalTipoSla > 0 ? parseFloat(((cumpleCount / totalTipoSla) * 100).toFixed(1)) : 0,
+          procesoPct: totalTipoSla > 0 ? parseFloat(((procesoCount / totalTipoSla) * 100).toFixed(1)) : 0,
+          noCumplePct: totalTipoSla > 0 ? parseFloat(((noCumpleCount / totalTipoSla) * 100).toFixed(1)) : 0
+        }
 
         // Calcular cumplimiento por rol para este tipo de SLA
         const cumplimientoPorRolTipoSla = todosRoles
@@ -558,15 +845,35 @@ const cargarDashboard = async () => {
             )
             const totalRolTipo = solicitudesRolTipo.length
             const cumplenRolTipo = solicitudesRolTipo.filter((s) => s.cumpleSla).length
+            const noCumplenRolTipo = solicitudesRolTipo.filter((s) => s.estadoSla === 'No_cumple').length
             const porcentaje = totalRolTipo > 0 ? (cumplenRolTipo / totalRolTipo) * 100 : 0
 
             return {
               nombre: rol.nombreRol,
               cumplimiento: parseFloat(porcentaje.toFixed(1)),
               total: totalRolTipo,
+              noCumplen: noCumplenRolTipo,
             }
           })
           .sort((a, b) => b.cumplimiento - a.cumplimiento)
+
+        // Top 5 roles que más incumplen este tipo de SLA
+        const topIncumplidores = todosRoles
+          .filter((r) => r.esActivo)
+          .map((rol) => {
+            const solicitudesRolTipo = solicitudesTipoSla.filter(
+              (s) => s.idRolRegistro === rol.idRolRegistro,
+            )
+            const noCumplenRolTipo = solicitudesRolTipo.filter((s) => s.estadoSla === 'No_cumple').length
+
+            return {
+              nombre: rol.nombreRol,
+              noCumplen: noCumplenRolTipo,
+            }
+          })
+          .filter(r => r.noCumplen > 0)
+          .sort((a, b) => b.noCumplen - a.noCumplen)
+          .slice(0, 5)
 
         return {
           nombre: config.tipoSolicitud || `SLA ${config.idSla}`,
@@ -574,9 +881,21 @@ const cargarDashboard = async () => {
           totalSolicitudes: totalTipoSla,
           slaPromedio: slaPromedio,
           cumplimientoRoles: cumplimientoPorRolTipoSla,
+          estadisticas: estadisticas,
+          idSla: config.idSla,
+          topIncumplidores: topIncumplidores
         }
       })
       .filter((tipo) => tipo.totalSolicitudes > 0)
+
+    // Actualizar total de solicitudes
+    totalSolicitudes.value = solicitudesConSla.length
+
+    // Crear los nuevos gráficos
+    await crearGraficoCumplimientoMes(todasSolicitudes, configsSla)
+    await crearGraficoIncumplimientoRol(solicitudesConSla, todosRoles, configsSla)
+    await crearGraficoDistribucionEstados(solicitudesConSla)
+    await crearGraficoResumenIncumplimientos(tiposSlaDisponibles.value, solicitudesConSla)
 
     // Actualizar todos los roles con cantidades
     todosLosRoles.value = todosRoles
@@ -698,6 +1017,297 @@ const removerRol = (rol) => {
   }
 }
 
+// Crear gráfico de cumplimiento mensual
+const crearGraficoCumplimientoMes = async (todasSolicitudes, configsSla) => {
+  const ctx = document.getElementById('graficoMensual')
+  if (!ctx) return
+
+  // Destruir gráfico anterior si existe
+  if (graficoMensualInstance) {
+    graficoMensualInstance.destroy()
+  }
+
+  // Agrupar solicitudes por mes del año seleccionado
+  const mesesData = Array(12).fill(0).map(() => ({ cumple: 0, proceso: 0, noCumple: 0 }))
+
+  todasSolicitudes.forEach(sol => {
+    if (!sol.fechaSolicitud) return
+    const fecha = new Date(sol.fechaSolicitud)
+    if (fecha.getFullYear() !== filtros.value.anio) return
+
+    const mes = fecha.getMonth()
+    const config = configsSla.find(c => c.idSla === sol.idSla)
+    const diasUmbral = config?.diasUmbral || 0
+
+    if (sol.fechaSolicitud && sol.fechaIngreso) {
+      const fechaSol = new Date(sol.fechaSolicitud)
+      const fechaIng = new Date(sol.fechaIngreso)
+      const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
+      if (diasTranscurridos <= diasUmbral) {
+        mesesData[mes].cumple++
+      } else {
+        mesesData[mes].noCumple++
+      }
+    } else if (sol.fechaSolicitud && !sol.fechaIngreso) {
+      const fechaSol = new Date(sol.fechaSolicitud)
+      const hoy = new Date()
+      const diasTranscurridos = Math.floor((hoy - fechaSol) / (1000 * 60 * 60 * 24))
+      if (diasTranscurridos > diasUmbral) {
+        mesesData[mes].noCumple++
+      } else {
+        mesesData[mes].proceso++
+      }
+    }
+  })
+
+  graficoMensualInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+      datasets: [
+        {
+          label: 'Cumple',
+          data: mesesData.map(m => m.cumple),
+          backgroundColor: '#4CAF50',
+          borderColor: '#4CAF50',
+          borderWidth: 1
+        },
+        {
+          label: 'Proceso',
+          data: mesesData.map(m => m.proceso),
+          backgroundColor: '#FF9800',
+          borderColor: '#FF9800',
+          borderWidth: 1
+        },
+        {
+          label: 'No cumple',
+          data: mesesData.map(m => m.noCumple),
+          backgroundColor: '#F44336',
+          borderColor: '#F44336',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        x: { stacked: false },
+        y: {
+          stacked: false,
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      },
+      plugins: {
+        legend: { position: 'top' },
+        tooltip: {
+          callbacks: {
+            footer: (tooltipItems) => {
+              const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0)
+              return `Total: ${total} solicitudes`
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
+// Crear gráfico de incumplimiento por rol
+const crearGraficoIncumplimientoRol = async (solicitudesConSla, todosRoles, configsSla) => {
+  const ctx = document.getElementById('graficoIncumplimientoRol')
+  if (!ctx) return
+
+  // Destruir gráfico anterior si existe
+  if (graficoIncumplimientoRolInstance) {
+    graficoIncumplimientoRolInstance.destroy()
+  }
+
+  // Calcular incumplimientos por rol y tipo SLA
+  const dataPorTipoSla = {}
+
+  configsSla.filter(c => c.esActivo).forEach(config => {
+    const tipoNombre = config.tipoSolicitud || `SLA ${config.idSla}`
+    dataPorTipoSla[tipoNombre] = {}
+
+    todosRoles.filter(r => r.esActivo).forEach(rol => {
+      const solicitudesRol = solicitudesConSla.filter(s =>
+        s.idRolRegistro === rol.idRolRegistro &&
+        s.idSla === config.idSla &&
+        s.estadoSla === 'No_cumple'
+      )
+      dataPorTipoSla[tipoNombre][rol.nombreRol] = solicitudesRol.length
+    })
+  })
+
+  // Preparar datos para el gráfico
+  const rolesUnicos = [...new Set(todosRoles.filter(r => r.esActivo).map(r => r.nombreRol))]
+  const datasets = Object.keys(dataPorTipoSla).map((tipoSla, index) => {
+    const colores = ['#F44336', '#E91E63', '#9C27B0', '#673AB7', '#3F51B5']
+    return {
+      label: tipoSla,
+      data: rolesUnicos.map(rol => dataPorTipoSla[tipoSla][rol] || 0),
+      backgroundColor: colores[index % colores.length],
+      borderColor: colores[index % colores.length],
+      borderWidth: 1
+    }
+  })
+
+  graficoIncumplimientoRolInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: rolesUnicos,
+      datasets: datasets
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      indexAxis: 'y', // Barras horizontales
+      scales: {
+        x: {
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      },
+      plugins: {
+        legend: { position: 'top' },
+        title: {
+          display: true,
+          text: 'Cantidad de solicitudes que NO cumplen SLA'
+        }
+      }
+    }
+  })
+}
+
+// Crear gráfico de distribución de estados por solicitud (Donut)
+const crearGraficoDistribucionEstados = async (solicitudesConSla) => {
+  const ctx = document.getElementById('graficoDistribucionEstados')
+  if (!ctx) return
+
+  // Destruir gráfico anterior si existe
+  if (graficoDistribucionEstadosInstance) {
+    graficoDistribucionEstadosInstance.destroy()
+  }
+
+  // Contar solicitudes por estado
+  const cumpleCount = solicitudesConSla.filter(s => s.estadoSla === 'Cumple').length
+  const procesoCount = solicitudesConSla.filter(s => s.estadoSla === 'Proceso').length
+  const noCumpleCount = solicitudesConSla.filter(s => s.estadoSla === 'No_cumple').length
+
+  graficoDistribucionEstadosInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Cumple', 'Proceso', 'No cumple'],
+      datasets: [{
+        data: [cumpleCount, procesoCount, noCumpleCount],
+        backgroundColor: ['#4CAF50', '#FF9800', '#F44336'],
+        borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            font: { size: 13 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || ''
+              const value = context.parsed || 0
+              const total = context.dataset.data.reduce((a, b) => a + b, 0)
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+              return `${label}: ${value} solicitudes (${percentage}%)`
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
+// Crear gráfico resumen de incumplimientos por tipo SLA (Barras)
+const crearGraficoResumenIncumplimientos = async (tiposSla) => {
+  const ctx = document.getElementById('graficoResumenIncumplimientos')
+  if (!ctx) return
+
+  // Destruir gráfico anterior si existe
+  if (graficoResumenIncumplimientosInstance) {
+    graficoResumenIncumplimientosInstance.destroy()
+  }
+
+  // Extraer datos de cada tipo SLA
+  const labels = tiposSla.map(t => t.nombre)
+  const cumpleData = tiposSla.map(t => t.estadisticas.cumple)
+  const procesoData = tiposSla.map(t => t.estadisticas.proceso)
+  const noCumpleData = tiposSla.map(t => t.estadisticas.noCumple)
+
+  graficoResumenIncumplimientosInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Cumple',
+          data: cumpleData,
+          backgroundColor: '#4CAF50',
+          borderColor: '#4CAF50',
+          borderWidth: 1
+        },
+        {
+          label: 'Proceso',
+          data: procesoData,
+          backgroundColor: '#FF9800',
+          borderColor: '#FF9800',
+          borderWidth: 1
+        },
+        {
+          label: 'No cumple',
+          data: noCumpleData,
+          backgroundColor: '#F44336',
+          borderColor: '#F44336',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        x: {
+          stacked: true
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            footer: function(tooltipItems) {
+              const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0)
+              return `Total: ${total} solicitudes`
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
 // Funciones para colores de barras y chips
 const getBarColorBySla = (porcentaje) => {
   if (porcentaje >= 90) return 'linear-gradient(90deg, #4CAF50 0%, #66BB6A 100%)'
@@ -753,16 +1363,27 @@ const detenerAutoRefresh = () => {
 }
 
 // Inicialización
-onMounted(async () => {
-  await cargarAniosDisponibles()
-  await cargarRolesDisponibles()
-  await cargarDashboard()
+onMounted(() => {
+  // Pre-cargar datos en caché en paralelo (sin bloquear)
+  Promise.all([
+    slaStore.fetchSolicitudes(false),
+    slaStore.fetchRoles(false),
+    slaStore.fetchConfigSla(false),
+  ]).then(() => {
+    // Marcar como cargado para otras vistas
+    appStore.markAsLoaded()
+  })
+
+  // Cargar configuraciones iniciales (no bloqueante)
+  cargarAniosDisponibles()
+  cargarRolesDisponibles()
+
+  // Cargar dashboard (usará datos en caché si ya están disponibles)
+  cargarDashboard()
 
   // Iniciar actualización automática
   iniciarAutoRefresh()
-})
-
-// Limpiar intervalo al desmontar
+})// Limpiar intervalo al desmontar
 onBeforeUnmount(() => {
   detenerAutoRefresh()
 })
@@ -808,6 +1429,38 @@ onBeforeUnmount(() => {
 
 .card-danger {
   border-left: 4px solid #f44336;
+}
+
+.mini-stat {
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  transition: transform 0.2s;
+}
+
+.mini-stat:hover {
+  transform: scale(1.05);
+}
+
+.tipo-sla-card {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  min-height: 300px;
+}
+
+.incumplidor-item {
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s;
+}
+
+.incumplidor-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateX(4px);
 }
 
 .chart-container {
@@ -870,5 +1523,527 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.mini-stat {
+  padding: 12px;
+  border-radius: 8px;
+  text-align: center;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.mini-stat:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+/* Responsive Design */
+
+/* Desktop Large (1440px+) */
+@media (min-width: 1440px) {
+  .dashboard-page {
+    padding: 32px;
+    max-width: 1600px;
+    margin: 0 auto;
+  }
+
+  .stat-card {
+    min-height: 160px;
+  }
+
+  .chart-label {
+    min-width: 180px;
+  }
+}
+
+/* Desktop (1024px - 1439px) */
+@media (max-width: 1439px) and (min-width: 1024px) {
+  .dashboard-page {
+    padding: 24px 20px;
+  }
+
+  .stat-card {
+    min-height: 140px;
+  }
+
+  .chart-label {
+    min-width: 150px;
+  }
+}
+
+/* Tablet Landscape (768px - 1023px) */
+@media (max-width: 1023px) and (min-width: 768px) {
+  .dashboard-page {
+    padding: 16px;
+  }
+
+  .dashboard-header {
+    padding: 16px;
+  }
+
+  .stat-card {
+    min-height: 120px;
+  }
+
+  .chart-label {
+    min-width: 120px;
+    font-size: 13px;
+  }
+
+  .chart-bar-container {
+    height: 36px;
+  }
+
+  .mini-stat {
+    padding: 10px;
+  }
+
+  .tipo-sla-card {
+    min-height: 280px;
+  }
+
+  /* Reorganizar KPIs en tablet */
+  .dashboard-page .col-lg-3 {
+    width: 50% !important;
+  }
+
+  /* Ajustar filtros */
+  .filters-card .col-md-2 {
+    width: 50% !important;
+  }
+}
+
+/* Tablet Portrait (600px - 767px) */
+@media (max-width: 767px) and (min-width: 600px) {
+  .dashboard-page {
+    padding: 12px;
+  }
+
+  .dashboard-header {
+    padding: 12px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 1.25rem;
+  }
+
+  .stat-card {
+    min-height: 100px;
+    margin-bottom: 12px;
+  }
+
+  .stat-card .text-h3 {
+    font-size: 1.75rem;
+  }
+
+  .chart-label {
+    min-width: 100px;
+    font-size: 12px;
+    text-align: left;
+  }
+
+  .chart-bar-container {
+    height: 32px;
+  }
+
+  .chart-value {
+    font-size: 12px;
+  }
+
+  .mini-stat {
+    padding: 8px;
+  }
+
+  .tipo-sla-card {
+    min-height: 250px;
+    padding: 12px;
+  }
+
+  .incumplidor-item {
+    padding: 6px;
+  }
+
+  /* KPIs en dos columnas para tablet portrait */
+  .dashboard-page .col-lg-3 {
+    width: 50% !important;
+  }
+
+  /* Gráficos en columna completa */
+  .dashboard-page .col-lg-6 {
+    width: 100% !important;
+    margin-bottom: 16px;
+  }
+
+  /* Filtros en columna completa */
+  .filters-card .row > [class*="col-"] {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+}
+
+/* Mobile Large (480px - 599px) */
+@media (max-width: 599px) and (min-width: 480px) {
+  .dashboard-page {
+    padding: 8px;
+  }
+
+  .dashboard-header {
+    padding: 10px;
+  }
+
+  .dashboard-header .row {
+    flex-direction: column;
+    align-items: flex-start !important;
+  }
+
+  .dashboard-header .q-chip {
+    margin-top: 8px;
+    align-self: flex-start;
+  }
+
+  .stat-card {
+    min-height: 90px;
+    margin-bottom: 8px;
+  }
+
+  .stat-card .text-h3 {
+    font-size: 1.5rem;
+  }
+
+  .stat-card .text-h4,
+  .stat-card .text-h5 {
+    font-size: 1.25rem;
+  }
+
+  .chart-row {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .chart-label {
+    min-width: auto;
+    width: 100%;
+    text-align: left;
+    margin-bottom: 4px;
+  }
+
+  .chart-bar-container {
+    width: 100%;
+    height: 28px;
+  }
+
+  .chart-value {
+    font-size: 11px;
+  }
+
+  .mini-stat {
+    padding: 6px;
+    margin: 4px 0;
+  }
+
+  .tipo-sla-card {
+    min-height: 200px;
+    padding: 10px;
+  }
+
+  .incumplidor-item {
+    padding: 4px;
+    margin-bottom: 4px;
+  }
+
+  /* Todos los elementos en columna completa */
+  .dashboard-page [class*="col-"] {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+
+  .text-h6 {
+    font-size: 1rem;
+  }
+
+  .text-h5 {
+    font-size: 1.1rem;
+  }
+}
+
+/* Mobile Small (320px - 479px) */
+@media (max-width: 479px) {
+  .dashboard-page {
+    padding: 4px;
+  }
+
+  .dashboard-header {
+    padding: 8px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .dashboard-header .text-grey-7 {
+    font-size: 0.8rem;
+  }
+
+  .dashboard-header .q-chip {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+  }
+
+  .stat-card {
+    min-height: 80px;
+    margin-bottom: 6px;
+  }
+
+  .stat-card .text-h3 {
+    font-size: 1.25rem;
+  }
+
+  .stat-card .text-h4,
+  .stat-card .text-h5 {
+    font-size: 1.1rem;
+  }
+
+  .stat-card .q-card-section {
+    padding: 8px;
+  }
+
+  .stat-card .q-icon {
+    font-size: 32px;
+  }
+
+  .chart-bar-container {
+    height: 24px;
+  }
+
+  .chart-value {
+    font-size: 10px;
+  }
+
+  .mini-stat {
+    padding: 4px;
+    margin: 2px 0;
+  }
+
+  .tipo-sla-card {
+    min-height: 150px;
+    padding: 8px;
+  }
+
+  .incumplidor-item {
+    padding: 3px;
+    margin-bottom: 3px;
+  }
+
+  .text-h6 {
+    font-size: 0.95rem;
+  }
+
+  .text-subtitle2 {
+    font-size: 0.85rem;
+  }
+
+  .filters-card .q-card-section {
+    padding: 8px;
+  }
+
+  .filters-card .q-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    min-height: 36px;
+  }
+
+  .filters-card .q-chip {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+    margin: 2px;
+  }
+}
+
+/* Mobile Extra Small (< 320px) */
+@media (max-width: 319px) {
+  .dashboard-page {
+    padding: 2px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 0.9rem;
+  }
+
+  .stat-card .text-h3 {
+    font-size: 1.1rem;
+  }
+
+  .stat-card .text-h4,
+  .stat-card .text-h5 {
+    font-size: 1rem;
+  }
+
+  .text-h6 {
+    font-size: 0.85rem;
+  }
+
+  .chart-bar-container {
+    height: 20px;
+  }
+
+  .tipo-sla-card {
+    min-height: 120px;
+  }
+
+  .mini-stat {
+    padding: 2px;
+  }
+}
+
+/* Orientación landscape en móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+  .dashboard-page {
+    padding: 8px 16px;
+  }
+
+  .stat-card {
+    min-height: 70px;
+  }
+
+  .chart-bar-container {
+    height: 24px;
+  }
+
+  .dashboard-header {
+    padding: 6px 12px;
+  }
+
+  .tipo-sla-card {
+    min-height: 140px;
+  }
+
+  .mini-stat {
+    padding: 4px;
+  }
+
+  /* Reorganizar KPIs en landscape */
+  .dashboard-page .col-lg-3 {
+    width: 25% !important;
+  }
+
+  /* Gráficos lado a lado en landscape */
+  .dashboard-page .col-lg-6 {
+    width: 50% !important;
+  }
+}
+
+/* Mejoras para interacción táctil */
+@media (pointer: coarse) {
+  .q-btn {
+    min-height: 44px;
+  }
+
+  .q-select .q-field__control {
+    min-height: 44px;
+  }
+
+  .q-chip {
+    min-height: 32px;
+    padding: 4px 12px;
+  }
+
+  .stat-card {
+    cursor: pointer;
+  }
+
+  .incumplidor-item {
+    min-height: 44px;
+  }
+}
+
+/* Alto contraste y accesibilidad */
+@media (prefers-contrast: high) {
+  .stat-card {
+    border-width: 2px;
+  }
+
+  .chart-bar {
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  }
+
+  .tipo-sla-card {
+    border-width: 2px;
+  }
+
+  .mini-stat {
+    border: 1px solid #ccc;
+  }
+}
+
+/* Reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .mini-stat,
+  .chart-bar,
+  .incumplidor-item {
+    transition: none;
+  }
+
+  .stat-card:hover,
+  .mini-stat:hover,
+  .incumplidor-item:hover {
+    transform: none;
+  }
+}
+
+/* Modo oscuro */
+@media (prefers-color-scheme: dark) {
+  .dashboard-page {
+    background: #1a1a1a;
+  }
+
+  .dashboard-header,
+  .filters-card,
+  .stat-card,
+  .tipo-sla-card {
+    background: #2d2d2d;
+    color: #ffffff;
+  }
+
+  .mini-stat {
+    background: #3d3d3d;
+  }
+
+  .chart-bar-container {
+    background: #404040;
+  }
+}
+
+/* Mejoras para impresión */
+@media print {
+  .dashboard-page {
+    padding: 0;
+    background: white;
+  }
+
+  .q-btn,
+  .q-chip[clickable] {
+    display: none;
+  }
+
+  .stat-card,
+  .tipo-sla-card {
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
+    margin-bottom: 10px;
+  }
+
+  .dashboard-header {
+    page-break-after: avoid;
+  }
+
+  .chart-container {
+    page-break-inside: avoid;
+  }
+
+  .tipo-sla-card {
+    min-height: auto;
+  }
 }
 </style>

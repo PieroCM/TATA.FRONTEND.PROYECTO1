@@ -14,15 +14,29 @@ const routes = [
     component: () => import('src/view/InicioSesion/ForgotPassword.vue'),
   },
   {
-    // Ruta de activación de cuenta (con parámetros de query: email y token)
-    path: '/activacion-cuenta',
-    component: () => import('src/view/InicioSesion/ActivacionCuentaPage.vue'),
-  },
-  {
     // Ruta del sistema con MainLayout
     path: '/sistema',
     component: () => import('layouts/MainLayout.vue'),
     redirect: '/sistema/dashboard',
+    beforeEnter: async (to, from, next) => {
+      // Pre-cargar datos críticos en paralelo para todas las vistas del sistema
+      if (from.path === '/' || from.path === '/login') {
+        try {
+          const { useSlaStore } = await import('src/stores/useSlaStore')
+          const store = useSlaStore()
+
+          // Pre-cargar datos en paralelo sin bloquear la navegación
+          Promise.all([
+            store.fetchSolicitudes(false),
+            store.fetchRoles(false),
+            store.fetchConfigSla(false),
+          ]).catch(err => console.log('Pre-carga en segundo plano:', err))
+        } catch (error) {
+          console.log('Error en pre-carga:', error)
+        }
+      }
+      next()
+    },
     children: [
       {
         path: 'dashboard',
@@ -61,11 +75,6 @@ const routes = [
         name: 'LogView',
         component: () => import('src/view/Sistemas/logView.vue'),
       },
-
-      {
-        path: '/reportes/sla-historial',
-        component: () => import('src/view/Reportes/HistorialReportesSLA.vue'),
-      },
       {
         path: 'usuario',
         name: 'usuario-perfil',
@@ -93,7 +102,7 @@ const routes = [
     ],
   },
 
-  // Always leave this as last one
+  // Siempre dejar esta al final
   {
     path: '/:catchAll(.*)*',
     component: () => import('pages/ErrorNotFound.vue'),

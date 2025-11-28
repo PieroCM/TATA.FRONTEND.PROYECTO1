@@ -6,7 +6,7 @@ import { ref, computed } from 'vue'
  * Maneja sesión, token y datos del usuario logueado
  */
 export const useAuthStore = defineStore('auth', () => {
-  // Estado - Usar 'authToken' como clave en localStorage para consistencia con axios.js
+  // Estado
   const token = ref(localStorage.getItem('authToken') || null)
   const usuario = ref(JSON.parse(localStorage.getItem('usuario') || 'null'))
 
@@ -24,7 +24,6 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = authToken
     usuario.value = userData
 
-    // Usar 'authToken' como clave para que axios.js pueda leerlo
     localStorage.setItem('authToken', authToken)
     localStorage.setItem('usuario', JSON.stringify(userData))
   }
@@ -36,9 +35,11 @@ export const useAuthStore = defineStore('auth', () => {
     token.value = null
     usuario.value = null
 
-    // Limpiar ambas claves por compatibilidad
     localStorage.removeItem('authToken')
+    localStorage.removeItem('token')
     localStorage.removeItem('usuario')
+    localStorage.removeItem('userEmail')
+    localStorage.removeItem('username')
   }
 
   /**

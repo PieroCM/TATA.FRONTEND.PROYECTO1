@@ -1,5 +1,16 @@
 <template>
   <q-page class="gestion-alertas-page">
+    <!-- Indicador de Carga Global -->
+    <q-inner-loading :showing="isLoading" class="loading-overlay">
+      <div class="loading-content">
+        <q-spinner-hourglass size="50px" color="primary" />
+        <div class="loading-text q-mt-md">
+          <div class="text-h6 text-weight-bold">{{ mensajeCarga }}</div>
+          <div class="text-caption text-grey-7 q-mt-xs">Por favor espera...</div>
+        </div>
+      </div>
+    </q-inner-loading>
+
     <!-- Encabezado Principal -->
     <div class="page-header q-mb-lg">
       <div class="header-content">
@@ -173,9 +184,9 @@
             :rows="alertasFiltradas"
             :columns="columns"
             row-key="idAlerta"
-            :loading="store.loading"
-            :pagination="pagination"
-            hide-pagination
+            :loading="isLoading"
+            v-model:pagination="pagination"
+            :rows-per-page-options="[10, 25, 50, 100]"
             class="alertas-table-custom"
           >
             <!-- Columna Solicitud -->
@@ -183,10 +194,10 @@
               <q-td :props="props">
                 <div class="solicitud-cell">
                   <div class="text-weight-bold text-primary text-body2">
-                    {{ formatSolicitud(props.row.solicitud?.idSolicitud) }}
+                    {{ props.row.codigoSolicitud || 'N/A' }}
                   </div>
                   <div class="text-grey-7 text-caption solicitud-descripcion">
-                    {{ props.row.solicitud?.descripcion || 'Sin descripción' }}
+                    {{ props.row.mensaje || 'Sin mensaje' }}
                   </div>
                 </div>
               </q-td>
@@ -197,12 +208,24 @@
               <q-td :props="props">
                 <div class="responsable-cell">
                   <q-avatar size="36px" color="primary" text-color="white" class="q-mr-sm">
-                    {{ getIniciales(props.row.solicitud?.rolRegistro?.nombreRol) }}
+                    {{ getIniciales(props.row.nombreResponsable) }}
                   </q-avatar>
                   <span class="responsable-nombre">
-                    {{ props.row.solicitud?.rolRegistro?.nombreRol || 'Sin Asignar' }}
+                    {{ props.row.nombreResponsable || 'Sin Asignar' }}
                   </span>
                 </div>
+              </q-td>
+            </template>
+
+            <!-- Columna Rol -->
+            <template v-slot:body-cell-rol="props">
+              <q-td :props="props">
+                <q-badge
+                  color="blue-grey-2"
+                  text-color="blue-grey-8"
+                  :label="props.row.nombreRol || 'Sin Rol'"
+                  class="badge-rol"
+                />
               </q-td>
             </template>
 
@@ -212,9 +235,13 @@
                 <q-badge
                   outline
                   color="primary"
-                  :label="props.row.solicitud?.configSla?.nombreSla || 'N/A'"
+                  :label="props.row.codigoSla || 'N/A'"
                   class="badge-sla"
-                />
+                >
+                  <q-tooltip v-if="props.row.nombreSla">
+                    {{ props.row.nombreSla }}
+                  </q-tooltip>
+                </q-badge>
               </q-td>
             </template>
 
@@ -236,7 +263,7 @@
                       {{ getPorcentajeProgresoTexto(props.row) }} completado
                     </span>
                     <span class="timeline-text text-grey-6">
-                      Umbral: {{ props.row.solicitud?.configSla?.diasUmbral || 0 }} días
+                      Umbral: {{ props.row.diasUmbral || 0 }} días
                     </span>
                   </div>
                 </div>
@@ -261,14 +288,11 @@
                     {{ getSlaStatus(props.row).texto }}
                   </q-badge>
                   <!-- Número de días (solo si no está vencido) -->
-                  <span
-                    v-if="getDiasRestantesFromBackend(props.row) >= 0"
-                    class="dias-numero-detalle text-grey-7"
-                  >
-                    {{ getDiasRestantesFromBackend(props.row) }} días restantes
+                  <span v-if="props.row.diasRestantes >= 0" class="dias-numero-detalle text-grey-7">
+                    {{ props.row.diasRestantes }} días restantes
                   </span>
                   <span v-else class="dias-numero-detalle text-negative">
-                    {{ Math.abs(getDiasRestantesFromBackend(props.row)) }} días de retraso
+                    {{ Math.abs(props.row.diasRestantes) }} días de retraso
                   </span>
                 </div>
               </q-td>
@@ -278,9 +302,17 @@
             <template v-slot:body-cell-estado="props">
               <q-td :props="props">
                 <q-badge
-                  :color="props.row.estado === 'NUEVA' ? 'red-2' : 'green-2'"
-                  :text-color="props.row.estado === 'NUEVA' ? 'red-9' : 'green-9'"
-                  :label="props.row.estado === 'NUEVA' ? 'Nueva' : 'Leída'"
+                  :color="
+                    props.row.estado === 'ACTIVA' || props.row.estado === 'NUEVA'
+                      ? 'red-2'
+                      : 'green-2'
+                  "
+                  :text-color="
+                    props.row.estado === 'ACTIVA' || props.row.estado === 'NUEVA'
+                      ? 'red-9'
+                      : 'green-9'
+                  "
+                  :label="props.row.estado === 'LEIDA' ? 'Leída' : 'Activa'"
                   class="badge-estado"
                 />
               </q-td>
@@ -319,7 +351,7 @@
                     icon="delete"
                     color="grey-7"
                     size="sm"
-                    @click.stop="confirmarEliminar(props.row)"
+                    @click.stop="eliminarAlerta(props.row.idAlerta)"
                   >
                     <q-tooltip>Eliminar</q-tooltip>
                   </q-btn>
@@ -332,6 +364,37 @@
               <div class="empty-state">
                 <q-icon name="notifications_none" size="64px" color="grey-5" />
                 <p class="text-h6 text-grey-6 q-mt-md">No hay alertas que mostrar</p>
+              </div>
+            </template>
+
+            <!-- Paginación personalizada -->
+            <template v-slot:bottom>
+              <div class="pagination-container full-width row justify-between items-center q-pa-md">
+                <div class="pagination-info text-body2 text-grey-7">
+                  Mostrando {{ paginacionInicio }} - {{ paginacionFin }} de
+                  {{ alertasFiltradas.length }} alertas
+                </div>
+                <div class="pagination-controls row items-center q-gutter-sm">
+                  <span class="text-body2 text-grey-7">Filas por página:</span>
+                  <q-select
+                    v-model="pagination.rowsPerPage"
+                    :options="[10, 25, 50, 100]"
+                    dense
+                    outlined
+                    style="width: 80px"
+                    class="rows-per-page-select"
+                  />
+                  <q-pagination
+                    v-model="pagination.page"
+                    :max="paginasTotales"
+                    :max-pages="7"
+                    direction-links
+                    boundary-links
+                    color="primary"
+                    active-color="primary"
+                    class="custom-pagination"
+                  />
+                </div>
               </div>
             </template>
           </q-table>
@@ -351,11 +414,15 @@
 <script setup>
 import { onMounted, ref, computed } from 'vue'
 import { useQuasar } from 'quasar'
-import { useAlertaStore } from 'stores/useAlertaStore'
+import { api } from 'boot/axios'
 import ModalNotificarEmail from 'components/Alertas/ModalNotificarEmail.vue'
 
 const $q = useQuasar()
-const store = useAlertaStore()
+
+// Estado local de alertas (ya no usamos store)
+const alertas = ref([])
+const isLoading = ref(false)
+const mensajeCarga = ref('Cargando alertas...')
 
 // Estado de Filtros (vacíos al inicio)
 const filtros = ref({
@@ -388,13 +455,18 @@ const opcionesAnios = ['2023', '2024', '2025', '2026']
 
 const opcionesTipoSla = ['Todos los SLA', 'SLA1', 'SLA2', 'SLA3']
 
-const opcionesRoles = [
-  'Todos los roles',
-  'Desarrollador .NET',
-  'Analista',
-  'Project Manager',
-  'QA Tester',
-]
+/**
+ * Opciones de roles dinámicas desde las alertas cargadas
+ */
+const opcionesRoles = computed(() => {
+  const roles = new Set()
+  alertas.value.forEach((alerta) => {
+    if (alerta.nombreRol) {
+      roles.add(alerta.nombreRol)
+    }
+  })
+  return ['Todos los roles', ...Array.from(roles).sort()]
+})
 
 // Estado del modal de email
 const modalEmailVisible = ref(false)
@@ -421,6 +493,12 @@ const columns = [
   {
     name: 'responsable',
     label: 'Responsable',
+    align: 'left',
+    sortable: true,
+  },
+  {
+    name: 'rol',
+    label: 'Rol',
     align: 'left',
     sortable: true,
   },
@@ -459,31 +537,73 @@ const columns = [
  * Alertas filtradas según criterios
  */
 const alertasFiltradas = computed(() => {
-  let resultado = store.alertas
+  let resultado = alertas.value
 
   // Filtro de búsqueda
   if (filtros.value.busqueda) {
     const busqueda = filtros.value.busqueda.toLowerCase()
     resultado = resultado.filter((alerta) => {
-      const solicitud = formatSolicitud(alerta.solicitud?.idSolicitud).toLowerCase()
+      const solicitud = (alerta.codigoSolicitud || '').toLowerCase()
       const mensaje = (alerta.mensaje || '').toLowerCase()
-      const rol = (alerta.solicitud?.rolRegistro?.nombreRol || '').toLowerCase()
-      return solicitud.includes(busqueda) || mensaje.includes(busqueda) || rol.includes(busqueda)
+      const responsable = (alerta.nombreResponsable || '').toLowerCase()
+      return (
+        solicitud.includes(busqueda) || mensaje.includes(busqueda) || responsable.includes(busqueda)
+      )
     })
   }
 
-  // Filtro de SLA (solo si está seleccionado)
+  // Filtro de SLA (solo si está seleccionado) - usar nombreSla o codigoSla
   if (filtros.value.tipoSla && filtros.value.tipoSla !== 'Todos los SLA') {
     resultado = resultado.filter(
-      (alerta) => alerta.solicitud?.configSla?.codigoSla === filtros.value.tipoSla,
+      (alerta) =>
+        alerta.nombreSla === filtros.value.tipoSla || alerta.codigoSla === filtros.value.tipoSla,
     )
   }
 
   // Filtro de Rol (solo si está seleccionado)
   if (filtros.value.rolResponsable && filtros.value.rolResponsable !== 'Todos los roles') {
-    resultado = resultado.filter(
-      (alerta) => alerta.solicitud?.rolRegistro?.nombreRol === filtros.value.rolResponsable,
-    )
+    resultado = resultado.filter((alerta) => alerta.nombreRol === filtros.value.rolResponsable)
+  }
+
+  // Filtro por rango de fechas
+  if (filtros.value.mesInicio || filtros.value.anioInicio) {
+    resultado = resultado.filter((alerta) => {
+      if (!alerta.fechaSolicitud) return false
+
+      const fechaSolicitud = new Date(alerta.fechaSolicitud)
+      const mesAlerta = fechaSolicitud.getMonth() // 0-11
+      const anioAlerta = fechaSolicitud.getFullYear()
+
+      // Validar año inicio
+      if (filtros.value.anioInicio) {
+        const anioInicio = parseInt(filtros.value.anioInicio)
+        if (anioAlerta < anioInicio) return false
+      }
+
+      // Validar año fin
+      if (filtros.value.anioFin) {
+        const anioFin = parseInt(filtros.value.anioFin)
+        if (anioAlerta > anioFin) return false
+      }
+
+      // Validar mes inicio
+      if (filtros.value.mesInicio && filtros.value.anioInicio) {
+        const mesInicio = opcionesMeses.indexOf(filtros.value.mesInicio)
+        const anioInicio = parseInt(filtros.value.anioInicio)
+
+        if (anioAlerta === anioInicio && mesAlerta < mesInicio) return false
+      }
+
+      // Validar mes fin
+      if (filtros.value.mesFin && filtros.value.anioFin) {
+        const mesFin = opcionesMeses.indexOf(filtros.value.mesFin)
+        const anioFin = parseInt(filtros.value.anioFin)
+
+        if (anioAlerta === anioFin && mesAlerta > mesFin) return false
+      }
+
+      return true
+    })
   }
 
   return resultado
@@ -494,69 +614,68 @@ const alertasFiltradas = computed(() => {
  */
 const alertasCriticas = computed(() => {
   return alertasFiltradas.value.filter((alerta) => {
-    const dias = getDiasRestantesFromBackend(alerta)
-    return dias < 0 || dias <= 2
+    return alerta.diasRestantes < 0 || alerta.diasRestantes <= 2
   }).length
 })
 
 /**
- * Formatea ID de solicitud como Sol-{id}
+ * Número total de páginas
  */
-const formatSolicitud = (id) => {
-  return id ? `Sol-${id}` : 'N/A'
-}
+const paginasTotales = computed(() => {
+  return Math.ceil(alertasFiltradas.value.length / pagination.value.rowsPerPage)
+})
+
+/**
+ * Índice de inicio para la paginación
+ */
+const paginacionInicio = computed(() => {
+  return (pagination.value.page - 1) * pagination.value.rowsPerPage + 1
+})
+
+/**
+ * Índice de fin para la paginación
+ */
+const paginacionFin = computed(() => {
+  const fin = pagination.value.page * pagination.value.rowsPerPage
+  return Math.min(fin, alertasFiltradas.value.length)
+})
 
 /**
  * Obtiene iniciales de un nombre
  */
 const getIniciales = (nombre) => {
   if (!nombre) return '?'
-  const palabras = nombre.split(' ')
+  const palabras = nombre
+    .trim()
+    .split(' ')
+    .filter((p) => p.length > 0)
+  if (palabras.length === 0) return '?'
   if (palabras.length === 1) return palabras[0].substring(0, 2).toUpperCase()
-  return (palabras[0][0] + palabras[1][0]).toUpperCase()
+  return (palabras[0][0] + palabras[palabras.length - 1][0]).toUpperCase()
 }
 
 /**
- * Calcula días transcurridos desde fechaSolicitud hasta hoy
- */
-const calcularDiasTranscurridos = (fechaStr) => {
-  if (!fechaStr) return 0
-  const fechaSolicitud = new Date(fechaStr)
-  const hoy = new Date()
-  const diferenciaMilisegundos = hoy - fechaSolicitud
-  const diasTranscurridos = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24))
-  return diasTranscurridos
-}
-
-/**
- * Obtiene diasRestantes desde el backend (ya viene calculado)
- */
-const getDiasRestantesFromBackend = (row) => {
-  // El backend ya envía diasRestantes calculado
-  return row.diasRestantes ?? 0
-}
-
-/**
- * Sistema de Semáforos: Determina estado visual basado en diasRestantes
+ * Sistema de Semáforos: Usa flags del backend (estaVencida, esCritica, colorEstado)
  * Retorna objeto con: clase CSS, color, texto, y estado
  */
 const getSlaStatus = (alerta) => {
-  const dias = getDiasRestantesFromBackend(alerta)
+  const dias = alerta.diasRestantes ?? 0
 
-  if (dias < 0) {
+  // Priorizar flags del backend si existen
+  if (alerta.estaVencida || dias < 0) {
     return {
       clase: 'bg-danger',
       color: 'negative',
-      colorBg: '#fee2e2',
+      colorBg: alerta.colorEstado || '#fee2e2',
       colorText: '#dc2626',
       texto: 'VENCIDO',
       estado: 'vencido',
     }
-  } else if (dias <= 2) {
+  } else if (alerta.esCritica || dias <= 2) {
     return {
       clase: 'bg-warning',
       color: 'warning',
-      colorBg: '#fef3c7',
+      colorBg: alerta.colorEstado || '#fef3c7',
       colorText: '#d97706',
       texto: 'Crítico',
       estado: 'critico',
@@ -584,39 +703,27 @@ const getSlaStatus = (alerta) => {
 
 /**
  * Obtiene progreso para barra (0-1)
- * Usa porcentajeProgreso del backend si está disponible
- * IMPORTANTE: Limita visualmente a 100% pero muestra el valor real en texto
+ * IMPORTANTE: Limita visualmente a 100%
  */
-const getProgreso = (row) => {
-  // Usar porcentajeProgreso del backend si existe
-  if (row.porcentajeProgreso !== undefined && row.porcentajeProgreso !== null) {
-    // Limitar a 100% para la barra visual (no romper layout)
-    return Math.min(row.porcentajeProgreso, 100) / 100
-  }
-  // Fallback: calcular basado en días
-  const umbral = row.solicitud?.configSla?.diasUmbral || 1
-  const transcurridos = calcularDiasTranscurridos(row.solicitud?.fechaSolicitud)
-  const progreso = transcurridos / umbral
-  return Math.min(progreso, 1)
+const getProgreso = (alerta) => {
+  const porcentaje = alerta.porcentajeProgreso ?? 0
+  // Limitar a 100% para la barra visual (no romper layout)
+  return Math.min(porcentaje, 100) / 100
 }
 
 /**
  * Obtiene el porcentaje de progreso como número (puede ser > 100%)
  */
-const getPorcentajeProgresoTexto = (row) => {
-  if (row.porcentajeProgreso !== undefined && row.porcentajeProgreso !== null) {
-    return row.porcentajeProgreso.toFixed(0) + '%'
-  }
-  // Fallback
-  const progreso = getProgreso(row) * 100
-  return progreso.toFixed(0) + '%'
+const getPorcentajeProgresoTexto = (alerta) => {
+  const porcentaje = alerta.porcentajeProgreso ?? 0
+  return porcentaje.toFixed(0) + '%'
 }
 
 /**
  * Determina color basado en sistema de semáforos
  */
-const getColorProgresoFromBackend = (row) => {
-  const status = getSlaStatus(row)
+const getColorProgresoFromBackend = (alerta) => {
+  const status = getSlaStatus(alerta)
   return status.color
 }
 
@@ -640,22 +747,28 @@ const limpiarFiltros = () => {
  */
 const exportarDatos = () => {
   try {
-    // Preparar datos para exportación
+    // Preparar datos para exportación usando campos del backend
     const datosExportar = alertasFiltradas.value.map((alerta) => ({
-      Solicitud: formatSolicitud(alerta.solicitud?.idSolicitud),
-      Responsable: alerta.solicitud?.rolRegistro?.nombreRol || 'Sin Asignar',
-      SLA: alerta.solicitud?.configSla?.nombreSla || 'N/A',
+      Solicitud: alerta.codigoSolicitud || 'N/A',
+      Responsable: alerta.nombreResponsable || 'Sin Asignar',
+      Email: alerta.emailResponsable || 'Sin email',
+      Rol: alerta.nombreRol || 'N/A',
+      SLA: alerta.nombreSla || alerta.codigoSla || 'N/A',
+      'Umbral (días)': alerta.diasUmbral || 0,
       Nivel: alerta.nivel || 'N/A',
-      'Días Transcurridos': calcularDiasTranscurridos(alerta.solicitud?.fechaSolicitud),
-      'Días Restantes': getDiasRestantesFromBackend(alerta),
-      'Umbral (días)': alerta.solicitud?.configSla?.diasUmbral || 0,
-      Estado: alerta.estado || 'Pendiente',
+      'Días Restantes': alerta.diasRestantes ?? 0,
+      'Porcentaje Progreso': (alerta.porcentajeProgreso ?? 0).toFixed(2) + '%',
+      'Estado Alerta': alerta.estado || 'ACTIVA',
+      'Estado Solicitud': alerta.estadoSolicitud || 'N/A',
+      'Estado SLA': alerta.estadoCumplimientoSla || 'N/A',
+      Vencida: alerta.estaVencida ? 'SÍ' : 'NO',
+      Crítica: alerta.esCritica ? 'SÍ' : 'NO',
       Mensaje: alerta.mensaje || '',
-      'Fecha Solicitud': alerta.solicitud?.fechaSolicitud
-        ? new Date(alerta.solicitud.fechaSolicitud).toLocaleDateString('es-ES')
+      'Fecha Solicitud': alerta.fechaSolicitud
+        ? new Date(alerta.fechaSolicitud).toLocaleDateString('es-ES')
         : 'N/A',
-      'Fecha Registro': alerta.fechaRegistro
-        ? new Date(alerta.fechaRegistro).toLocaleDateString('es-ES')
+      'Fecha Ingreso': alerta.fechaIngreso
+        ? new Date(alerta.fechaIngreso).toLocaleDateString('es-ES')
         : 'N/A',
     }))
 
@@ -697,41 +810,82 @@ const exportarDatos = () => {
 
 /**
  * Abre modal de notificación por email
+ * CRÍTICO: Pre-llena el campo destinatario con emailResponsable
  */
-const abrirModalEmail = (row) => {
-  console.log('Abrir modal email para:', row)
-  alertaSeleccionada.value = row
+const abrirModalEmail = (alerta) => {
+  console.log('📧 Abrir modal email para:', alerta)
+  console.log('📧 codigoSolicitud:', alerta.codigoSolicitud)
+  console.log('📧 emailResponsable:', alerta.emailResponsable)
+  console.log('📧 nombreResponsable:', alerta.nombreResponsable)
+
+  alertaSeleccionada.value = alerta
   modalEmailVisible.value = true
+
+  console.log('📧 Modal visible:', modalEmailVisible.value)
+  console.log('📧 Alerta seleccionada:', alertaSeleccionada.value)
 }
 
 /**
  * Maneja evento de notificación enviada
  */
 const handleNotificacionEnviada = (data) => {
-  console.log('Notificación enviada:', data)
+  console.log('✅ Notificación enviada exitosamente:', data)
+
+  // Recargar datos para reflejar cambios
+  cargarAlertas()
 }
 
 /**
  * Acción Ver Detalle
+ * Si estado === 'ACTIVA', marca como 'LEIDA'
  */
-const verDetalle = (row) => {
-  $q.notify({
-    type: 'info',
-    message: `Ver detalle de alerta ${row.idAlerta}`,
-    position: 'top-right',
+const verDetalle = async (alerta) => {
+  console.log('👁️ Ver detalle:', alerta.codigoSolicitud)
+
+  // Mostrar mensaje en dialog
+  $q.dialog({
+    title: `Detalle: ${alerta.codigoSolicitud}`,
+    message: alerta.mensaje || 'Sin mensaje disponible',
+    html: true,
+    ok: {
+      label: 'Cerrar',
+      color: 'primary',
+    },
   })
-  console.log('Ver detalle:', row)
+
+  // Si es ACTIVA/NUEVA, marcar como LEIDA
+  if (alerta.estado === 'ACTIVA' || alerta.estado === 'NUEVA') {
+    try {
+      console.log('📝 Marcando alerta como LEIDA...')
+      await api.put(`/api/alertas/${alerta.idAlerta}`, {
+        estado: 'LEIDA',
+      })
+
+      // Actualizar localmente
+      alerta.estado = 'LEIDA'
+
+      $q.notify({
+        type: 'positive',
+        message: 'Alerta marcada como leída',
+        position: 'top-right',
+        icon: 'check_circle',
+        timeout: 1500,
+      })
+    } catch (error) {
+      console.error('❌ Error al marcar como leída:', error)
+    }
+  }
 }
 
 /**
  * Acción Eliminar con confirmación
  */
-const confirmarEliminar = (row) => {
-  console.log('Click en eliminar, row:', row)
+const eliminarAlerta = (idAlerta) => {
+  console.log('🗑️ Solicitud de eliminación, ID:', idAlerta)
 
   $q.dialog({
     title: 'Confirmar eliminación',
-    message: '¿Estás seguro de eliminar esta alerta?',
+    message: '¿Estás seguro de eliminar esta alerta? Esta acción no se puede deshacer.',
     cancel: {
       label: 'Cancelar',
       flat: true,
@@ -740,35 +894,103 @@ const confirmarEliminar = (row) => {
     ok: {
       label: 'Eliminar',
       color: 'negative',
+      icon: 'delete',
     },
     persistent: true,
   })
     .onOk(async () => {
-      console.log('Usuario confirmó eliminación')
+      console.log('✅ Usuario confirmó eliminación')
+
+      // Mostrar loading
+      const loading = $q.loading.show({
+        message: 'Eliminando alerta...',
+      })
+
       try {
-        await store.eliminarAlerta(row.idAlerta)
+        // Llamar al endpoint DELETE - usando /api/alerta/{id} (singular)
+        await api.delete(`/api/alerta/${idAlerta}`)
+
+        // Eliminar del array local para refresco inmediato
+        const index = alertas.value.findIndex((a) => a.idAlerta === idAlerta)
+        if (index !== -1) {
+          alertas.value.splice(index, 1)
+        }
+
         $q.notify({
           type: 'positive',
-          message: 'Alerta eliminada',
+          message: 'Alerta eliminada exitosamente',
           position: 'top-right',
+          icon: 'check_circle',
+          timeout: 2000,
         })
       } catch (error) {
-        console.error('Error al eliminar:', error)
+        console.error('❌ Error al eliminar:', error)
+
         $q.notify({
           type: 'negative',
-          message: 'Error al eliminar',
+          message: error.response?.data?.message || 'Error al eliminar la alerta',
           position: 'top-right',
+          timeout: 3000,
         })
+      } finally {
+        loading()
       }
     })
     .onCancel(() => {
-      console.log('Usuario canceló eliminación')
+      console.log('❌ Usuario canceló eliminación')
     })
+}
+
+/**
+ * Carga inicial de datos: solo dashboard (sync ya corrió en MainLayout/Login)
+ */
+const cargarAlertas = async () => {
+  isLoading.value = true
+  mensajeCarga.value = 'Cargando alertas...'
+
+  try {
+    // Cargar dashboard (datos ya sincronizados en el arranque del sistema)
+    console.log('📊 Cargando dashboard...')
+    const response = await api.get('/api/alertas/dashboard')
+
+    if (response.data && Array.isArray(response.data)) {
+      alertas.value = response.data
+      console.log(`✅ ${alertas.value.length} alertas cargadas`)
+    } else {
+      console.warn('⚠️ Respuesta inválida del backend')
+      alertas.value = []
+    }
+  } catch (error) {
+    console.error('❌ Error al cargar alertas:', error)
+    console.error('Detalles:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      message: error.message,
+      url: error.config?.url,
+    })
+
+    $q.notify({
+      type: 'negative',
+      message:
+        error.response?.status === 404
+          ? 'No se encontró el endpoint de alertas'
+          : error.response?.status === 401
+            ? 'No autorizado - verifica tu sesión'
+            : 'Error al cargar las alertas. Verifica que el backend esté corriendo.',
+      position: 'top-right',
+      timeout: 5000,
+      actions: [{ label: 'Cerrar', color: 'white' }],
+    })
+
+    alertas.value = []
+  } finally {
+    isLoading.value = false
+  }
 }
 
 // Cargar alertas al montar el componente
 onMounted(() => {
-  store.fetchAlertas()
+  cargarAlertas()
 })
 </script>
 
@@ -776,6 +998,28 @@ onMounted(() => {
 .gestion-alertas-page {
   padding: 24px;
   background: #f5f7fa;
+  position: relative;
+  min-height: 100vh;
+}
+
+/* ===== INDICADOR DE CARGA ===== */
+.loading-overlay {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(4px);
+  z-index: 9999;
+}
+
+.loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+}
+
+.loading-text {
+  text-align: center;
+  color: #1976d2;
 }
 
 /* ===== ENCABEZADO PRINCIPAL ===== */
@@ -986,6 +1230,13 @@ onMounted(() => {
   font-size: 13px;
 }
 
+.badge-rol {
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
 .badge-sla {
   padding: 4px 12px;
   border-radius: 6px;
@@ -1021,6 +1272,26 @@ onMounted(() => {
   font-size: 12px;
   font-weight: 600;
   margin-top: 4px;
+}
+
+/* ===== PAGINACIÓN ===== */
+.pagination-container {
+  border-top: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.pagination-info {
+  font-weight: 500;
+}
+
+.rows-per-page-select :deep(.q-field__control) {
+  height: 36px;
+  min-height: 36px;
+}
+
+.custom-pagination :deep(.q-btn) {
+  min-width: 32px;
+  height: 32px;
 }
 
 /* Clases de semáforo (por si se necesitan globales) */

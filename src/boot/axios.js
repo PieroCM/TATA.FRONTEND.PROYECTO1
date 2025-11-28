@@ -1,10 +1,9 @@
 import { defineBoot } from '#q-app/wrappers'
 import axios from 'axios'
-import { Notify } from 'quasar'
 
 const api = axios.create({ baseURL: 'http://localhost:5260' })
 
-// Interceptor para agregar el token JWT a todas las peticiones
+// Agregar interceptor para incluir token de autenticación
 api.interceptors.request.use(
   (config) => {
     // Obtener el token desde localStorage usando la clave 'authToken'
@@ -12,17 +11,16 @@ api.interceptors.request.use(
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
-      // Log solo en desarrollo para verificar que el token se envía
-      if (process.env.DEV) {
-        console.log(`[Axios] Enviando request a ${config.url} con token`)
-      }
+      console.log('📤 Request con token:', {
+        url: config.url,
+        method: config.method,
+        hasToken: true,
+      })
     } else {
-      // Log solo en desarrollo para advertir cuando no hay token
-      if (process.env.DEV) {
-        console.warn(
-          `[Axios] Request a ${config.url} sin token (puede fallar si requiere autorización)`,
-        )
-      }
+      console.warn('⚠️ Request SIN token:', {
+        url: config.url,
+        method: config.method,
+      })
     }
 
     return config
@@ -32,77 +30,29 @@ api.interceptors.request.use(
   },
 )
 
-// Interceptor de respuesta para manejo global de errores
+// Interceptor de respuesta para manejar errores
 api.interceptors.response.use(
-  (response) => {
-    // Si la respuesta es exitosa, la retornamos tal cual
-    return response
-  },
+  (response) => response,
   (error) => {
-    // Manejo de errores HTTP
     const status = error.response?.status
-    const message = error.response?.data?.message || error.message
 
-    // Notificación visual de error
-    if (status === 404) {
-      Notify.create({
-        type: 'negative',
-        message: 'Recurso no encontrado (404)',
-        caption: message,
-        position: 'top-right',
-        timeout: 3000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
-    } else if (status === 500) {
-      Notify.create({
-        type: 'negative',
-        message: 'Error interno del servidor (500)',
-        caption: message || 'Por favor, contacte al administrador',
-        position: 'top-right',
-        timeout: 4000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
-    } else if (status === 401) {
-      Notify.create({
-        type: 'warning',
-        message: 'No autorizado (401)',
-        caption: 'Por favor, inicie sesión nuevamente',
-        position: 'top-right',
-        timeout: 3000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
-      // Token inválido o expirado - limpiar y redirigir al login
+    if (status === 401) {
+      // Token expirado o inválido
+      console.warn('🔒 Token expirado o inválido (401)')
+
+      // Limpiar token y datos del usuario
       localStorage.removeItem('authToken')
+      localStorage.removeItem('token')
+      localStorage.removeItem('usuario')
       localStorage.removeItem('userEmail')
       localStorage.removeItem('username')
-      window.location.href = '/login'
-    } else if (status === 403) {
-      Notify.create({
-        type: 'warning',
-        message: 'Acceso denegado (403)',
-        caption: 'No tiene permisos para realizar esta acción',
-        position: 'top-right',
-        timeout: 3000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
-    } else if (error.code === 'ERR_NETWORK' || error.code === 'ECONNREFUSED') {
-      Notify.create({
-        type: 'negative',
-        message: 'Error de conexión',
-        caption: 'No se pudo conectar con el servidor. Verifique que el backend esté ejecutándose.',
-        position: 'top-right',
-        timeout: 5000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
-    } else if (status >= 400) {
-      Notify.create({
-        type: 'negative',
-        message: `Error ${status}`,
-        caption: message || 'Ocurrió un error en la solicitud',
-        position: 'top-right',
-        timeout: 3000,
-        actions: [{ icon: 'close', color: 'white' }],
-      })
+
+      // Redirigir al login si no estamos ya ahí
+      const currentPath = window.location.pathname
+      if (currentPath !== '/' && currentPath !== '/login') {
+        console.log('Redirigiendo a login...')
+        window.location.href = '/login'
+      }
     }
 
     return Promise.reject(error)

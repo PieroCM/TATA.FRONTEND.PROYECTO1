@@ -1,5 +1,5 @@
 <template>
-  <div class="login-container">
+  <div class="row" style="height: 100vh; overflow: hidden">
     <!-- SECCIÓN IZQUIERDA (SLIDER) -->
     <div class="col-7 left-section">
       <q-carousel
@@ -159,7 +159,6 @@ export default {
       }
 
       try {
-        // Petición al endpoint de autenticación con los campos correctos
         const response = await this.$api.post('/api/usuario/signin', {
           email: this.correo,
           password: this.password,
@@ -175,25 +174,18 @@ export default {
         localStorage.setItem('authToken', response.data.token)
 
         // Opcional: guardar información adicional del usuario si viene en la respuesta
-        const userData = {
-          email: this.correo,
-          // Agregar cualquier otro dato que venga en la respuesta
-          ...response.data,
+        if (response.data.correo) {
+          localStorage.setItem('userEmail', response.data.correo)
         }
-        delete userData.token // No guardar el token en el objeto usuario
-
-        // Usar el store de autenticación para manejar el estado
-        const authStore = this.$pinia ? this.$pinia.state.value.auth : null
-        if (authStore) {
-          // El store ya debería tener el token actualizado por setAuth
-          localStorage.setItem('usuario', JSON.stringify(userData))
+        if (response.data.username) {
+          localStorage.setItem('username', response.data.username)
         }
 
         console.log('Token guardado exitosamente en localStorage')
 
         this.$q.notify({
           type: 'positive',
-          message: response.data.message || 'Inicio de sesión exitoso',
+          message: 'Inicio de sesión exitoso',
           position: 'bottom',
           timeout: 1500,
         })
@@ -202,9 +194,20 @@ export default {
         this.$router.push('/sistema')
       } catch (error) {
         console.error('Error en login:', error)
+        console.error('Detalles del error:', {
+          status: error.response?.status,
+          data: error.response?.data,
+          enviado: {
+            usuarioNombre: this.correo,
+            usuarioContrasena: this.password,
+          },
+        })
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
+          caption: error.response?.data?.errors
+            ? Object.values(error.response.data.errors).flat().join(', ')
+            : '',
           position: 'bottom',
         })
       }
@@ -245,17 +248,8 @@ export default {
 </script>
 
 <style scoped>
-/* Contenedor principal */
-.login-container {
-  display: flex;
-  height: 100vh;
-  overflow: hidden;
-}
-
 .left-section {
   position: relative;
-  flex: 0 0 58.333333%;
-  max-width: 58.333333%;
 }
 
 .slide-content {
@@ -264,8 +258,6 @@ export default {
 
 .bg-page {
   background: #f5f8ff;
-  flex: 0 0 41.666667%;
-  max-width: 41.666667%;
 }
 
 .login-card {
@@ -277,80 +269,86 @@ export default {
   width: 100%;
 }
 
-/* RESPONSIVIDAD PARA MÓVILES */
-@media (max-width: 768px) {
-  /* Contenedor principal en móvil */
-  .login-container {
-    display: block;
-    height: auto;
-    min-height: 100vh;
-    overflow-y: auto;
+/* Ocultar bloque de credenciales demo sin tocar el template */
+.login-card > .text-center.text-grey-7.text-caption.q-mt-md {
+  display: none;
+}
+
+/* Responsivo: en tablets y móviles, el carrusel queda de fondo y el login se superpone centrado */
+@media (max-width: 1024px) {
+  /* ocultar textos sobre la imagen sombreada en pantallas pequeñas */
+  .slide-content {
+    display: none !important;
   }
 
-  /* Ocultar la columna de la izquierda (slider de imágenes) */
   .left-section {
-    display: none;
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    height: 100vh;
   }
 
-  /* La columna de login ocupa el 100% del ancho */
-  .col-5 {
+  /* asegurar alto completo del carrusel */
+  .left-section .full-height {
+    height: 100vh;
+  }
+
+  /* oscurecer ligeramente el fondo para mejorar contraste del card */
+  .left-section::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1;
+  }
+
+  /* quitar fondo sólido del panel derecho en overlay */
+  .bg-page {
+    background: transparent !important;
+  }
+
+  /* hacer que la columna derecha se superponga y centre el card */
+  .row > .col-5 {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     width: 100% !important;
     max-width: 100% !important;
-    flex: none !important;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 1rem;
-    min-height: 100vh;
+    flex: 0 0 100% !important;
+    z-index: 2;
+    padding: 16px; /* respiración en bordes pequeños */
   }
 
-  .bg-page {
-    flex: none;
-    max-width: 100%;
-  }
-
-  /* La tarjeta de login compacta y centrada */
   .login-card {
-    width: 100%;
-    max-width: 380px;
-    margin: 0 auto;
-    padding: 1.5rem !important;
+    width: 90%;
+    max-width: 420px;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: saturate(120%) blur(6px);
+    -webkit-backdrop-filter: saturate(120%) blur(6px);
+    border-radius: 16px;
+    padding: 24px;
   }
 
-  /* Reducir espaciado de elementos internos en móvil */
+  /* opcional: ocultar flechas del carrusel en pantallas pequeñas para limpiar la vista */
+  :deep(.q-carousel__control) {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    width: 92%;
+    max-width: 360px;
+    padding: 20px;
+  }
+
+  /* ajustar separaciones verticales grandes dentro del card en móviles */
   .login-card .q-mb-xl {
-    margin-bottom: 1rem !important;
-  }
-
-  .login-card .q-mb-lg {
-    margin-bottom: 0.75rem !important;
-  }
-
-  .login-card .q-mb-md {
-    margin-bottom: 0.75rem !important;
-  }
-
-  .login-card .q-mb-sm {
-    margin-bottom: 0.5rem !important;
-  }
-
-  /* Ajustar tamaño del avatar en móvil */
-  .login-card .q-avatar {
-    width: 70px !important;
-    height: 70px !important;
-  }
-
-  .login-card .q-avatar .q-icon {
-    font-size: 35px !important;
-  }
-
-  /* Ajustar títulos en móvil */
-  .login-card .text-h5 {
-    font-size: 1.35rem;
-  }
-
-  .login-card .text-body2 {
-    font-size: 0.875rem;
+    margin-bottom: 16px !important;
   }
 }
 </style>

@@ -1,131 +1,156 @@
 import { api } from 'src/boot/axios'
 
-/**
- * Servicio de Gestión de Usuarios
- * Maneja operaciones CRUD de usuarios y administración
- */
 export const usuarioService = {
+  // ===========================
+  // AUTENTICACIÓN
+  // ===========================
+
+  async login(correo, password) {
+    try {
+      const response = await api.post('/usuario/signin', {
+        correo,
+        password,
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async register(username, correo, password) {
+    try {
+      const response = await api.post('/usuario/signup', {
+        username,
+        correo,
+        password,
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
   // ===========================
   // CRUD USUARIOS
   // ===========================
 
-  /**
-   * Obtener todos los usuarios
-   * @returns {Promise<Array>}
-   */
   async getAll() {
     try {
-      const response = await api.get('/api/usuario')
+      const response = await api.get('/usuario')
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  /**
-   * Obtener usuario por ID
-   * @param {number} id - ID del usuario
-   * @returns {Promise<Object>}
-   */
   async getById(id) {
     try {
-      const response = await api.get(`/api/usuario/${id}`)
+      const response = await api.get(`/usuario/${id}`)
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  /**
-   * Crear nuevo usuario (solo Admin)
-   * @param {Object} usuario - {username, password, idRolSistema, idPersonal?, estado}
-   * @returns {Promise<Object>}
-   */
   async create(usuario) {
     try {
-      const response = await api.post('/api/usuario', usuario)
+      const response = await api.post('/usuario', usuario)
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  /**
-   * Actualizar usuario existente
-   * @param {number} id - ID del usuario
-   * @param {Object} datosActualizar - {username?, idRolSistema?, estado?}
-   * @returns {Promise<{message: string}>}
-   */
   async update(id, datosActualizar) {
     try {
-      const response = await api.put(`/api/usuario/${id}`, datosActualizar)
+      const response = await api.put(`/usuario/${id}`, datosActualizar)
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  /**
-   * Eliminar usuario
-   * @param {number} id - ID del usuario
-   * @returns {Promise<{message: string}>}
-   */
   async delete(id) {
     try {
-      const response = await api.delete(`/api/usuario/${id}`)
+      const response = await api.delete(`/usuario/${id}`)
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  /**
-   * Toggle estado de usuario (ACTIVO <-> INACTIVO)
-   * @param {number} id - ID del usuario
-   * @param {string} estado - Nuevo estado ('ACTIVO' | 'INACTIVO')
-   * @returns {Promise<{message: string}>}
-   */
   async toggleEstado(id, estado) {
     try {
-      const response = await api.patch(`/api/usuario/${id}/toggle-estado`, { estado })
+      const response = await api.patch(`/usuario/${id}/toggle-estado`, {
+        estado,
+      })
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
+  // ===========================
+  // GESTIÓN DE PERSONAL Y VINCULACIÓN
+  // ===========================
+
   /**
-   * Vincular personal existente con usuario (solo Admin)
-   * @param {Object} datos - {idPersonal, username, idRolSistema}
-   * @returns {Promise<{message: string, detalles: Object}>}
+   * Nueva función extraída del conflicto de merge.
+   * Se encarga de vincular un usuario con personal.
    */
   async vincularPersonal(datos) {
     try {
-      // Intentar primero con el endpoint de Usuario
+      // Endpoint de la rama fix/Loginygestionpersonal
       const response = await api.post('/api/usuario/vincular-personal', datos)
       return response.data
     } catch (error) {
-      // Si falla (403 Forbidden por permisos), intentar endpoint alternativo
+      // Manejo de error específico para permisos (403)
       if (error.response?.status === 403) {
         console.warn(
-          '⚠️ Endpoint /api/usuario/vincular-personal requiere ADMIN. Intentando alternativa...',
+          '⚠️ Endpoint /api/usuario/vincular-personal requiere ADMIN. Verifique permisos.',
         )
-        // Puedes agregar aquí un endpoint alternativo si existe en PersonalController
-        throw new Error('No tienes permisos para crear cuentas de usuario. Se requiere rol ADMIN.')
+        throw new Error('No tienes permisos para crear/vincular cuentas. Se requiere rol ADMIN.')
       }
       throw this.handleError(error)
     }
   },
 
-  /**
-   * Actualizar rol de usuario
-   * @param {number} id - ID del usuario
-   * @param {number} idRolSistema - Nuevo ID de rol
-   * @returns {Promise<{message: string}>}
-   */
-  async actualizarRol(id, idRolSistema) {
+  // ===========================
+  // CONTRASEÑAS Y RECUPERACIÓN
+  // ===========================
+
+  async cambiarPassword(correo, passwordActual, nuevaPassword) {
     try {
-      const response = await api.patch(`/api/usuario/${id}/rol`, { idRolSistema })
+      const response = await api.put('/usuario/cambiar-password', {
+        correo,
+        passwordActual,
+        nuevaPassword,
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async solicitarRecuperacion(email) {
+    try {
+      // Endpoint de la rama fix/presentacion
+      const response = await api.post('/usuario/solicitar-recuperacion', {
+        Email: email,
+      })
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async restablecerPassword(email, token, nuevaPassword) {
+    try {
+      const response = await api.post('/usuario/restablecer-password', {
+        Email: email,
+        Token: token,
+        NuevaPassword: nuevaPassword,
+      })
       return response.data
     } catch (error) {
       throw this.handleError(error)
@@ -133,19 +158,16 @@ export const usuarioService = {
   },
 
   // ===========================
-  // ACTIVACIÓN Y RECUPERACIÓN
+  // ACTIVACIÓN DE CUENTA
   // ===========================
 
   /**
    * Activar cuenta con token (soporta email o username)
-   * @param {Object} datos - {Email: string (puede ser email o username), Token: string, NuevaPassword: string}
-   * @returns {Promise<{message: string}>}
+   * @param {Object} datos - {Email: string, Token: string, NuevaPassword: string}
    */
   async activarCuenta(datos) {
     try {
       console.log('[Activación] Enviando Email/Username:', datos.Email)
-      console.log('[Activación] Token enviado:', datos.Token ? '✓' : '✗')
-
       const response = await api.post('/api/usuario/activar-cuenta', datos)
       return response.data
     } catch (error) {
@@ -160,10 +182,13 @@ export const usuarioService = {
 
   handleError(error) {
     if (error.response) {
-      return new Error(error.response.data?.message || 'Error en el servidor')
+      // Error de respuesta del servidor
+      return new Error(error.response.data.message || 'Error en el servidor')
     } else if (error.request) {
+      // Error de red
       return new Error('No se pudo conectar con el servidor')
     } else {
+      // Otro error
       return new Error(error.message || 'Error desconocido')
     }
   },
