@@ -212,15 +212,15 @@
                 <div class="text-subtitle2 text-weight-medium">Leyenda de Estado SLA:</div>
                 <q-chip color="positive" text-color="white" dense>
                   <q-icon name="check_circle" left size="sm" />
-                  Excelente (≥ 90%)
+                  Cumple
                 </q-chip>
                 <q-chip color="orange" text-color="white" dense>
-                  <q-icon name="warning" left size="sm" />
-                  Aceptable (≥ 70%)
+                  <q-icon name="schedule" left size="sm" />
+                  Proceso
                 </q-chip>
                 <q-chip color="negative" text-color="white" dense>
-                  <q-icon name="error" left size="sm" />
-                  Bajo (&lt; 70%)
+                  <q-icon name="cancel" left size="sm" />
+                  No_cumple
                 </q-chip>
               </div>
             </q-card-section>
@@ -362,15 +362,17 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { api } from 'boot/axios'
 import { useAppStore } from 'stores/app-store'
+import { useSlaStore } from 'stores/useSlaStore'
 
 const $q = useQuasar()
 const appStore = useAppStore()
+const slaStore = useSlaStore()
 
 // Estados
 const loading = ref(false)
 const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
+
 
 const mesesDisponibles = [
   'Enero',
@@ -491,17 +493,17 @@ const exportarDashboard = () => {
 
 const cargarConfiguracionesIniciales = async () => {
   try {
-    const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
-      api.get('/api/Solicitud'),
-      api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla'),
+    const [solicitudes, roles, configSla] = await Promise.all([
+      slaStore.fetchSolicitudes(),
+      slaStore.fetchRoles(),
+      slaStore.fetchConfigSla(),
     ])
 
     // Años
-    if (solicitudesRes.data && solicitudesRes.data.length > 0) {
+    if (solicitudes && solicitudes.length > 0) {
       const aniosUnicos = [
         ...new Set(
-          solicitudesRes.data
+          solicitudes
             .filter((s) => s.fechaSolicitud)
             .map((s) => new Date(s.fechaSolicitud).getFullYear()),
         ),
@@ -510,14 +512,14 @@ const cargarConfiguracionesIniciales = async () => {
     }
 
     // Roles
-    if (rolesRes.data) {
-      rolesDisponibles.value = rolesRes.data.filter((r) => r.esActivo).map((r) => r.nombreRol)
+    if (roles) {
+      rolesDisponibles.value = roles.filter((r) => r.esActivo).map((r) => r.nombreRol)
     }
 
     // Códigos SLA disponibles en la base de datos
-    if (configSlaRes.data) {
+    if (configSla) {
       const codigosUnicos = [...new Set(
-        configSlaRes.data
+        configSla
           .filter(c => c.esActivo)
           .map(c => c.codigoSla)
       )].sort((a, b) => {
@@ -543,15 +545,15 @@ const aplicarFiltros = async () => {
   try {
     const mesNumero = mesesDisponibles.indexOf(filtros.value.mes) + 1
 
-    const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
-      api.get('/api/Solicitud'),
-      api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla'),
+    const [solicitudesData, rolesData, configSlaData] = await Promise.all([
+      slaStore.fetchSolicitudes(),
+      slaStore.fetchRoles(),
+      slaStore.fetchConfigSla(),
     ])
 
-    let solicitudes = solicitudesRes.data || []
-    const todosRoles = rolesRes.data || []
-    const configsSla = configSlaRes.data || []
+    let solicitudes = solicitudesData || []
+    const todosRoles = rolesData || []
+    const configsSla = configSlaData || []
 
     // Filtrar por mes/año
     solicitudes = solicitudes.filter((s) => {
@@ -898,7 +900,33 @@ onMounted(async () => {
 }
 
 /* Responsive Design */
-@media (max-width: 1024px) {
+
+/* Desktop Large (1440px+) */
+@media (min-width: 1440px) {
+  .dashboard-page {
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+}
+
+/* Desktop (1024px - 1439px) */
+@media (max-width: 1439px) and (min-width: 1024px) {
+  .dashboard-page {
+    padding: 24px 20px;
+  }
+
+  .stacked-bar-wrapper {
+    height: 44px;
+  }
+
+  .segment-label {
+    font-size: 11px;
+  }
+}
+
+/* Tablet Landscape (768px - 1023px) */
+@media (max-width: 1023px) and (min-width: 768px) {
   .dashboard-page {
     padding: 16px;
   }
@@ -914,9 +942,14 @@ onMounted(async () => {
   .segment-label {
     font-size: 10px;
   }
+
+  .kpi-card .text-h4 {
+    font-size: 1.75rem;
+  }
 }
 
-@media (max-width: 768px) {
+/* Tablet Portrait (600px - 767px) */
+@media (max-width: 767px) and (min-width: 600px) {
   .dashboard-page {
     padding: 12px;
   }
@@ -931,6 +964,7 @@ onMounted(async () => {
 
   .kpi-card {
     margin-bottom: 12px;
+    min-height: 120px;
   }
 
   .stacked-bar-item {
@@ -956,9 +990,25 @@ onMounted(async () => {
   .text-subtitle1 {
     font-size: 0.95rem;
   }
+
+  .kpi-card .text-h4 {
+    font-size: 1.5rem;
+  }
+
+  /* Reorganizar filtros en tablet */
+  .filters-card .q-gutter-md > .col-md-4 {
+    width: 50% !important;
+  }
+
+  /* Ajustar gráficos en dos columnas */
+  .dashboard-content .col-md-6 {
+    width: 100% !important;
+    margin-bottom: 16px;
+  }
 }
 
-@media (max-width: 600px) {
+/* Mobile Large (480px - 599px) */
+@media (max-width: 599px) and (min-width: 480px) {
   .dashboard-page {
     padding: 8px;
   }
@@ -970,23 +1020,26 @@ onMounted(async () => {
   .dashboard-header .row {
     flex-direction: column;
     align-items: flex-start !important;
+    text-align: left;
   }
 
   .dashboard-header .q-icon {
     margin-bottom: 8px;
+    margin-right: 0;
   }
 
   .stacked-chart-container .row {
     flex-direction: column;
   }
 
-  .stacked-chart-container .col-2 {
-    width: 100%;
-    margin-bottom: 4px;
-  }
-
+  .stacked-chart-container .col-2,
   .stacked-chart-container .col-10 {
     width: 100%;
+  }
+
+  .stacked-chart-container .col-2 {
+    margin-bottom: 6px;
+    text-align: left;
   }
 
   .segment-label {
@@ -997,6 +1050,16 @@ onMounted(async () => {
     gap: 8px;
   }
 
+  .filters-card .row > [class*="col-"] {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+
+  .kpi-card {
+    margin-bottom: 8px;
+    min-height: 100px;
+  }
+
   .kpi-card .text-h4 {
     font-size: 1.5rem;
   }
@@ -1004,11 +1067,37 @@ onMounted(async () => {
   .text-h6 {
     font-size: 1rem;
   }
+
+  .text-h5 {
+    font-size: 1.1rem;
+  }
+
+  .stacked-bar-wrapper {
+    height: 32px;
+  }
+
+  .barra-wrapper {
+    height: 24px;
+  }
 }
 
-@media (max-width: 400px) {
+/* Mobile Small (320px - 479px) */
+@media (max-width: 479px) {
   .dashboard-page {
     padding: 4px;
+  }
+
+  .dashboard-header {
+    padding: 8px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .dashboard-header .text-grey-7 {
+    font-size: 0.8rem;
   }
 
   .stacked-bar-wrapper {
@@ -1016,11 +1105,142 @@ onMounted(async () => {
   }
 
   .barra-wrapper {
-    height: 24px;
+    height: 20px;
+  }
+
+  .kpi-card {
+    margin-bottom: 6px;
+    min-height: 90px;
   }
 
   .kpi-card .text-h4 {
     font-size: 1.25rem;
+  }
+
+  .kpi-card .q-card-section {
+    padding: 12px;
+  }
+
+  .text-h6 {
+    font-size: 0.95rem;
+  }
+
+  .text-subtitle1 {
+    font-size: 0.85rem;
+  }
+
+  .filters-card .q-card-section {
+    padding: 12px;
+  }
+
+  /* Botones de filtros en móvil pequeño */
+  .filters-card .q-btn {
+    padding: 8px 12px;
+    font-size: 0.85rem;
+  }
+
+  /* Reducir márgenes en elementos de lista */
+  .stacked-bar-item {
+    margin-bottom: 12px;
+  }
+
+  .barra-item {
+    margin-bottom: 12px;
+  }
+
+  /* Ocultar iconos secundarios en móvil muy pequeño */
+  .kpi-card .absolute {
+    display: none;
+  }
+}
+
+/* Mobile Extra Small (< 320px) */
+@media (max-width: 319px) {
+  .dashboard-page {
+    padding: 2px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 0.9rem;
+  }
+
+  .kpi-card .text-h4 {
+    font-size: 1.1rem;
+  }
+
+  .text-h6 {
+    font-size: 0.85rem;
+  }
+
+  .stacked-bar-wrapper,
+  .barra-wrapper {
+    height: 24px;
+  }
+}
+
+/* Orientación landscape en móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+  .dashboard-page {
+    padding: 8px 16px;
+  }
+
+  .kpi-card {
+    min-height: 80px;
+  }
+
+  .stacked-bar-wrapper {
+    height: 28px;
+  }
+
+  .dashboard-header {
+    padding: 8px 12px;
+  }
+
+  .fullscreen-loading .text-h6 {
+    font-size: 1rem;
+  }
+}
+
+/* Mejoras para interacción táctil */
+@media (pointer: coarse) {
+  .q-btn {
+    min-height: 44px;
+  }
+
+  .q-select .q-field__control {
+    min-height: 44px;
+  }
+
+  .q-chip {
+    min-height: 32px;
+  }
+}
+
+/* Alto contraste y accesibilidad */
+@media (prefers-contrast: high) {
+  .kpi-card {
+    border-width: 2px;
+  }
+
+  .stacked-segment {
+    border: 1px solid rgba(255, 255, 255, 0.8);
+  }
+
+  .segment-label {
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+  }
+}
+
+/* Reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .kpi-card,
+  .stacked-segment,
+  .barra-fill {
+    transition: none;
+  }
+
+  .kpi-card:hover {
+    transform: none;
   }
 }
 </style>

@@ -1,15 +1,7 @@
 <template>
   <q-page class="dashboard-page">
-    <!-- Loading Fullscreen -->
-    <div v-if="initialLoading" class="fullscreen-loading">
-      <div class="loading-content">
-        <q-spinner-gears size="80px" color="primary" />
-        <div class="text-h6 q-mt-lg text-primary">Cargando análisis...</div>
-      </div>
-    </div>
-
     <!-- Contenido -->
-    <div v-else>
+
       <!-- Header -->
       <div class="dashboard-header q-mb-lg">
         <div class="row items-center">
@@ -23,6 +15,9 @@
 
       <!-- Filtros -->
       <q-card flat bordered class="filters-card q-mb-lg">
+        <q-inner-loading :showing="loading">
+          <q-spinner-gears size="50px" color="primary" />
+        </q-inner-loading>
         <q-card-section>
           <div class="text-subtitle1 text-weight-medium q-mb-md">
             <q-icon name="filter_list" class="q-mr-sm" />
@@ -117,7 +112,7 @@
             </div>
 
             <!-- Roles -->
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-select
                 v-model="filtros.roles"
                 :options="rolesDisponibles"
@@ -130,6 +125,24 @@
               >
                 <template v-slot:prepend>
                   <q-icon name="people" color="primary" />
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Estado SLA -->
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-select
+                v-model="filtros.estado"
+                :options="estadosDisponibles"
+                label="Estado de Cumplimiento"
+                outlined
+                dense
+                clearable
+                emit-value
+                map-options
+              >
+                <template v-slot:prepend>
+                  <q-icon name="track_changes" color="primary" />
                 </template>
               </q-select>
             </div>
@@ -207,6 +220,12 @@
         </q-card-section>
       </q-card>
 
+      <!-- Loading Indicator -->
+      <div v-if="loading" class="row justify-center q-my-xl">
+        <q-spinner-dots color="primary" size="40px" />
+        <div class="text-grey-7 q-ml-sm self-center">Procesando datos analíticos...</div>
+      </div>
+
       <!-- Gráficos Interactivos -->
       <div v-if="graficos.length > 0">
         <!-- Vista Unificada: Un solo gráfico con todos los SLAs -->
@@ -264,23 +283,23 @@
                         <div class="legend-item q-mb-sm">
                           <q-chip color="positive" text-color="white" dense>
                             <q-icon name="check_circle" left />
-                            Excelente
+                            Cumple
                           </q-chip>
-                          <div class="text-caption text-grey-7 q-mt-xs">≥ 90%</div>
+                          <div class="text-caption text-grey-7 q-mt-xs">Completado dentro del umbral</div>
                         </div>
                         <div class="legend-item q-mb-sm">
                           <q-chip color="orange" text-color="white" dense>
-                            <q-icon name="warning" left />
-                            Aceptable
+                            <q-icon name="schedule" left />
+                            Proceso
                           </q-chip>
-                          <div class="text-caption text-grey-7 q-mt-xs">≥ 70%</div>
+                          <div class="text-caption text-grey-7 q-mt-xs">En curso dentro del tiempo</div>
                         </div>
                         <div class="legend-item">
                           <q-chip color="negative" text-color="white" dense>
-                            <q-icon name="error" left />
-                            Bajo
+                            <q-icon name="cancel" left />
+                            No_cumple
                           </q-chip>
-                          <div class="text-caption text-grey-7 q-mt-xs">&lt; 70%</div>
+                          <div class="text-caption text-grey-7 q-mt-xs">Excedió el umbral</div>
                         </div>
                       </div>
                     </div>
@@ -308,6 +327,104 @@
           </div>
         </q-card-section>
       </q-card>
+
+      <!-- Análisis Detallado: Top 5 Roles con Más Incumplimientos -->
+      <div v-if="graficos.length > 0" class="row q-col-gutter-lg q-mt-lg q-mb-lg">
+        <div class="col-12">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="priority_high" color="negative" class="q-mr-sm" />
+                Top 5 Roles con Mayor Incumplimiento por Tipo de SLA
+              </div>
+              <q-separator class="q-mb-md" />
+
+              <div class="row q-col-gutter-md">
+                <div
+                  v-for="grafico in graficos.slice(0, 3)"
+                  :key="grafico.codigoSla"
+                  class="col-12 col-md-4"
+                >
+                  <div class="tipo-sla-card">
+                    <div class="text-subtitle2 text-weight-bold q-mb-sm">
+                      {{ grafico.codigoSla }}
+                    </div>
+                    <div v-if="grafico.topIncumplidores && grafico.topIncumplidores.length > 0">
+                      <div
+                        v-for="(rol, idx) in grafico.topIncumplidores.slice(0, 5)"
+                        :key="idx"
+                        class="incumplidor-item q-mb-sm"
+                      >
+                        <div class="row items-center justify-between">
+                          <div class="col">
+                            <div class="text-body2">
+                              <q-badge
+                                :color="idx === 0 ? 'negative' : idx === 1 ? 'orange' : 'grey-6'"
+                                :label="idx + 1"
+                                class="q-mr-xs"
+                              />
+                              {{ rol.nombre }}
+                            </div>
+                          </div>
+                          <div class="col-auto">
+                            <q-chip
+                              dense
+                              color="negative"
+                              text-color="white"
+                              size="sm"
+                            >
+                              {{ rol.noCumplen }} incumplimientos
+                            </q-chip>
+                          </div>
+                        </div>
+                        <q-linear-progress
+                          :value="rol.noCumplen / (grafico.totalNoCumplen || 1)"
+                          color="negative"
+                          class="q-mt-xs"
+                        />
+                      </div>
+                    </div>
+                    <div v-else class="text-center text-grey-6 q-py-md">
+                      <q-icon name="check_circle" size="sm" color="positive" />
+                      <div class="text-caption">Sin incumplimientos</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
+      <!-- Gráficos de Distribución de Estados -->
+      <div v-if="graficos.length > 0" class="row q-col-gutter-lg q-mb-lg">
+        <div class="col-12 col-lg-6">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="donut_small" color="primary" class="q-mr-sm" />
+                Distribución de Estados por Solicitud
+              </div>
+              <canvas id="graficoDistribucionEstadosAnalytic" style="max-height: 350px"></canvas>
+              <div class="text-center text-caption text-grey-7 q-mt-sm">
+                Total de {{ estadisticas.totalSolicitudes }} solicitudes analizadas
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <div class="col-12 col-lg-6">
+          <q-card flat bordered>
+            <q-card-section>
+              <div class="text-h6 text-weight-medium q-mb-md">
+                <q-icon name="assessment" color="primary" class="q-mr-sm" />
+                Resumen de Incumplimientos por Tipo SLA
+              </div>
+              <canvas id="graficoResumenIncumplimientosAnalytic" style="max-height: 350px"></canvas>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
 
       <!-- Estadísticas Rápidas -->
       <div class="row q-col-gutter-md q-mt-lg">
@@ -344,16 +461,15 @@
           </q-card>
         </div>
       </div>
-    </div>
   </q-page>
 </template>
 
 <script setup>
-import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useQuasar } from 'quasar'
-import { api } from 'boot/axios'
 import { Chart, registerables } from 'chart.js'
 import { useAppStore } from 'stores/app-store'
+import { useSlaStore } from 'stores/useSlaStore'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -361,14 +477,17 @@ Chart.register(...registerables)
 
 const $q = useQuasar()
 const appStore = useAppStore()
+const slaStore = useSlaStore()
 
 // Estados
 const loading = ref(false)
-const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
+
 const chartCanvasRefs = ref([])
 const chartInstances = ref([])
 const chartUnificadoCanvas = ref(null)
 let chartUnificadoInstance = null
+let graficoDistribucionEstadosAnalyticInstance = null
+let graficoResumenIncumplimientosAnalyticInstance = null
 
 const setChartRef = (el, index) => {
   if (el) {
@@ -406,7 +525,15 @@ const filtros = ref({
   anioFin: null,
   tiposSla: [],
   roles: [],
+  estado: null,
 })
+
+const estadosDisponibles = [
+  { label: 'Todos', value: null },
+  { label: 'Cumple', value: 'Cumple' },
+  { label: 'Proceso', value: 'Proceso' },
+  { label: 'No cumple', value: 'No_cumple' }
+]
 
 const tipoGrafico = ref({ label: 'Barras', value: 'bar' })
 const vistaUnificada = ref(false) // false = separado, true = unificado
@@ -474,11 +601,11 @@ watch(vistaUnificada, () => {
 const cargarConfiguracionesIniciales = async () => {
   try {
     // Cargar años
-    const solicitudesRes = await api.get('/api/Solicitud')
-    if (solicitudesRes.data && solicitudesRes.data.length > 0) {
+    const solicitudes = await slaStore.fetchSolicitudes()
+    if (solicitudes && solicitudes.length > 0) {
       const aniosUnicos = [
         ...new Set(
-          solicitudesRes.data
+          solicitudes
             .filter((s) => s.fechaSolicitud)
             .map((s) => new Date(s.fechaSolicitud).getFullYear()),
         ),
@@ -487,16 +614,16 @@ const cargarConfiguracionesIniciales = async () => {
     }
 
     // Cargar roles
-    const rolesRes = await api.get('/api/RolRegistro')
-    if (rolesRes.data) {
-      rolesDisponibles.value = rolesRes.data.filter((r) => r.esActivo).map((r) => r.nombreRol)
+    const roles = await slaStore.fetchRoles()
+    if (roles) {
+      rolesDisponibles.value = roles.filter((r) => r.esActivo).map((r) => r.nombreRol)
     }
 
     // Cargar códigos SLA
-    const configSlaRes = await api.get('/api/ConfigSla')
-    if (configSlaRes.data) {
+    const configSla = await slaStore.fetchConfigSla()
+    if (configSla) {
       tiposSlaDisponibles.value = [
-        ...new Set(configSlaRes.data.filter((c) => c.esActivo).map((c) => c.codigoSla)),
+        ...new Set(configSla.filter((c) => c.esActivo).map((c) => c.codigoSla)),
       ].sort((a, b) => {
         // Extraer el número del código (ej: "SLA1" -> 1)
         const numA = parseInt(a.replace(/\D/g, ''), 10)
@@ -549,15 +676,15 @@ const aplicarFiltros = async () => {
   loading.value = true
 
   try {
-    const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
-      api.get('/api/Solicitud'),
-      api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla'),
+    const [solicitudesData, rolesData, configSlaData] = await Promise.all([
+      slaStore.fetchSolicitudes(),
+      slaStore.fetchRoles(),
+      slaStore.fetchConfigSla(),
     ])
 
-    let solicitudes = solicitudesRes.data || []
-    const todosRoles = rolesRes.data || []
-    const configsSla = configSlaRes.data || []
+    let solicitudes = solicitudesData || []
+    const todosRoles = rolesData || []
+    const configsSla = configSlaData || []
 
     // Filtrar por rango de fechas (mes y año)
     solicitudes = solicitudes.filter((s) => {
@@ -620,31 +747,53 @@ const aplicarFiltros = async () => {
         solicitudesTipo = solicitudesTipo.filter((s) => rolesIds.includes(s.idRolRegistro))
       }
 
-      // Calcular cumplimiento para este tipo SLA
+      // Calcular cumplimiento para este tipo SLA con estados
       const solicitudesConSla = solicitudesTipo.map((s) => {
         const config = configsSla.find((c) => c.idSla === s.idSla)
         const diasUmbral = config?.diasUmbral || 0
 
         let cumpleSla = false
+        let estadoSla = 'Proceso' // Por defecto
+
         if (s.fechaSolicitud && s.fechaIngreso) {
+          // Solicitud completada
           const fechaSol = new Date(s.fechaSolicitud)
           const fechaIng = new Date(s.fechaIngreso)
           const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
           cumpleSla = diasTranscurridos <= diasUmbral
+          estadoSla = cumpleSla ? 'Cumple' : 'No_cumple'
+        } else if (s.fechaSolicitud && !s.fechaIngreso) {
+          // Solicitud en proceso
+          const fechaSol = new Date(s.fechaSolicitud)
+          const hoy = new Date()
+          const diasTranscurridos = Math.floor((hoy - fechaSol) / (1000 * 60 * 60 * 24))
+
+          if (diasTranscurridos > diasUmbral) {
+            estadoSla = 'No_cumple' // Ya excedió el umbral
+          } else {
+            estadoSla = 'Proceso' // Aún dentro del tiempo
+          }
         }
 
-        return { ...s, cumpleSla }
+        return { ...s, cumpleSla, estadoSla }
       })
 
-      // Preparar datos por rol para este tipo SLA
+      // Filtrar por estado si está seleccionado
+      const solicitudesFiltradas = filtros.value.estado
+        ? solicitudesConSla.filter(s => s.estadoSla === filtros.value.estado)
+        : solicitudesConSla
+
+      // Preparar datos por rol para este tipo SLA usando solicitudes filtradas por estado
       const cumplimientoPorRol = todosRoles
         .filter((r) => r.esActivo)
         .map((rol) => {
-          const solicitudesRol = solicitudesConSla.filter(
+          const solicitudesRol = solicitudesFiltradas.filter(
             (s) => s.idRolRegistro === rol.idRolRegistro,
           )
           const totalRol = solicitudesRol.length
           const cumplenRol = solicitudesRol.filter((s) => s.cumpleSla).length
+          const noCumplenRol = solicitudesRol.filter((s) => s.estadoSla === 'No_cumple').length
+          const procesoRol = solicitudesRol.filter((s) => s.estadoSla === 'Proceso').length
           const porcentaje = totalRol > 0 ? (cumplenRol / totalRol) * 100 : 0
 
           return {
@@ -652,6 +801,8 @@ const aplicarFiltros = async () => {
             porcentaje: parseFloat(porcentaje.toFixed(1)),
             total: totalRol,
             cumplidos: cumplenRol,
+            noCumplen: noCumplenRol,
+            proceso: procesoRol,
           }
         })
         .filter((r) => r.total > 0)
@@ -659,38 +810,59 @@ const aplicarFiltros = async () => {
 
       // Solo agregar gráfico si hay datos
       if (cumplimientoPorRol.length > 0) {
-        // Configurar datos según tipo de gráfico
+        // Configurar datos según tipo de gráfico con 3 estados
         let datosGrafico
-        if (tipoGrafico.value.value === 'line') {
-          const labels = cumplimientoPorRol.map((r) => r.nombre)
-          const data = cumplimientoPorRol.map((r) => r.porcentaje)
-          const pointColors = cumplimientoPorRol.map((rol) => {
-            if (rol.porcentaje >= 90) return 'rgba(76, 175, 80, 1)'
-            else if (rol.porcentaje >= 70) return 'rgba(255, 152, 0, 1)'
-            else return 'rgba(244, 67, 54, 1)'
-          })
+        const labels = cumplimientoPorRol.map((r) => r.nombre)
 
+        if (tipoGrafico.value.value === 'line') {
           datosGrafico = {
             labels: labels,
             datasets: [
               {
-                label: 'Cumplimiento SLA (%)',
-                data: data,
-                borderColor: 'rgba(76, 175, 80, 0.5)',
+                label: 'Cumple',
+                data: cumplimientoPorRol.map((r) => r.cumplidos),
+                borderColor: '#4CAF50',
                 backgroundColor: 'rgba(76, 175, 80, 0.1)',
                 borderWidth: 2,
-                pointBackgroundColor: pointColors,
-                pointBorderColor: pointColors,
-                pointRadius: 6,
-                pointHoverRadius: 8,
+                pointBackgroundColor: '#4CAF50',
+                pointBorderColor: '#4CAF50',
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: false,
+                tension: 0.4,
+              },
+              {
+                label: 'Proceso',
+                data: cumplimientoPorRol.map((r) => r.proceso || 0),
+                borderColor: '#FF9800',
+                backgroundColor: 'rgba(255, 152, 0, 0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: '#FF9800',
+                pointBorderColor: '#FF9800',
+                pointRadius: 5,
+                pointHoverRadius: 7,
+                fill: false,
+                tension: 0.4,
+              },
+              {
+                label: 'No_cumple',
+                data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
+                borderColor: '#F44336',
+                backgroundColor: 'rgba(244, 67, 54, 0.1)',
+                borderWidth: 2,
+                pointBackgroundColor: '#F44336',
+                pointBorderColor: '#F44336',
+                pointRadius: 5,
+                pointHoverRadius: 7,
                 fill: false,
                 tension: 0.4,
               },
             ],
           }
-        } else {
+        } else if (tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar') {
+          // Para doughnut y radar, mantener el formato de porcentaje
           datosGrafico = {
-            labels: cumplimientoPorRol.map((r) => r.nombre),
+            labels: labels,
             datasets: [
               {
                 label: 'Cumplimiento SLA (%)',
@@ -698,17 +870,57 @@ const aplicarFiltros = async () => {
                 backgroundColor: cumplimientoPorRol.map((r) => getColorByPercentage(r.porcentaje)),
                 borderColor: cumplimientoPorRol.map((r) => getColorByPercentage(r.porcentaje)),
                 borderWidth: 2,
+              },
+            ],
+          }
+        } else {
+          // Para barras y área, usar los 3 estados
+          datosGrafico = {
+            labels: labels,
+            datasets: [
+              {
+                label: 'Cumple',
+                data: cumplimientoPorRol.map((r) => r.cumplidos),
+                backgroundColor: '#4CAF50',
+                borderColor: '#4CAF50',
+                borderWidth: 1,
+                fill: tipoGrafico.value.value === 'area',
+              },
+              {
+                label: 'Proceso',
+                data: cumplimientoPorRol.map((r) => r.proceso || 0),
+                backgroundColor: '#FF9800',
+                borderColor: '#FF9800',
+                borderWidth: 1,
+                fill: tipoGrafico.value.value === 'area',
+              },
+              {
+                label: 'No_cumple',
+                data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
+                backgroundColor: '#F44336',
+                borderColor: '#F44336',
+                borderWidth: 1,
                 fill: tipoGrafico.value.value === 'area',
               },
             ],
           }
         }
 
+        // Calcular top incumplidores para este tipo de SLA
+        const topIncumplidores = cumplimientoPorRol
+          .filter(r => r.noCumplen > 0)
+          .sort((a, b) => b.noCumplen - a.noCumplen)
+          .slice(0, 5)
+
+        const totalNoCumplen = cumplimientoPorRol.reduce((sum, r) => sum + (r.noCumplen || 0), 0)
+
         graficos.value.push({
           codigoSla: codigoSla,
           titulo: construirTitulo(codigoSla),
           datos: datosGrafico,
           datosRoles: cumplimientoPorRol,
+          topIncumplidores: topIncumplidores,
+          totalNoCumplen: totalNoCumplen
         })
 
         // Acumular estadísticas globales
@@ -731,6 +943,11 @@ const aplicarFiltros = async () => {
     } else {
       crearGraficos()
     }
+
+    // Crear gráficos de análisis adicionales
+    crearGraficoDistribucionEstadosAnalytic()
+    crearGraficoResumenIncumplimientosAnalytic()
+
   } catch (error) {
     console.error('Error al aplicar filtros:', error)
     $q.notify({
@@ -782,13 +999,30 @@ const crearGraficos = () => {
               },
               label: function (context) {
                 const idx = context.dataIndex
-                const rol = grafico.datosRoles[idx]
-                return rol ? `Cumplimiento: ${rol.porcentaje}%` : ''
+                const datasetLabel = context.dataset.label
+                const valor = context.parsed.y
+
+                // Si es "Cumplimiento SLA (%)" mostrar porcentaje, si no mostrar cantidad
+                if (datasetLabel === 'Cumplimiento SLA (%)') {
+                  const rol = grafico.datosRoles[idx]
+                  return rol ? `${datasetLabel}: ${rol.porcentaje}%` : ''
+                } else {
+                  return `${datasetLabel}: ${Math.floor(valor)} solicitudes`
+                }
               },
               afterLabel: function (context) {
                 const idx = context.dataIndex
                 const rol = grafico.datosRoles[idx]
-                return rol ? `Usuarios: ${rol.cumplidos}/${rol.total}` : ''
+                if (!rol) return ''
+
+                const lineas = [
+                  `Total: ${rol.total} solicitudes`,
+                  `Cumplimiento: ${rol.porcentaje}%`,
+                  `✓ Cumple: ${rol.cumplidos}`,
+                  `⏳ Proceso: ${rol.proceso || 0}`,
+                  `✗ No cumple: ${rol.noCumplen || 0}`
+                ]
+                return lineas
               },
             },
           },
@@ -801,7 +1035,7 @@ const crearGraficos = () => {
                     callback: function (value, idx) {
                       const rol = grafico.datosRoles[idx]
                       if (!rol) return ''
-                      return [rol.nombre, `Usuarios: ${rol.cumplidos}/${rol.total}`]
+                      return [rol.nombre, `Total: ${rol.total}`]
                     },
                     font: function (context) {
                       if (context.tick && context.tick.label) {
@@ -816,12 +1050,22 @@ const crearGraficos = () => {
                 },
                 y: {
                   beginAtZero: true,
-                  max: 100,
                   ticks: {
                     callback: function (value) {
-                      return value + '%'
+                      // Si es doughnut/radar mostrar %, si no, cantidad
+                      if (tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar') {
+                        return value + '%'
+                      }
+                      return Math.floor(value)
                     },
+                    precision: 0,
                   },
+                  title: {
+                    display: true,
+                    text: tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar'
+                      ? 'Porcentaje de Cumplimiento'
+                      : 'Cantidad de Solicitudes'
+                  }
                 },
               }
             : {},
@@ -926,9 +1170,9 @@ const crearGraficoUnificado = () => {
               },
               afterLabel: function(context) {
                 const porcentaje = context.parsed.y
-                if (porcentaje >= 90) return '✓ Excelente (≥90%)'
-                if (porcentaje >= 70) return '⚠ Aceptable (≥70%)'
-                if (porcentaje > 0) return '✗ Bajo (<70%)'
+                if (porcentaje >= 90) return '✓ Cumple (≥90%)'
+                if (porcentaje >= 70) return '⚠ Proceso (≥70%)'
+                if (porcentaje > 0) return '✗ No cumple (<70%)'
                 return ''
               }
             }
@@ -1021,9 +1265,9 @@ const crearGraficoUnificado = () => {
               },
               afterLabel: function(context) {
                 const porcentaje = context.parsed.y
-                if (porcentaje >= 90) return '✓ Excelente'
-                if (porcentaje >= 70) return '⚠ Aceptable'
-                if (porcentaje > 0) return '✗ Bajo'
+                if (porcentaje >= 90) return '✓ Cumple'
+                if (porcentaje >= 70) return '⚠ Proceso'
+                if (porcentaje > 0) return '✗ No cumple'
                 return ''
               }
             }
@@ -1103,9 +1347,9 @@ const crearGraficoUnificado = () => {
               },
               afterLabel: function(context) {
                 const porcentaje = context.parsed.y || context.parsed
-                if (porcentaje >= 90) return 'Excelente (≥90%)'
-                if (porcentaje >= 70) return 'Aceptable (≥70%)'
-                return 'Bajo (<70%)'
+                if (porcentaje >= 90) return 'Cumple (≥90%)'
+                if (porcentaje >= 70) return 'Proceso (≥70%)'
+                return 'No cumple (<70%)'
               }
             }
           }
@@ -1267,7 +1511,7 @@ const exportarPDF = async () => {
             porcentaje: `${rol.porcentaje}%`,
             cumplidos: rol.cumplidos,
             total: rol.total,
-            nivel: rol.porcentaje >= 90 ? 'EXCELENTE' : rol.porcentaje >= 70 ? 'ACEPTABLE' : 'BAJO'
+            nivel: rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
           })
         })
       }
@@ -1463,6 +1707,147 @@ const exportarPDF = async () => {
   }
 }
 
+// Crear gráfico de distribución de estados para Analítica Interactiva
+const crearGraficoDistribucionEstadosAnalytic = () => {
+  const ctx = document.getElementById('graficoDistribucionEstadosAnalytic')
+  if (!ctx) return
+
+  // Destruir gráfico anterior si existe
+  if (graficoDistribucionEstadosAnalyticInstance) {
+    graficoDistribucionEstadosAnalyticInstance.destroy()
+  }
+
+  // Contar total de solicitudes por estado de todos los gráficos
+  let cumpleTotal = 0
+  let procesoTotal = 0
+  let noCumpleTotal = 0
+
+  graficos.value.forEach(grafico => {
+    grafico.datosRoles.forEach(rol => {
+      cumpleTotal += rol.cumplidos || 0
+      procesoTotal += rol.proceso || 0
+      noCumpleTotal += rol.noCumplen || 0
+    })
+  })
+
+  graficoDistribucionEstadosAnalyticInstance = new Chart(ctx, {
+    type: 'doughnut',
+    data: {
+      labels: ['Cumple', 'Proceso', 'No cumple'],
+      datasets: [{
+        data: [cumpleTotal, procesoTotal, noCumpleTotal],
+        backgroundColor: ['#4CAF50', '#FF9800', '#F44336'],
+        borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: {
+        legend: {
+          position: 'bottom',
+          labels: {
+            padding: 15,
+            font: { size: 13 }
+          }
+        },
+        tooltip: {
+          callbacks: {
+            label: function(context) {
+              const label = context.label || ''
+              const value = context.parsed || 0
+              const total = context.dataset.data.reduce((a, b) => a + b, 0)
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
+              return `${label}: ${value} solicitudes (${percentage}%)`
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
+// Crear gráfico resumen de incumplimientos para Analítica Interactiva
+const crearGraficoResumenIncumplimientosAnalytic = () => {
+  const ctx = document.getElementById('graficoResumenIncumplimientosAnalytic')
+  if (!ctx) return
+
+  // Destruir gráfico anterior si existe
+  if (graficoResumenIncumplimientosAnalyticInstance) {
+    graficoResumenIncumplimientosAnalyticInstance.destroy()
+  }
+
+  // Agrupar datos por tipo de SLA
+  const labels = graficos.value.map(g => g.codigoSla)
+  const cumpleData = graficos.value.map(g => {
+    return g.datosRoles.reduce((sum, r) => sum + (r.cumplidos || 0), 0)
+  })
+  const procesoData = graficos.value.map(g => {
+    return g.datosRoles.reduce((sum, r) => sum + (r.proceso || 0), 0)
+  })
+  const noCumpleData = graficos.value.map(g => {
+    return g.datosRoles.reduce((sum, r) => sum + (r.noCumplen || 0), 0)
+  })
+
+  graficoResumenIncumplimientosAnalyticInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [
+        {
+          label: 'Cumple',
+          data: cumpleData,
+          backgroundColor: '#4CAF50',
+          borderColor: '#4CAF50',
+          borderWidth: 1
+        },
+        {
+          label: 'Proceso',
+          data: procesoData,
+          backgroundColor: '#FF9800',
+          borderColor: '#FF9800',
+          borderWidth: 1
+        },
+        {
+          label: 'No cumple',
+          data: noCumpleData,
+          backgroundColor: '#F44336',
+          borderColor: '#F44336',
+          borderWidth: 1
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      scales: {
+        x: {
+          stacked: true
+        },
+        y: {
+          stacked: true,
+          beginAtZero: true,
+          ticks: { precision: 0 }
+        }
+      },
+      plugins: {
+        legend: {
+          position: 'top'
+        },
+        tooltip: {
+          callbacks: {
+            footer: function(tooltipItems) {
+              const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0)
+              return `Total: ${total} solicitudes`
+            }
+          }
+        }
+      }
+    }
+  })
+}
+
 const getColorByPercentage = (percentage) => {
   if (percentage >= 90) return 'rgba(76, 175, 80, 0.8)'
   if (percentage >= 70) return 'rgba(255, 152, 0, 0.8)'
@@ -1540,8 +1925,69 @@ onBeforeUnmount(() => {
   align-items: flex-start;
 }
 
+.tipo-sla-card {
+  padding: 16px;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  min-height: 300px;
+}
+
+.incumplidor-item {
+  padding: 8px;
+  background: white;
+  border-radius: 6px;
+  border: 1px solid #f0f0f0;
+  transition: all 0.2s;
+}
+
+.incumplidor-item:hover {
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transform: translateX(4px);
+}
+
 /* Responsive Design */
-@media (max-width: 1024px) {
+
+/* Desktop Large (1440px+) */
+@media (min-width: 1440px) {
+  .dashboard-page {
+    padding: 32px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .chart-wrapper {
+    min-height: 500px;
+  }
+
+  .color-legend {
+    min-height: 500px;
+    padding: 24px;
+  }
+}
+
+/* Desktop (1024px - 1439px) */
+@media (max-width: 1439px) and (min-width: 1024px) {
+  .dashboard-page {
+    padding: 24px 20px;
+  }
+
+  .chart-wrapper {
+    min-height: 450px;
+  }
+
+  .color-legend {
+    min-height: 450px;
+    padding: 20px;
+  }
+
+  .stat-card {
+    min-height: 90px;
+  }
+}
+
+/* Tablet Landscape (768px - 1023px) */
+@media (max-width: 1023px) and (min-width: 768px) {
   .dashboard-page {
     padding: 16px;
   }
@@ -1556,14 +2002,29 @@ onBeforeUnmount(() => {
 
   .color-legend {
     min-height: 350px;
+    padding: 16px;
   }
 
   .stat-card {
     min-height: 80px;
   }
+
+  /* Reorganizar filtros para tablet */
+  .filters-card .row > .col-md-4 {
+    width: 50% !important;
+  }
+
+  .filters-card .row > .col-md-3 {
+    width: 33.33% !important;
+  }
+
+  .filters-card .row > .col-md-2 {
+    width: 25% !important;
+  }
 }
 
-@media (max-width: 768px) {
+/* Tablet Portrait (600px - 767px) */
+@media (max-width: 767px) and (min-width: 600px) {
   .dashboard-page {
     padding: 12px;
   }
@@ -1583,6 +2044,7 @@ onBeforeUnmount(() => {
   .color-legend {
     min-height: auto;
     margin-top: 16px;
+    padding: 12px;
   }
 
   .legend-items {
@@ -1594,6 +2056,8 @@ onBeforeUnmount(() => {
 
   .legend-item {
     align-items: center;
+    flex: 1 1 auto;
+    min-width: 120px;
   }
 
   .stat-card {
@@ -1607,9 +2071,27 @@ onBeforeUnmount(() => {
   .text-h4 {
     font-size: 1.75rem;
   }
+
+  /* Filtros en columna completa para tablet portrait */
+  .filters-card .row > [class*="col-"] {
+    width: 100% !important;
+    margin-bottom: 8px;
+  }
+
+  /* Gráficos en columna completa */
+  .dashboard-content .col-md-6,
+  .dashboard-content .col-lg-6 {
+    width: 100% !important;
+    margin-bottom: 16px;
+  }
+
+  .tipo-sla-card {
+    min-height: 250px;
+  }
 }
 
-@media (max-width: 600px) {
+/* Mobile Large (480px - 599px) */
+@media (max-width: 599px) and (min-width: 480px) {
   .dashboard-page {
     padding: 8px;
   }
@@ -1621,14 +2103,35 @@ onBeforeUnmount(() => {
   .dashboard-header .row {
     flex-direction: column;
     align-items: flex-start !important;
+    text-align: left;
   }
 
   .dashboard-header .q-icon {
     margin-bottom: 8px;
+    margin-right: 0;
   }
 
   .chart-wrapper {
     min-height: 250px;
+  }
+
+  .color-legend {
+    min-height: auto;
+    margin-top: 12px;
+    padding: 8px;
+  }
+
+  .legend-items {
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .legend-item {
+    align-items: flex-start;
+  }
+
+  .stat-card {
+    min-height: 60px;
   }
 
   .stat-card .text-h4 {
@@ -1639,18 +2142,59 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
 
+  .filters-card .row > [class*="col-"] {
+    width: 100% !important;
+    margin-bottom: 6px;
+  }
+
   .text-h6 {
     font-size: 1rem;
   }
+
+  .text-h5 {
+    font-size: 1.1rem;
+  }
+
+  .tipo-sla-card {
+    min-height: 200px;
+    padding: 12px;
+  }
+
+  .incumplidor-item {
+    padding: 6px;
+  }
 }
 
-@media (max-width: 400px) {
+/* Mobile Small (320px - 479px) */
+@media (max-width: 479px) {
   .dashboard-page {
     padding: 4px;
   }
 
+  .dashboard-header {
+    padding: 8px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 1rem;
+    line-height: 1.3;
+  }
+
+  .dashboard-header .text-grey-7 {
+    font-size: 0.8rem;
+  }
+
   .chart-wrapper {
     min-height: 200px;
+  }
+
+  .color-legend {
+    padding: 6px;
+    margin-top: 8px;
+  }
+
+  .stat-card {
+    min-height: 50px;
   }
 
   .stat-card .text-h4 {
@@ -1659,6 +2203,196 @@ onBeforeUnmount(() => {
 
   .stat-card .text-subtitle2 {
     font-size: 0.85rem;
+  }
+
+  .stat-card .q-card-section {
+    padding: 8px;
+  }
+
+  .text-h6 {
+    font-size: 0.95rem;
+  }
+
+  .filters-card .q-card-section {
+    padding: 8px;
+  }
+
+  .filters-card .q-btn {
+    padding: 6px 10px;
+    font-size: 0.8rem;
+    min-height: 36px;
+  }
+
+  .tipo-sla-card {
+    min-height: 150px;
+    padding: 8px;
+  }
+
+  .incumplidor-item {
+    padding: 4px;
+    margin-bottom: 4px;
+  }
+
+  .legend-items .q-chip {
+    font-size: 0.75rem;
+    padding: 2px 8px;
+  }
+}
+
+/* Mobile Extra Small (< 320px) */
+@media (max-width: 319px) {
+  .dashboard-page {
+    padding: 2px;
+  }
+
+  .dashboard-header .text-h5 {
+    font-size: 0.9rem;
+  }
+
+  .stat-card .text-h4 {
+    font-size: 1.1rem;
+  }
+
+  .text-h6 {
+    font-size: 0.85rem;
+  }
+
+  .chart-wrapper {
+    min-height: 180px;
+  }
+
+  .tipo-sla-card {
+    min-height: 120px;
+  }
+}
+
+/* Orientación landscape en móviles */
+@media (max-height: 500px) and (orientation: landscape) {
+  .dashboard-page {
+    padding: 8px 16px;
+  }
+
+  .chart-wrapper {
+    min-height: 200px;
+  }
+
+  .color-legend {
+    min-height: auto;
+    max-height: 200px;
+    overflow-y: auto;
+  }
+
+  .stat-card {
+    min-height: 60px;
+  }
+
+  .dashboard-header {
+    padding: 6px 12px;
+  }
+
+  .tipo-sla-card {
+    min-height: 150px;
+  }
+}
+
+/* Vista unificada específica para móvil */
+@media (max-width: 767px) {
+  .col-12.col-md-9 {
+    width: 100% !important;
+    margin-bottom: 12px;
+  }
+
+  .col-12.col-md-3 {
+    width: 100% !important;
+  }
+
+  /* Forzar leyenda horizontal en móviles */
+  .color-legend .legend-items {
+    flex-direction: row !important;
+    justify-content: space-around;
+    flex-wrap: wrap;
+  }
+
+  .color-legend .legend-item {
+    flex: 1 1 30%;
+    min-width: auto;
+    align-items: center;
+    text-align: center;
+  }
+
+  .color-legend .legend-item .text-caption {
+    display: none;
+  }
+}
+
+/* Mejoras para interacción táctil */
+@media (pointer: coarse) {
+  .q-btn {
+    min-height: 44px;
+  }
+
+  .q-select .q-field__control {
+    min-height: 44px;
+  }
+
+  .q-chip {
+    min-height: 32px;
+    padding: 4px 12px;
+  }
+
+  .q-toggle {
+    font-size: 16px;
+  }
+}
+
+/* Alto contraste y accesibilidad */
+@media (prefers-contrast: high) {
+  .stat-card,
+  .tipo-sla-card {
+    border-width: 2px;
+  }
+
+  .incumplidor-item {
+    border-width: 2px;
+  }
+
+  .color-legend {
+    border-width: 2px;
+  }
+}
+
+/* Reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .stat-card,
+  .incumplidor-item {
+    transition: none;
+  }
+
+  .incumplidor-item:hover {
+    transform: none;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+}
+
+/* Mejoras para impresión */
+@media print {
+  .dashboard-page {
+    padding: 0;
+    background: white;
+  }
+
+  .q-btn {
+    display: none;
+  }
+
+  .chart-wrapper {
+    min-height: 300px;
+    page-break-inside: avoid;
+  }
+
+  .stat-card {
+    border: 1px solid #ccc;
+    page-break-inside: avoid;
   }
 }
 
