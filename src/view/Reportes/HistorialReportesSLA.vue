@@ -235,7 +235,7 @@ const _descargarReporte = (row) => {
     $q.notify({
       type: 'negative',
       message:
-        'No se pudo descargar el reporte. Verifica la publicación de la carpeta /reports en el backend.',
+        'No se pudo descargar el reporte. Verifica que la carpeta /reports esté publicada y accesible.',
       position: 'top-right',
     })
   }

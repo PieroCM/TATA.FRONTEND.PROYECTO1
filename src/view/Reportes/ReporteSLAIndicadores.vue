@@ -341,6 +341,7 @@ import html2canvas from 'html2canvas'
 import * as XLSX from 'xlsx'
 import { useAppStore } from 'stores/app-store'
 import EnviarReporteDialog from 'components/Reportes/EnviarReporteDialog.vue'
+import LogoPng from 'src/assets/Tata_logo.png'
 
 Chart.register(...registerables, ChartDataLabels)
 
@@ -408,6 +409,32 @@ const enviandoCorreo = ref(false)
 
 // Emit por compatibilidad
 const emit = defineEmits(['onFiltroChange'])
+
+// Utilidad para cargar imágenes como HTMLImageElement (para jsPDF.addImage)
+const loadImage = (src) =>
+  new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+
+// Comprimir imagen: reescala y exporta como JPEG con calidad reducida
+const compressImage = (img, maxWidth = 400, quality = 0.6) => {
+  const ratio = img.naturalWidth / img.naturalHeight || 1
+  const targetW = Math.min(img.naturalWidth || maxWidth, maxWidth)
+  const targetH = Math.round(targetW / ratio)
+  const canvas = document.createElement('canvas')
+  canvas.width = targetW
+  canvas.height = targetH
+  const ctx = canvas.getContext('2d')
+  // Fondo blanco para evitar negro al convertir PNG con transparencia a JPEG
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, targetW, targetH)
+  ctx.drawImage(img, 0, 0, targetW, targetH)
+  return canvas.toDataURL('image/jpeg', quality)
+}
 
 // Columnas de la tabla
 const columnas = [
@@ -1085,7 +1112,7 @@ const exportarPdf = async () => {
       console.log('Reporte generado en backend:', res.data)
       $q.notify({
         type: 'info',
-        message: 'Reporte registrado en el backend',
+        message: 'Reporte registrado',
         position: 'top-right',
         timeout: 2000,
       })
@@ -1106,7 +1133,20 @@ const exportarPdf = async () => {
     const pageHeight = pdf.internal.pageSize.getHeight()
     let currentY = 10
 
-    // Añadir título
+    // Logo superior (arriba-derecha) y luego título
+    try {
+      const logoImg = await loadImage(LogoPng)
+      const logoW = 35 // mm
+      const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
+      const logoData = compressImage(logoImg, 320, 0.55) // JPEG comprimido
+      pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, currentY, logoW, logoH)
+      currentY += logoH + 6
+    } catch (e) {
+      // Si falla el logo, continuamos sin bloquear el PDF
+      currentY += 4
+    }
+
+    // Título
     pdf.setFontSize(14)
     pdf.text('Reporte Indicadores SLA', 10, currentY)
     currentY += 8
@@ -1213,7 +1253,19 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
     const pageHeight = pdf.internal.pageSize.getHeight()
     let currentY = 10
 
-    // Añadir título
+    // Logo superior (arriba-derecha) y luego título
+    try {
+      const logoImg = await loadImage(LogoPng)
+      const logoW = 35 // mm
+      const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
+      const logoData = compressImage(logoImg, 320, 0.55)
+      pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, currentY, logoW, logoH)
+      currentY += logoH + 6
+    } catch (e) {
+      currentY += 4
+    }
+
+    // Título
     pdf.setFontSize(14)
     pdf.text('Reporte Indicadores SLA', 10, currentY)
     currentY += 8
