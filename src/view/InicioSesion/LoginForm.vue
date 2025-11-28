@@ -1,5 +1,5 @@
 <template>
-  <div class="row" style="height: 100vh; overflow: hidden">
+  <div class="login-container">
     <!-- SECCIÓN IZQUIERDA (SLIDER) -->
     <div class="col-7 left-section">
       <q-carousel
@@ -245,8 +245,17 @@ export default {
 </script>
 
 <style scoped>
+/* Contenedor principal */
+.login-container {
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+
 .left-section {
   position: relative;
+  flex: 0 0 58.333333%;
+  max-width: 58.333333%;
 }
 
 .slide-content {
@@ -255,6 +264,8 @@ export default {
 
 .bg-page {
   background: #f5f8ff;
+  flex: 0 0 41.666667%;
+  max-width: 41.666667%;
 }
 
 .login-card {
@@ -264,5 +275,82 @@ export default {
 
 .full-width {
   width: 100%;
+}
+
+/* RESPONSIVIDAD PARA MÓVILES */
+@media (max-width: 768px) {
+  /* Contenedor principal en móvil */
+  .login-container {
+    display: block;
+    height: auto;
+    min-height: 100vh;
+    overflow-y: auto;
+  }
+
+  /* Ocultar la columna de la izquierda (slider de imágenes) */
+  .left-section {
+    display: none;
+  }
+
+  /* La columna de login ocupa el 100% del ancho */
+  .col-5 {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+    min-height: 100vh;
+  }
+
+  .bg-page {
+    flex: none;
+    max-width: 100%;
+  }
+
+  /* La tarjeta de login compacta y centrada */
+  .login-card {
+    width: 100%;
+    max-width: 380px;
+    margin: 0 auto;
+    padding: 1.5rem !important;
+  }
+
+  /* Reducir espaciado de elementos internos en móvil */
+  .login-card .q-mb-xl {
+    margin-bottom: 1rem !important;
+  }
+
+  .login-card .q-mb-lg {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .login-card .q-mb-md {
+    margin-bottom: 0.75rem !important;
+  }
+
+  .login-card .q-mb-sm {
+    margin-bottom: 0.5rem !important;
+  }
+
+  /* Ajustar tamaño del avatar en móvil */
+  .login-card .q-avatar {
+    width: 70px !important;
+    height: 70px !important;
+  }
+
+  .login-card .q-avatar .q-icon {
+    font-size: 35px !important;
+  }
+
+  /* Ajustar títulos en móvil */
+  .login-card .text-h5 {
+    font-size: 1.35rem;
+  }
+
+  .login-card .text-body2 {
+    font-size: 0.875rem;
+  }
 }
 </style>
