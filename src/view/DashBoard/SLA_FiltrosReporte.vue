@@ -105,17 +105,6 @@
                 class="full-width"
               />
             </div>
-            <div class="col-12 col-md-auto">
-              <q-btn
-                outline
-                color="positive"
-                label="Exportar"
-                icon="download"
-                @click="exportarDashboard"
-                :disable="!hayDatos"
-                class="full-width"
-              />
-            </div>
           </div>
         </q-card-section>
       </q-card>
