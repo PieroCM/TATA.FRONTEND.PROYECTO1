@@ -245,6 +245,7 @@ import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import * as XLSX from 'xlsx'
+import { getUserIdFromToken } from 'src/utils/jwt'
 
 const $q = useQuasar()
 
@@ -432,16 +433,32 @@ const procesarArchivo = async () => {
     return
   }
 
+  // Obtener ID del usuario logueado
+  const idUsuario = getUserIdFromToken()
+  if (!idUsuario) {
+    $q.notify({
+      type: 'negative',
+      message: 'Error de autenticación',
+      caption: 'No se pudo obtener el ID del usuario. Por favor, inicia sesión nuevamente.',
+      position: 'top-right',
+    })
+    return
+  }
+
   isProcessing.value = true
   try {
     console.log('📤 Enviando datos al backend:', {
+      idUsuarioCreador: idUsuario,
       totalFilas: allRows.value.length,
       primeraFila: allRows.value[0],
       columnas: Object.keys(allRows.value[0] || {}),
     })
 
-    // Llamar al backend
-    const response = await api.post('/api/SubidaVolumen/solicitudes', allRows.value)
+    // Llamar al backend con el nuevo endpoint que requiere idUsuarioCreador en query string
+    const response = await api.post(
+      `/api/SubidaVolumen/solicitudes?idUsuarioCreador=${idUsuario}`,
+      allRows.value,
+    )
 
     // La API devuelve un BulkUploadResultDto:
     // {
