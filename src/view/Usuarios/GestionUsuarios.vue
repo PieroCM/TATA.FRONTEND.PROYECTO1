@@ -410,6 +410,7 @@
 <script>
 import { useUsuarioStore } from 'src/stores/useUsuarioStore'
 import { usuarioService } from 'src/services/usuarioService'
+import { rolService } from 'src/services/rolService'
 import { computed, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 
@@ -497,19 +498,28 @@ export default {
       { label: 'TRABAJADOR', value: 4 },
       { label: 'CONSULTOR', value: 5 },
     ]
-    const rolesFilterOptions = [
-      { label: 'ADMIN', value: 'ADMIN' },
-      { label: 'ANALISTA_SLA', value: 'ANALISTA_SLA' },
-      { label: 'GESTOR_ALERTA', value: 'GESTOR_ALERTA' },
-      { label: 'TRABAJADOR', value: 'TRABAJADOR' },
-      { label: 'CONSULTOR', value: 'CONSULTOR' },
-    ]
+    const rolesFilterOptions = ref([])
     const estadosOptions = [
       { label: 'Activo', value: 'ACTIVO' },
       { label: 'Inactivo', value: 'INACTIVO' },
     ]
     const pagination = ref({ rowsPerPage: 10 })
     const loading = computed(() => usuarioStore.loading)
+
+    const cargarRoles = async () => {
+      try {
+        const roles = await rolService.getAll()
+        // Mapear roles para el filtro usando el campo 'nombre'
+        rolesFilterOptions.value = roles
+          .filter((rol) => rol.esActivo)
+          .map((rol) => ({
+            label: rol.nombre,
+            value: rol.nombre,
+          }))
+      } catch (error) {
+        console.error('Error al cargar roles:', error)
+      }
+    }
 
     const cargarUsuarios = async () => {
       await usuarioStore.fetchUsuarios()
@@ -530,9 +540,12 @@ export default {
         )
       }
       if (filtro.value.estado) {
-        resultado = resultado.filter((u) => u.estadoCuentaAcceso === filtro.value.estado)
+        resultado = resultado.filter((u) => u.estado === filtro.value.estado)
       }
-      if (filtro.value.rol) resultado = resultado.filter((u) => u.nombreRol === filtro.value.rol)
+      if (filtro.value.rol) {
+        // nombreRol viene del backend y corresponde al campo 'nombre' de roles_sistema
+        resultado = resultado.filter((u) => u.nombreRol === filtro.value.rol)
+      }
       usuariosFiltrados.value = resultado
     }
 
@@ -970,7 +983,10 @@ export default {
       }
     }
 
-    onMounted(() => cargarUsuarios())
+    onMounted(() => {
+      cargarRoles()
+      cargarUsuarios()
+    })
 
     return {
       usuariosFiltrados,
