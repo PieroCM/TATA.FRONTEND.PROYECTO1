@@ -34,11 +34,32 @@ export const usuarioService = {
   // CRUD USUARIOS
   // ===========================
 
+  /**
+   * Obtiene todos los usuarios (endpoint antiguo)
+   * @deprecated Usar getGestionUsuarios() en su lugar
+   */
   async getAll() {
     try {
       const response = await api.get('/usuario')
       return response.data
     } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  /**
+   * Obtiene lista completa de Personal con información de Usuario y Rol
+   * Endpoint: GET /api/usuario (devuelve array de usuarios)
+   * @returns {Promise<Array>} Lista de personales con sus usuarios asociados
+   */
+  async getGestionUsuarios() {
+    try {
+      console.log('📋 Obteniendo lista de usuarios desde /api/usuario...')
+      const response = await api.get('/usuario')
+      console.log('✅ Lista de usuarios obtenida:', response.data.length, 'registros')
+      return response.data
+    } catch (error) {
+      console.error('❌ Error al obtener lista de usuarios:', error)
       throw this.handleError(error)
     }
   },
@@ -111,6 +132,104 @@ export const usuarioService = {
         )
         throw new Error('No tienes permisos para crear/vincular cuentas. Se requiere rol ADMIN.')
       }
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // PERSONAL (Endpoints /api/personal)
+  // ===========================
+
+  /**
+   * Obtiene la lista de personal para gestión (incluye info de usuario y rol)
+   * Endpoint: GET /api/personal/gestion-usuarios
+   */
+  async getGestionPersonal() {
+    try {
+      const response = await api.get('/api/personal/gestion-usuarios')
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async getPersonal(idPersonal) {
+    try {
+      const response = await api.get(`/api/Personal/${idPersonal}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async crearPersonal(datos) {
+    try {
+      const response = await api.post('/api/personal', datos)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async actualizarPersonal(idPersonal, datosActualizar) {
+    try {
+      const response = await api.put(`/api/personal/${idPersonal}`, datosActualizar)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async verificarDocumento(documento) {
+    try {
+      const response = await api.get(
+        `/api/personal/verificar-documento?documento=${encodeURIComponent(documento)}`,
+      )
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // USUARIO (Endpoints /api/usuario)
+  // ===========================
+
+  async toggleEstadoUsuario(idUsuario) {
+    try {
+      const response = await api.patch(`/api/usuario/${idUsuario}/toggle-estado`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async eliminarUsuario(idUsuario) {
+    try {
+      const response = await api.delete(`/api/usuario/${idUsuario}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async eliminarPersonal(idPersonal) {
+    try {
+      const response = await api.delete(`/api/personal/${idPersonal}`)
+      return response.data
+    } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // ALERTAS
+  // ===========================
+  async crearAlerta(payload) {
+    try {
+      const response = await api.post('/api/Alerta', payload)
+      return response.data
+    } catch (error) {
       throw this.handleError(error)
     }
   },

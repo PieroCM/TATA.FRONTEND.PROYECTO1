@@ -58,15 +58,24 @@
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useRouter } from 'vue-router'
+import axios from 'axios'
 import UserHeader from 'src/components/usuarios/UserHeader.vue'
 import UserInfoCard from 'src/components/usuarios/UserInfoCard.vue'
 import AccessInfoCard from 'src/components/usuarios/AccessInfoCard.vue'
 import ConfirmPasswordDialog from 'src/components/usuarios/ConfirmPasswordDialog.vue'
 import ChangePasswordDialog from 'src/components/usuarios/ChangePasswordDialog.vue'
-import usuarioService from './usuarioService'
 
 const $q = useQuasar()
 const router = useRouter()
+
+const baseURL = 'http://localhost:5260'
+
+const getToken = () => localStorage.getItem('authToken')
+
+const getAuthHeaders = () => ({
+  Authorization: getToken() ? `Bearer ${getToken()}` : '',
+  'Content-Type': 'application/json',
+})
 
 /* ------------------------------
    ESTADO
@@ -94,8 +103,51 @@ const cargarUsuario = async () => {
     const personalId = userData.id_personal || 1
 
     console.log('📥 Intentando cargar personal con ID:', personalId)
-    const data = await usuarioService.getUsuario(personalId)
-    console.log('✅ Personal cargado exitosamente:', data)
+
+    // GET /api/Personal/{id}
+    const personalResponse = await axios.get(`${baseURL}/api/Personal/${personalId}`, {
+      headers: getAuthHeaders(),
+    })
+    const personalData = personalResponse.data
+    console.log('✅ Personal cargado exitosamente:', personalData)
+
+    let data = personalData
+
+    // Si tiene usuario vinculado, obtener datos completos del usuario con rol
+    if (personalData.idUsuario) {
+      console.log('🔍 Obteniendo datos de usuario:', personalData.idUsuario)
+      const usuarioResponse = await axios.get(`${baseURL}/api/Usuario/${personalData.idUsuario}`, {
+        headers: getAuthHeaders(),
+      })
+      const usuarioData = usuarioResponse.data
+      console.log('✅ Usuario obtenido:', usuarioData)
+
+      // Obtener información del rol del sistema
+      let rolData = null
+      if (usuarioData.idRolSistema) {
+        console.log('🔍 Obteniendo rol del sistema:', usuarioData.idRolSistema)
+        try {
+          const rolResponse = await axios.get(
+            `${baseURL}/api/RolesSistema/${usuarioData.idRolSistema}`,
+            { headers: getAuthHeaders() },
+          )
+          rolData = rolResponse.data
+          console.log('✅ Rol obtenido:', rolData)
+        } catch (rolError) {
+          console.warn('⚠️ No se pudo obtener el rol:', rolError)
+        }
+      }
+
+      // Combinar datos de Personal, Usuario y Rol
+      data = {
+        ...personalData,
+        username: usuarioData.username,
+        estadoCuentaAcceso: usuarioData.estado,
+        idRolSistema: usuarioData.idRolSistema,
+        rol: rolData,
+      }
+    }
+
     console.log('🔍 Datos del rol recibido:', data.rol)
 
     // Transformar la respuesta del backend al formato esperado por los componentes
@@ -212,41 +264,56 @@ const confirmarCambioEmail = async (password) => {
     // MERGED: Validación robusta combinando ambas ramas
     // Prioriza el correo del usuario, pero hace fallback al personal si es necesario
     const correoParaValidar = usuario.value.correo || usuario.value.personal?.correo_corporativo
-    
+
     console.log('🔍 Validando contraseña con correo:', correoParaValidar)
 
-    const isValid = await usuarioService.validatePassword(correoParaValidar, password)
-
-    if (!isValid) {
+    // POST /api/Usuario/signin para validar contraseña
+    try {
+      await axios.post(
+        `${baseURL}/api/Usuario/signin`,
+        {
+          email: correoParaValidar,
+          password: password,
+        },
+        { headers: { 'Content-Type': 'application/json' } },
+      )
+      console.log('✅ Contraseña validada correctamente')
+    } catch (validateError) {
       console.error('❌ Contraseña incorrecta')
       throw new Error('Contraseña incorrecta')
     }
 
-    console.log('✅ Contraseña validada correctamente')
-
-    // Actualizar email en Personal
+    // PUT /api/Personal/{id} - Actualizar email en Personal
     if (usuario.value.personal) {
       console.log('📝 Actualizando correo en Personal...')
-      await usuarioService.updatePersonal(usuario.value.personal.id_personal, {
-        nombres: usuario.value.personal.nombres,
-        apellidos: usuario.value.personal.apellidos,
-        documento: usuario.value.personal.documento,
-        correoCorporativo: emailEditado.value, // Usar camelCase como espera el backend
-        estado: usuario.value.estado,
-      })
+      await axios.put(
+        `${baseURL}/api/Personal/${usuario.value.personal.id_personal}`,
+        {
+          nombres: usuario.value.personal.nombres,
+          apellidos: usuario.value.personal.apellidos,
+          documento: usuario.value.personal.documento,
+          correoCorporativo: emailEditado.value,
+          estado: usuario.value.estado,
+        },
+        { headers: getAuthHeaders() },
+      )
       console.log('✅ Correo actualizado en Personal')
     }
 
-    // Registrar alerta
+    // POST /api/Alerta - Registrar alerta
     try {
-      await usuarioService.createAlerta({
-        id_solicitud: null,
-        tipo_alerta: 'ACTUALIZACION',
-        nivel: 'INFO',
-        mensaje: `Personal ${usuario.value.personal.nombres} ${usuario.value.personal.apellidos} actualizó su correo corporativo`,
-        estado: 'PENDIENTE',
-        enviado_email: false,
-      })
+      await axios.post(
+        `${baseURL}/api/Alerta`,
+        {
+          id_solicitud: null,
+          tipo_alerta: 'ACTUALIZACION',
+          nivel: 'INFO',
+          mensaje: `Personal ${usuario.value.personal.nombres} ${usuario.value.personal.apellidos} actualizó su correo corporativo`,
+          estado: 'PENDIENTE',
+          enviado_email: false,
+        },
+        { headers: getAuthHeaders() },
+      )
       console.log('✅ Alerta registrada')
     } catch (alertError) {
       console.warn('⚠️ No se pudo registrar la alerta:', alertError)
@@ -296,25 +363,33 @@ const guardarNuevaPassword = async ({ currentPassword, newPassword }) => {
     const emailUsuario = usuario.value.correo || usuario.value.personal.correo_corporativo
     console.log('📧 Email del usuario:', emailUsuario)
 
-    // Cambiar contraseña en el backend
-    await usuarioService.changePassword({
-      email: emailUsuario,
-      passwordActual: currentPassword,
-      nuevaPassword: newPassword,
-    })
+    // PUT /api/Usuario/cambiar-password - Cambiar contraseña en el backend
+    await axios.put(
+      `${baseURL}/api/Usuario/cambiar-password`,
+      {
+        Email: emailUsuario,
+        PasswordActual: currentPassword,
+        NuevaPassword: newPassword,
+      },
+      { headers: getAuthHeaders() },
+    )
 
     console.log('✅ Contraseña actualizada en el backend')
 
-    // Registrar alerta
+    // POST /api/Alerta - Registrar alerta de seguridad
     try {
-      await usuarioService.createAlerta({
-        id_solicitud: null,
-        tipo_alerta: 'SEGURIDAD',
-        nivel: 'WARNING',
-        mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
-        estado: 'PENDIENTE',
-        enviado_email: true,
-      })
+      await axios.post(
+        `${baseURL}/api/Alerta`,
+        {
+          id_solicitud: null,
+          tipo_alerta: 'SEGURIDAD',
+          nivel: 'WARNING',
+          mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
+          estado: 'PENDIENTE',
+          enviado_email: true,
+        },
+        { headers: getAuthHeaders() },
+      )
       console.log('✅ Alerta de seguridad registrada')
     } catch (alertError) {
       console.warn('⚠️ No se pudo registrar la alerta de seguridad:', alertError)
