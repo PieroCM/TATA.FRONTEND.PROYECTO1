@@ -19,7 +19,7 @@ export const usuarioService = {
 
   async register(username, correo, password) {
     try {
-      const response = await api.post('/usuario/signup', {
+      const response = await api.post('/api/usuario/signup', {
         username,
         correo,
         password,
@@ -36,16 +36,22 @@ export const usuarioService = {
 
   async getAll() {
     try {
-      const response = await api.get('/usuario')
+      console.log(
+        '📤 [getAll] Llamando a:',
+        api.defaults.baseURL + '/api/personal/gestion-usuarios',
+      )
+      const response = await api.get('/api/personal/gestion-usuarios')
+      console.log('✅ [getAll] Personal/Usuarios recibidos:', response.data.length)
       return response.data
     } catch (error) {
+      console.error('❌ [getAll] Error:', error)
       throw this.handleError(error)
     }
   },
 
   async getById(id) {
     try {
-      const response = await api.get(`/usuario/${id}`)
+      const response = await api.get(`/api/usuario/${id}`)
       return response.data
     } catch (error) {
       throw this.handleError(error)
