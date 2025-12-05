@@ -412,6 +412,7 @@ import { useUsuarioStore } from 'src/stores/useUsuarioStore'
 import { usuarioService } from 'src/services/usuarioService'
 import { computed, ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
+import { api } from 'boot/axios'
 
 export default {
   name: 'GestionUsuarios',
@@ -490,26 +491,46 @@ export default {
       },
       { name: 'acciones', label: 'Acciones', align: 'center' },
     ]
-    const rolesOptions = [
-      { label: 'ADMIN', value: 1 },
-      { label: 'ANALISTA_SLA', value: 2 },
-      { label: 'GESTOR_ALERTA', value: 3 },
-      { label: 'TRABAJADOR', value: 4 },
-      { label: 'CONSULTOR', value: 5 },
-    ]
-    const rolesFilterOptions = [
-      { label: 'Administrador', value: 'Administrador' },
-      { label: 'Analista SLA', value: 'Analista SLA' },
-      { label: 'Gestor Alerta', value: 'Gestor Alerta' },
-      { label: 'Trabajador', value: 'Trabajador' },
-      { label: 'Consultor', value: 'Consultor' },
-    ]
+
+    // Cargar roles dinámicamente desde la API
+    const rolesOptions = ref([])
+    const rolesFilterOptions = ref([])
+
     const estadosOptions = [
       { label: 'Activo', value: 'ACTIVO' },
       { label: 'Inactivo', value: 'INACTIVO' },
     ]
     const pagination = ref({ rowsPerPage: 10 })
     const loading = computed(() => usuarioStore.loading)
+
+    const cargarRoles = async () => {
+      try {
+        console.log('📋 Cargando roles desde /api/RolesSistema...')
+        const response = await api.get('/api/RolesSistema')
+        const roles = response.data
+
+        console.log('✅ Roles cargados:', roles)
+
+        // Para el select de creación/edición (usa idRol como value)
+        rolesOptions.value = roles.map((rol) => ({
+          label: rol.nombre,
+          value: rol.idRol,
+        }))
+
+        // Para el filtro (usa nombre del rol como value)
+        rolesFilterOptions.value = roles.map((rol) => ({
+          label: rol.nombre,
+          value: rol.nombre,
+        }))
+      } catch (error) {
+        console.error('❌ Error cargando roles:', error)
+        $q.notify({
+          type: 'negative',
+          message: 'Error al cargar roles del sistema',
+          position: 'top',
+        })
+      }
+    }
 
     const cargarUsuarios = async () => {
       await usuarioStore.fetchUsuarios()
@@ -990,7 +1011,10 @@ export default {
       }
     }
 
-    onMounted(() => cargarUsuarios())
+    onMounted(async () => {
+      await cargarRoles() // Cargar roles primero
+      await cargarUsuarios() // Luego cargar usuarios
+    })
 
     return {
       usuariosFiltrados,
@@ -1009,6 +1033,7 @@ export default {
       rolesFilterOptions,
       estadosOptions,
       pagination,
+      cargarRoles,
       cargarUsuarios,
       filtrarUsuarios,
       openCreateDialog,

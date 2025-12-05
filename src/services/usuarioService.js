@@ -5,10 +5,10 @@ export const usuarioService = {
   // AUTENTICACIÓN
   // ===========================
 
-  async login(correo, password) {
+  async login(email, password) {
     try {
-      const response = await api.post('/usuario/signin', {
-        correo,
+      const response = await api.post('/api/usuario/signin', {
+        email,
         password,
       })
       return response.data
@@ -17,12 +17,12 @@ export const usuarioService = {
     }
   },
 
-  async register(username, correo, password) {
+  async register(email, password, idPersonal = null) {
     try {
       const response = await api.post('/api/usuario/signup', {
-        username,
-        correo,
+        email,
         password,
+        idPersonal,
       })
       return response.data
     } catch (error) {
@@ -58,36 +58,134 @@ export const usuarioService = {
     }
   },
 
-  async create(usuario) {
+  // ===========================
+  // 🔵 FLUJO 1: Crear Personal SIN Cuenta
+  // POST /api/personal
+  // ===========================
+  async crearPersonalSimple(personal) {
     try {
-      const response = await api.post('/usuario', usuario)
+      console.log('📤 [FLUJO 1] Crear Personal Simple:', personal)
+      const response = await api.post('/api/personal', {
+        nombres: personal.nombres,
+        apellidos: personal.apellidos,
+        documento: personal.documento || null,
+        correoCorporativo: personal.correoCorporativo || null,
+        estado: personal.estado || 'ACTIVO',
+      })
+      console.log('✅ [FLUJO 1] Personal creado:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('❌ [FLUJO 1] Error:', error)
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // 🔑 FLUJO 2: Crear Personal CON Cuenta al Mismo Tiempo
+  // POST /api/personal/with-account
+  // ===========================
+  async crearPersonalConCuenta(data) {
+    try {
+      console.log('📤 [FLUJO 2] Crear Personal + Usuario:', data)
+      const response = await api.post('/api/personal/with-account', {
+        nombres: data.nombres,
+        apellidos: data.apellidos,
+        documento: data.documento || null,
+        correoCorporativo: data.correoCorporativo,
+        estado: data.estado || 'ACTIVO',
+        crearCuentaUsuario: true,
+        username: data.username,
+        idRolSistema: data.idRolSistema,
+      })
+      console.log('✅ [FLUJO 2] Personal + Usuario creado:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('❌ [FLUJO 2] Error:', error)
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // 🔄 FLUJO 3: Vincular Personal Existente a Usuario (Solo Admin)
+  // POST /api/usuario/vincular-personal
+  // ===========================
+  async vincularPersonal(payload) {
+    try {
+      console.log('📤 [FLUJO 3] Vincular Personal a Usuario:', payload)
+      const response = await api.post('/api/usuario/vincular-personal', {
+        idPersonal: payload.idPersonal,
+        username: payload.username,
+        idRolSistema: payload.idRolSistema,
+      })
+      console.log('✅ [FLUJO 3] Personal vinculado:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('❌ [FLUJO 3] Error:', error)
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // ACTUALIZAR PERSONAL
+  // ===========================
+  async actualizarPersonal(id, datos) {
+    try {
+      console.log('📤 [actualizarPersonal] ID:', id, 'Datos:', datos)
+      const response = await api.put(`/api/personal/${id}`, datos)
+      console.log('✅ [actualizarPersonal] Actualizado:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('❌ [actualizarPersonal] Error:', error)
+      throw this.handleError(error)
+    }
+  },
+
+  async eliminarUsuario(id) {
+    try {
+      const response = await api.delete(`/api/usuario/${id}`)
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  async update(id, datosActualizar) {
+  async eliminarPersonal(id) {
     try {
-      const response = await api.put(`/usuario/${id}`, datosActualizar)
+      const response = await api.delete(`/api/personal/${id}`)
       return response.data
     } catch (error) {
       throw this.handleError(error)
     }
   },
 
-  async delete(id) {
+  async verificarDocumento(documento) {
     try {
-      const response = await api.delete(`/usuario/${id}`)
+      const response = await api.get(`/api/personal/verificar-documento/${documento}`)
       return response.data
     } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  async activarCuenta(email, token, nuevaPassword) {
+    try {
+      console.log('📤 [activarCuenta] Activando cuenta:', { email, token })
+      const response = await api.post('/api/usuario/activar-cuenta', {
+        email,
+        token,
+        nuevaPassword,
+      })
+      console.log('✅ [activarCuenta] Cuenta activada:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('❌ [activarCuenta] Error:', error)
       throw this.handleError(error)
     }
   },
 
   async toggleEstado(id, estado) {
     try {
-      const response = await api.patch(`/usuario/${id}/toggle-estado`, {
+      const response = await api.patch(`/api/usuario/${id}/toggle-estado`, {
         estado,
       })
       return response.data
@@ -100,10 +198,10 @@ export const usuarioService = {
   // CONTRASEÑAS
   // ===========================
 
-  async cambiarPassword(correo, passwordActual, nuevaPassword) {
+  async cambiarPassword(email, passwordActual, nuevaPassword) {
     try {
-      const response = await api.put('/usuario/cambiar-password', {
-        correo,
+      const response = await api.put('/api/usuario/cambiar-password', {
+        email,
         passwordActual,
         nuevaPassword,
       })
@@ -115,8 +213,8 @@ export const usuarioService = {
 
   async solicitarRecuperacion(email) {
     try {
-      const response = await api.post('/usuario/solicitar-recuperacion', {
-        Email: email,
+      const response = await api.post('/api/usuario/solicitar-recuperacion', {
+        email,
       })
       return response.data
     } catch (error) {
@@ -126,10 +224,10 @@ export const usuarioService = {
 
   async restablecerPassword(email, token, nuevaPassword) {
     try {
-      const response = await api.post('/usuario/restablecer-password', {
-        Email: email,
-        Token: token,
-        NuevaPassword: nuevaPassword,
+      const response = await api.post('/api/usuario/restablecer-password', {
+        email,
+        token,
+        nuevaPassword,
       })
       return response.data
     } catch (error) {
@@ -143,13 +241,15 @@ export const usuarioService = {
 
   handleError(error) {
     if (error.response) {
-      // Error de respuesta del servidor
-      return new Error(error.response.data.message || 'Error en el servidor')
+      console.error('❌ Error response:', error.response.data)
+      return new Error(
+        error.response.data.message || error.response.data.detalle || 'Error en el servidor',
+      )
     } else if (error.request) {
-      // Error de red
+      console.error('❌ Error request:', error.request)
       return new Error('No se pudo conectar con el servidor')
     } else {
-      // Otro error
+      console.error('❌ Error:', error.message)
       return new Error(error.message || 'Error desconocido')
     }
   },

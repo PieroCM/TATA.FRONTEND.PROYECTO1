@@ -168,9 +168,12 @@ export default {
     // Capturar parámetros de la URL (soporta email o username)
     const { email, username, token } = this.$route.query
 
-    // Usar email si existe, sino username (para compatibilidad)
+    // Usar email si existe, sino username (para compatibilidad con backend que envía username)
     this.email = email || username || ''
     this.token = token || ''
+
+    console.log('🔵 Parámetros capturados:', { email, username, token })
+    console.log('🟢 Email/Username asignado:', this.email)
   },
 
   methods: {
@@ -202,11 +205,15 @@ export default {
 
       this.loading = true
       try {
-        await this.$api.post('/api/usuario/activar-cuenta', {
-          Email: this.email,
-          Token: this.token,
-          NuevaPassword: this.newPassword,
-        })
+        const payload = {
+          email: this.email, // Aquí va el username que capturamos de la URL
+          token: this.token,
+          nuevaPassword: this.newPassword,
+        }
+
+        console.log('📤 Enviando a /api/usuario/activar-cuenta:', payload)
+
+        await this.$api.post('/api/usuario/activar-cuenta', payload)
 
         this.$q.notify({
           type: 'positive',

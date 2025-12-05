@@ -267,7 +267,7 @@ export default {
       this.loading = true
       try {
         const response = await this.$api.post('/api/usuario/solicitar-recuperacion', {
-          Email: this.email,
+          email: this.email,
         })
 
         this.$q.notify({
@@ -325,9 +325,9 @@ export default {
       this.loading = true
       try {
         const response = await this.$api.post('/api/usuario/restablecer-password', {
-          Email: this.email,
-          Token: this.token,
-          NuevaPassword: this.newPassword,
+          email: this.email,
+          token: this.token,
+          nuevaPassword: this.newPassword,
         })
 
         this.$q.notify({

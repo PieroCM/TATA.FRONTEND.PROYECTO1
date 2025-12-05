@@ -46,17 +46,30 @@ export const useUsuarioStore = defineStore('usuario', {
       }
     },
 
-    async crearUsuario(usuario) {
+    async crearUsuario(data) {
       this.loading = true
       this.error = null
 
       try {
-        const nuevoUsuario = await usuarioService.create(usuario)
-        this.usuarios.push(nuevoUsuario)
-        return nuevoUsuario
+        let resultado
+
+        if (data.crearCuentaUsuario) {
+          // 🔑 FLUJO 2: Crear personal + cuenta usuario
+          // POST /api/personal/with-account
+          resultado = await usuarioService.crearPersonalConCuenta(data)
+        } else {
+          // 🔵 FLUJO 1: Crear solo personal
+          // POST /api/personal
+          resultado = await usuarioService.crearPersonalSimple(data)
+        }
+
+        // Recargar la lista completa
+        await this.fetchUsuarios()
+
+        return resultado
       } catch (err) {
         this.error = err.message
-        console.error('Error al crear usuario:', err)
+        console.error('Error al crear usuario/personal:', err)
         return null
       } finally {
         this.loading = false
@@ -68,21 +81,16 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await usuarioService.update(id, datosActualizar)
+        // PUT /api/personal/{id}
+        await usuarioService.actualizarPersonal(id, datosActualizar)
 
-        // Actualizar en la lista local
-        const index = this.usuarios.findIndex((u) => u.idUsuario === id)
-        if (index !== -1) {
-          this.usuarios[index] = {
-            ...this.usuarios[index],
-            ...datosActualizar,
-          }
-        }
+        // Recargar la lista completa
+        await this.fetchUsuarios()
 
         return true
       } catch (err) {
         this.error = err.message
-        console.error('Error al actualizar usuario:', err)
+        console.error('Error al actualizar personal:', err)
         return false
       } finally {
         this.loading = false
@@ -94,13 +102,47 @@ export const useUsuarioStore = defineStore('usuario', {
       this.error = null
 
       try {
-        await usuarioService.delete(id)
-        this.usuarios = this.usuarios.filter((u) => u.idUsuario !== id)
+        // DELETE /api/usuario/{id}
+        await usuarioService.eliminarUsuario(id)
         return true
       } catch (err) {
         this.error = err.message
         console.error('Error al eliminar usuario:', err)
-        return false
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async eliminarPersonal(id) {
+      this.loading = true
+      this.error = null
+
+      try {
+        // DELETE /api/personal/{id}
+        await usuarioService.eliminarPersonal(id)
+        return true
+      } catch (err) {
+        this.error = err.message
+        console.error('Error al eliminar personal:', err)
+        throw err
+      } finally {
+        this.loading = false
+      }
+    },
+
+    async verificarDocumento(documento) {
+      this.loading = true
+      this.error = null
+
+      try {
+        // GET /api/personal/verificar-documento/{documento}
+        const resultado = await usuarioService.verificarDocumento(documento)
+        return resultado
+      } catch (err) {
+        this.error = err.message
+        console.error('Error al verificar documento:', err)
+        return { existe: false }
       } finally {
         this.loading = false
       }

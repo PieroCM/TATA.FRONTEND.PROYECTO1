@@ -97,15 +97,15 @@ const usuarioService = {
     try {
       console.log('🔍 Cambiando contraseña para:', payload.email)
       console.log('📤 Payload enviado:', {
-        Email: payload.email,
-        PasswordActual: '***',
-        NuevaPassword: '***',
+        email: payload.email,
+        passwordActual: '***',
+        nuevaPassword: '***',
       })
 
-      const response = await api.put('/api/Usuario/cambiar-password', {
-        Email: payload.email, // Backend espera 'Email' con mayúscula
-        PasswordActual: payload.passwordActual, // Backend espera 'PasswordActual'
-        NuevaPassword: payload.nuevaPassword, // Backend espera 'NuevaPassword'
+      const response = await api.put('/api/usuario/cambiar-password', {
+        email: payload.email,
+        passwordActual: payload.passwordActual,
+        nuevaPassword: payload.nuevaPassword,
       })
 
       console.log('✅ Contraseña cambiada exitosamente')
@@ -140,9 +140,8 @@ const usuarioService = {
   async validatePassword(correo, password) {
     try {
       console.log('🔍 Validando contraseña para:', correo)
-      // Intentamos hacer signin para validar la contraseña
-      const response = await api.post('/api/Usuario/signin', {
-        email: correo, // El backend espera 'email', no 'correo'
+      const response = await api.post('/api/usuario/signin', {
+        email: correo,
         password: password,
       })
       console.log('✅ Contraseña válida')
