@@ -192,12 +192,21 @@ watch(
         diasRestantes: newAlerta.diasRestantes,
       })
 
-      // Cargar email del usuario logueado
-      formulario.value.remitenteEmail = authStore.userEmail || 'sistema@empresa.com'
-      formulario.value.remitenteNombre = authStore.userName || 'Sistema SLA'
+      // Obtener datos del usuario logueado (Store o LocalStorage)
+      const storedUser = JSON.parse(localStorage.getItem('usuario') || '{}')
+      const userEmail = authStore.userEmail || storedUser.correo || storedUser.email || ''
+      const userName =
+        authStore.userName !== 'Usuario'
+          ? authStore.userName
+          : storedUser.nombre || storedUser.nombreCompleto || storedUser.username || 'Usuario'
 
-      // Rellenar destinatarios con emailResponsable del backend (CRÍTICO)
-      formulario.value.destinatarios = newAlerta.emailResponsable || 'responsable@empresa.com'
+      // Cargar email del usuario logueado
+      formulario.value.remitenteEmail = userEmail
+      formulario.value.remitenteNombre = userName
+
+      // Rellenar destinatarios con el correo del usuario logueado (según solicitud)
+      // El usuario registrado será el responsable de recibir/enviar las pruebas
+      formulario.value.destinatarios = userEmail || newAlerta.emailResponsable || ''
 
       // Pre-llenar asunto con codigoSolicitud del backend
       formulario.value.asunto = `Alerta de Vencimiento: Solicitud ${newAlerta.codigoSolicitud || 'N/A'}`
