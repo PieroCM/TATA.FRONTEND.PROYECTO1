@@ -91,7 +91,32 @@ export const usuarioService = {
   },
 
   // ===========================
-  // CONTRASEÑAS
+  // GESTIÓN DE PERSONAL Y VINCULACIÓN
+  // ===========================
+
+  /**
+   * Nueva función extraída del conflicto de merge.
+   * Se encarga de vincular un usuario con personal.
+   */
+  async vincularPersonal(datos) {
+    try {
+      // Endpoint de la rama fix/Loginygestionpersonal
+      const response = await api.post('/api/usuario/vincular-personal', datos)
+      return response.data
+    } catch (error) {
+      // Manejo de error específico para permisos (403)
+      if (error.response?.status === 403) {
+        console.warn(
+          '⚠️ Endpoint /api/usuario/vincular-personal requiere ADMIN. Verifique permisos.',
+        )
+        throw new Error('No tienes permisos para crear/vincular cuentas. Se requiere rol ADMIN.')
+      }
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // CONTRASEÑAS Y RECUPERACIÓN
   // ===========================
 
   async cambiarPassword(correo, passwordActual, nuevaPassword) {
@@ -109,6 +134,7 @@ export const usuarioService = {
 
   async solicitarRecuperacion(email) {
     try {
+      // Endpoint de la rama fix/presentacion
       const response = await api.post('/usuario/solicitar-recuperacion', {
         Email: email,
       })
@@ -127,6 +153,25 @@ export const usuarioService = {
       })
       return response.data
     } catch (error) {
+      throw this.handleError(error)
+    }
+  },
+
+  // ===========================
+  // ACTIVACIÓN DE CUENTA
+  // ===========================
+
+  /**
+   * Activar cuenta con token (soporta email o username)
+   * @param {Object} datos - {Email: string, Token: string, NuevaPassword: string}
+   */
+  async activarCuenta(datos) {
+    try {
+      console.log('[Activación] Enviando Email/Username:', datos.Email)
+      const response = await api.post('/api/usuario/activar-cuenta', datos)
+      return response.data
+    } catch (error) {
+      console.error('[Activación] Error en servicio:', error.response?.data || error.message)
       throw this.handleError(error)
     }
   },

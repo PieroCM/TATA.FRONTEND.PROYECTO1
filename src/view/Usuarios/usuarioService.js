@@ -143,7 +143,7 @@ const usuarioService = {
       // Intentamos hacer signin para validar la contraseña
       const response = await api.post('/api/Usuario/signin', {
         email: correo, // El backend espera 'email', no 'correo'
-        password: password,
+        password, // ES6 Shorthand (equivalente a password: password)
       })
       console.log('✅ Contraseña válida')
       return response.data.token ? true : false
