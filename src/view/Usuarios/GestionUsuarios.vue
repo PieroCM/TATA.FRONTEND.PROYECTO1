@@ -581,6 +581,15 @@ const estadosOptions = [
 
 const pagination = ref({ rowsPerPage: 10 })
 
+const ordenarPorFechaCreacion = (lista) => {
+  return [...lista].sort((a, b) => {
+    // ajusta 'creadoEn' al nombre real del campo que te llega del backend
+    const fechaA = new Date(a.creadoEn || a.fechaCreacion || 0)
+    const fechaB = new Date(b.creadoEn || b.fechaCreacion || 0)
+    return fechaB - fechaA // DESC: más nuevo → más viejo
+  })
+}
+
 const cargarUsuarios = async () => {
   loading.value = true
   error.value = null
@@ -590,7 +599,7 @@ const cargarUsuarios = async () => {
     const { data } = await axios.get(`${baseURL}/api/personal/gestion-usuarios`, {
       headers: getAuthHeaders(),
     })
-    usuarios.value = data
+    usuarios.value = ordenarPorFechaCreacion(data)
     usuariosFiltrados.value = [...usuarios.value]
     console.log('✅ Usuarios cargados:', usuarios.value.length, 'registros')
   } catch (err) {
@@ -752,7 +761,10 @@ const guardarUsuario = async () => {
       const index = usuarios.value.findIndex((u) => u.idPersonal === formUsuario.value.id)
       if (index !== -1) {
         usuarios.value[index] = { ...usuarios.value[index], ...datosActualizar }
+        // 👇 volvemos a ordenar por fecha de creación
+        usuarios.value = ordenarPorFechaCreacion(usuarios.value)
       }
+      filtrarUsuarios()
 
       $q.notify({
         type: 'positive',
@@ -775,6 +787,9 @@ const guardarUsuario = async () => {
       const response = await axios.post(`${baseURL}/api/personal`, nuevoPersonal, {
         headers: getAuthHeaders(),
       })
+
+      await cargarUsuarios()
+      filtrarUsuarios()
 
       usuarios.value.push(response.data)
 
@@ -801,7 +816,7 @@ const guardarUsuario = async () => {
     }
 
     dialogUsuario.value = false
-    usuariosFiltrados.value = [...usuarios.value]
+    //usuariosFiltrados.value = [...usuarios.value]
   } catch (error) {
     console.error('❌ Error al guardar:', error.response?.status, error.message)
     $q.notify({
