@@ -128,7 +128,9 @@ const confirmar = async () => {
   min-width: 420px;
   max-width: 500px;
   border-radius: 16px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 10px 80px rgba(0, 0, 0, 0.15);
+  position: relative;
+  z-index: 6000;
 }
 
 .dialog-header {
@@ -165,6 +167,12 @@ const confirmar = async () => {
 
 .password-input :deep(.q-field__control) {
   border-radius: 10px;
+  padding: 4px 12px;
+  min-height: 50px;
+}
+
+.password-input :deep(.q-field__native) {
+  padding: 8px 0;
 }
 
 .password-input :deep(input) {

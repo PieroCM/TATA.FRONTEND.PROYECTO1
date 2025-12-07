@@ -12,7 +12,7 @@
     <div class="card-content">
       <!-- Correo Corporativo -->
       <div class="info-field">
-        <label class="field-label">Correo Corporativo</label>
+        <label class="field-label">Correo corporativo</label>
 
         <!-- Modo normal -->
         <div v-if="!editMode" class="field-value">
@@ -82,7 +82,9 @@ const correoCorporativo = computed(() => {
 })
 
 const rolNombre = computed(() => {
-  return props.usuario.rol?.nombre || ''
+  console.log('🔍 AccessInfoCard - usuario.rol:', props.usuario.rol)
+  console.log('🔍 AccessInfoCard - rol.nombre:', props.usuario.rol?.nombre)
+  return props.usuario.rol?.nombre || 'Sin rol asignado'
 })
 
 const estadoTexto = computed(() => {
@@ -178,19 +180,36 @@ watch(emailEditado, (newVal) => {
 
 .email-input-edit :deep(.q-field__control) {
   border-radius: 10px;
-  border: 2px solid #3b82f6;
+  border: 2px solid #3b82f6 !important;
   background: white;
-  padding: 8px 12px;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.1);
+  padding: 10px 16px;
+  min-height: 60px;
+  box-shadow: none !important;
+}
+
+.email-input-edit :deep(.q-field__control::before),
+.email-input-edit :deep(.q-field__control::after) {
+  border: none !important;
+}
+
+.email-input-edit :deep(.q-field__prepend) {
+  padding-right: 8px;
+}
+
+.email-input-edit :deep(.q-field__native) {
+  padding: 0;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
 }
 
 .email-input-edit :deep(.q-field__control):hover {
-  border-color: #2563eb;
+  border-color: #2563eb !important;
 }
 
 .email-input-edit :deep(.q-field__control):focus-within {
-  border-color: #1d4ed8;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  border-color: #1d4ed8 !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
 }
 
 .email-input-edit :deep(input) {

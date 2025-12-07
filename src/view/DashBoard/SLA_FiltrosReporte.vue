@@ -676,8 +676,58 @@ const aplicarFiltros = async () => {
       kpis.value.atencionRequerida = { nombre: '-', porcentaje: 0 }
     }
 
-    // Calcular variación (simplificado, podrías comparar con mes anterior real)
-    kpis.value.variacion = parseFloat((Math.random() * 10 - 5).toFixed(1))
+    // Calcular variación real comparando con el mes anterior
+    if (totalSolicitudes > 0) {
+      // Obtener el mes anterior
+      let mesAnterior = mesNumero - 1
+      let anioAnterior = filtros.value.anio
+      if (mesAnterior === 0) {
+        mesAnterior = 12
+        anioAnterior -= 1
+      }
+
+      // Filtrar solicitudes del mes anterior
+      const solicitudesMesAnterior = solicitudesData.filter((s) => {
+        if (!s.fechaSolicitud) return false
+        const fecha = new Date(s.fechaSolicitud)
+        return fecha.getFullYear() === anioAnterior && fecha.getMonth() + 1 === mesAnterior
+      })
+
+      // Aplicar mismo filtro de roles si hay selección
+      const rolesFiltrados = rolesSeleccionados.value.length > 0
+        ? todosRoles.filter(r => rolesSeleccionados.value.includes(r.nombreRol)).map(r => r.idRolRegistro)
+        : todosRoles.filter(r => r.esActivo).map(r => r.idRolRegistro)
+
+      const solicitudesMesAnteriorFiltradas = solicitudesMesAnterior.filter(s =>
+        rolesFiltrados.includes(s.idRolRegistro)
+      )
+
+      // Calcular SLA del mes anterior
+      const totalMesAnterior = solicitudesMesAnteriorFiltradas.length
+      if (totalMesAnterior > 0) {
+        const cumplidasMesAnterior = solicitudesMesAnteriorFiltradas.filter(s => {
+          const config = configsSla.find(c => c.idSla === s.idSla)
+          const umbral = config?.diasUmbral || 0
+          let cumple = false
+          if (s.fechaSolicitud && s.fechaIngreso) {
+            const fechaSol = new Date(s.fechaSolicitud)
+            const fechaIng = new Date(s.fechaIngreso)
+            const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
+            cumple = diasTranscurridos <= umbral
+          }
+          return cumple
+        }).length
+
+        const slaMesAnterior = (cumplidasMesAnterior / totalMesAnterior) * 100
+        kpis.value.variacion = parseFloat((kpis.value.slaGlobal - slaMesAnterior).toFixed(1))
+      } else {
+        // No hay datos del mes anterior
+        kpis.value.variacion = 0
+      }
+    } else {
+      // No hay datos del mes actual
+      kpis.value.variacion = 0
+    }
 
   } catch (error) {
     console.error('Error al aplicar filtros:', error)

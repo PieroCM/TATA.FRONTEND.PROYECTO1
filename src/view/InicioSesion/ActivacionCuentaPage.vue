@@ -131,7 +131,7 @@ export default {
   data() {
     return {
       slide: 0,
-      email: '', // Correo recibido de la URL
+      email: '', // Identity recibida de la URL (puede ser email o username)
       token: '', // Token recibido de la URL
       newPassword: '', // Nueva contraseña
       confirmPassword: '', // Confirmación de nueva contraseña
@@ -165,16 +165,54 @@ export default {
   },
 
   mounted() {
-    // Capturar parámetros de la URL (soporta email o username)
-    const { email, username, token } = this.$route.query
-
-    // Usar email si existe, sino username (para compatibilidad)
-    this.email = email || username || ''
-    this.token = token || ''
+    this.resolverIdentidad()
   },
 
   methods: {
+    /**
+     * Resuelve la identidad del usuario desde los parámetros de la URL.
+     * Soporta tanto email como username. El backend se encarga de la conversión.
+     */
+    resolverIdentidad() {
+      const { email, username, token } = this.$route.query
+
+      // Capturar identity (email o username)
+      const identity = email || username || ''
+      this.email = identity
+      this.token = token || ''
+
+      // Log informativo en consola
+      if (identity) {
+        const esEmail = identity.includes('@')
+        console.log(
+          `[Activación] Identity detectada: ${esEmail ? 'EMAIL' : 'USERNAME'} → "${identity}"`,
+        )
+        console.log(`[Activación] Token recibido: ${this.token ? '✓' : '✗'}`)
+      } else {
+        console.warn('[Activación] ⚠️ No se recibió email ni username en la URL')
+      }
+
+      // Validar que exista token
+      if (!this.token) {
+        this.$q.notify({
+          type: 'negative',
+          message: 'Enlace de activación inválido o incompleto',
+          position: 'bottom',
+          timeout: 3000,
+        })
+      }
+    },
+
     async activarCuenta() {
+      // Validar que exista identity y token
+      if (!this.email || !this.token) {
+        return this.$q.notify({
+          type: 'negative',
+          message: 'El enlace de activación es inválido o ha expirado.',
+          position: 'bottom',
+        })
+      }
+
       // Validaciones básicas
       if (!this.newPassword || !this.confirmPassword) {
         return this.$q.notify({
@@ -202,8 +240,11 @@ export default {
 
       this.loading = true
       try {
+        // El backend resuelve internamente si es email o username
+        console.log('[Activación] Enviando solicitud al backend con identity:', this.email)
+
         await this.$api.post('/api/usuario/activar-cuenta', {
-          Email: this.email,
+          Email: this.email, // Puede ser email o username, backend lo resuelve
           Token: this.token,
           NuevaPassword: this.newPassword,
         })
@@ -224,6 +265,7 @@ export default {
           this.$router.push('/login')
         }, 1500)
       } catch (error) {
+        console.error('[Activación] Error:', error.response?.data || error.message)
         this.$q.notify({
           type: 'negative',
           message:
