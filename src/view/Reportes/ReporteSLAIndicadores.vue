@@ -225,20 +225,26 @@
               <div class="q-mt-xl">
                 <div class="text-subtitle1 text-weight-medium q-mb-md">Gráfico de SLA por Rol</div>
 
-                <!-- Leyenda fuera del gráfico -->
+                <!-- Leyenda del gráfico -->
                 <div class="legend-container q-mb-md">
                   <div class="legend-item">
                     <div class="legend-color" style="background-color: #21ba45"></div>
-                    <span>SLA Cumplido (100%)</span>
+                    <span>Cumplen (solicitudes)</span>
                   </div>
                   <div class="legend-item">
                     <div class="legend-color" style="background-color: #f60008"></div>
-                    <span>SLA Incumplido (&lt;100%)</span>
+                    <span>No cumplen (solicitudes)</span>
                   </div>
                   <div class="legend-item">
                     <div class="legend-color" style="background-color: #9e9e9e"></div>
                     <span>Sin recursos (NA)</span>
                   </div>
+                </div>
+                <div
+                  class="text-caption text-grey-7 q-mb-sm"
+                  style="text-align: center; font-size: 14px"
+                >
+                  Etiqueta superior: SLA del rol (%).
                 </div>
 
                 <div class="chart-wrapper" style="position: relative; width: 100%; height: 500px">
@@ -246,7 +252,7 @@
                 </div>
 
                 <!-- Gráfico de torta (Resumen) -->
-                <div class="q-mt-lg">
+                <div class="q-mt-lg" v-if="false">
                   <div class="text-subtitle1 text-weight-medium q-mb-sm">Resumen del Reporte</div>
                   <div
                     class="chart-wrapper"
@@ -441,6 +447,8 @@ const reporteRef = ref(null)
 // Diálogo correo
 const dialogCorreo = ref(false)
 const enviandoCorreo = ref(false)
+// Cache PDF base64 (sin prefijo data:) para reutilizar en envío por correo
+const cachedPdfBase64 = ref(null)
 
 // Emit por compatibilidad
 const emit = defineEmits(['onFiltroChange'])
@@ -785,6 +793,7 @@ const verReporte = async () => {
           s.estadoCumplimientoSla &&
           /^(CUMPLE SLA\d+|CUMPLE_SLA\d+)$/i.test(s.estadoCumplimientoSla),
       ).length
+      const noCumplen = total - cumplen
 
       let sla
       if (total === 0) {
@@ -802,6 +811,8 @@ const verReporte = async () => {
         rol: rol.nombreRol,
         numRecursos: total,
         sla: sla,
+        cumplen,
+        noCumplen,
       }
     })
 
@@ -850,7 +861,7 @@ const verReporte = async () => {
     await nextTick()
     try {
       crearGrafico()
-      crearGraficoResumen()
+      // crearGraficoResumen() // ocultado: no crear gráfico de resumen
     } catch (graficoError) {
       console.error('Error al crear el gráfico:', graficoError)
     }
@@ -897,18 +908,21 @@ const crearGrafico = () => {
     const dataBruto = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
     const numRecursos = filasConDatos.map((f) => f.numRecursos)
 
-    // Crear dos datasets: uno para cumplimiento (verde) y otro para incumplimiento (rojo)
+    // Normalizar segmentos para que la altura total de la barra sea el SLA% del rol
+    // Segmento verde = sla * (cumplen/total), segmento rojo = sla * (noCumplen/total)
     const dataCumple = dataBruto.map((val, idx) => {
-      if (filasConDatos[idx].numRecursos === 0) return 0
-      return val === 100 ? val : 0
+      const fila = filasConDatos[idx]
+      if (fila.numRecursos === 0 || val === 'NA') return 0
+      return parseFloat((val * (fila.cumplen / fila.numRecursos) || 0).toFixed(2))
     })
 
-    const dataIncumple = dataBruto.map((val, idx) => {
-      if (filasConDatos[idx].numRecursos === 0) return 0
-      return val < 100 && val !== 'NA' ? val : 0
+    const dataNoCumple = dataBruto.map((val, idx) => {
+      const fila = filasConDatos[idx]
+      if (fila.numRecursos === 0 || val === 'NA') return 0
+      return parseFloat((val * (fila.noCumplen / fila.numRecursos) || 0).toFixed(2))
     })
 
-    console.log('Creando Chart con datos:', { labels, dataCumple, dataIncumple, numRecursos })
+    console.log('Creando Chart con datos:', { labels, dataCumple, dataNoCumple, numRecursos })
 
     // Determinar si se debe rotar los labels del eje X
     // Si hay muchos roles (más de 5), rotar 45 grados
@@ -922,23 +936,61 @@ const crearGrafico = () => {
         labels,
         datasets: [
           {
-            label: 'SLA Cumplido (100%)',
+            label: 'Cumplen (SLA%)',
             data: dataCumple,
             backgroundColor: '#21ba45',
             borderColor: '#21ba45',
             borderWidth: 2,
             hoverBackgroundColor: '#21ba45',
             hoverBorderColor: '#21ba45',
+            stack: 'sla',
+            datalabels: {
+              labels: {
+                inner: {
+                  anchor: 'center',
+                  align: 'center',
+                  color: '#fff',
+                  font: { weight: 'bold', size: 12 },
+                  formatter: () => '', // Ocultar número interno
+                },
+              },
+            },
           },
           {
-            label: 'SLA Incumplido (<100%)',
-            data: dataIncumple,
+            label: 'No cumplen (%)',
+            data: dataNoCumple,
             backgroundColor: '#f60008',
             borderColor: '#f60008',
             borderWidth: 2,
             hoverBackgroundColor: '#f60008',
             hoverBorderColor: '#f60008',
+            stack: 'sla',
+            datalabels: {
+              labels: {
+                inner: {
+                  anchor: 'center',
+                  align: 'center',
+                  color: '#fff',
+                  font: { weight: 'bold', size: 12 },
+                  formatter: () => '', // Ocultar número interno
+                },
+                top: {
+                  anchor: 'end',
+                  align: 'top',
+                  offset: 5,
+                  color: '#333',
+                  font: { weight: 'bold', size: 15 },
+                  formatter: (value, context) => {
+                    const idx = context.dataIndex
+                    const fila = filasConDatos[idx]
+                    if (!fila || fila.numRecursos === 0 || fila.sla === 'NA') return ''
+                    return `${fila.sla}%`
+                  },
+                },
+              },
+            },
           },
+          // Dataset fantasma para la etiqueta superior del SLA total
         ],
       },
       options: {
@@ -948,41 +1000,37 @@ const crearGrafico = () => {
           legend: {
             display: false,
           },
-          datalabels: {
-            anchor: 'end',
-            align: 'top',
-            offset: 10,
-            font: {
-              weight: 'bold',
-              size: 12,
-            },
-            color: '#333',
-            formatter: function (value) {
-              if (value === 0) return ''
-              return value + '%'
-            },
-          },
+          // Configuración base; las opciones específicas por dataset están definidas en cada dataset
+          datalabels: {},
           tooltip: {
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
             padding: 12,
-            titleFont: {
-              size: 14,
-            },
-            bodyFont: {
-              size: 13,
-            },
+            titleFont: { size: 14 },
+            bodyFont: { size: 13 },
+            // Un solo tooltip por columna con resumen
+            mode: 'index',
+            intersect: false,
             callbacks: {
-              title: (context) => {
-                return `Rol: ${context[0].label}`
-              },
-              label: (context) => {
-                const index = context.dataIndex
-                const slaValue = context.parsed.y
-                const numSolicitudes = numRecursos[index]
-                const tipo = context.dataset.label
-                return [`${tipo}: ${slaValue}%`, `Solicitudes: ${numSolicitudes}`]
-              },
+              title: (items) => `Rol: ${items[0].label}`,
+              // Ocultar líneas por-item para evitar múltiples entradas
+              label: () => '',
               afterLabel: () => '',
+              footer: (items) => {
+                const idx = items[0].dataIndex
+                const fila = filasConDatos[idx]
+                const slaValue = fila.sla === 'NA' ? 0 : fila.sla
+                const total = numRecursos[idx]
+                const cumplenCant = fila.cumplen || 0
+                const noCumplenCant = fila.noCumplen || 0
+                const cumplenPct = dataCumple[idx] || 0
+                const noCumplenPct = dataNoCumple[idx] || 0
+                return [
+                  `SLA del rol: ${slaValue}%`,
+                  `Total solicitudes: ${total}`,
+                  `Cumplen: ${cumplenCant} (${cumplenPct}%)`,
+                  `No cumplen: ${noCumplenCant} (${noCumplenPct}%)`,
+                ]
+              },
             },
           },
         },
@@ -1026,7 +1074,7 @@ const crearGrafico = () => {
   }
 }
 
-const crearGraficoResumen = () => {
+const _crearGraficoResumen = () => {
   try {
     const canvasElement = document.querySelector('canvas[data-chart="resumen"]')
     if (!canvasElement) return
@@ -1138,6 +1186,31 @@ const exportarExcel = async () => {
   exportandoExcel.value = true
 
   try {
+    // Registrar el reporte en el backend para que aparezca en el historial
+    const ids = solicitudesFiltradas.value.map((s) => s.idSolicitud)
+
+    const payload = {
+      tipoReporte: 'SLA_MENSUAL',
+      formato: 'EXCEL',
+      idsSolicitudes: ids,
+      filtrosJson: JSON.stringify({
+        mes: filtros.value.mes,
+        anio: filtros.value.anio,
+        codigoSla: filtros.value.codigoSla,
+      }),
+    }
+
+    try {
+      const res = await api.post('/api/reporte/generar', payload)
+      console.log('Reporte EXCEL registrado en backend:', res.data)
+    } catch (apiError) {
+      console.error('Error registrando reporte EXCEL en API:', apiError)
+      if (apiError.response?.status === 401) {
+        throw new Error('Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
+      }
+      // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
+    }
+
     // Crear un nuevo workbook
     const wb = XLSX.utils.book_new()
 
@@ -1208,7 +1281,7 @@ const exportarExcel = async () => {
 
     $q.notify({
       type: 'positive',
-      message: 'Excel exportado exitosamente',
+      message: 'Excel exportado y registrado en historial',
       position: 'top-right',
     })
   } catch (error) {
@@ -1272,98 +1345,19 @@ const exportarPdf = async () => {
         throw apiError
       }
     }
-
-    // Crear PDF con tabla y gráfico en una sola página A4
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    let currentY = 10
-
-    // Logo superior (arriba-derecha) y luego título
-    try {
-      const logoImg = await loadImage(LogoPng)
-      const logoW = 35 // mm
-      const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
-      const logoData = compressImage(logoImg, 320, 0.55) // JPEG comprimido
-      pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, currentY, logoW, logoH)
-      currentY += logoH + 6
-    } catch (e) {
-      // Si falla el logo, continuamos sin bloquear el PDF
-      currentY += 4
-    }
-
-    // Título
-    pdf.setFontSize(14)
-    pdf.text('Reporte Indicadores SLA', 10, currentY)
-    currentY += 8
-
-    pdf.setFontSize(10)
-    pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, currentY)
-    currentY += 5
-    pdf.text(`Código SLA: ${filtros.value.codigoSla}`, 10, currentY)
-    currentY += 7
-
-    // Tabla
-    const tableElement = reporteRef.value.querySelector('table')
-    if (tableElement) {
-      const tableCanvas = await html2canvas(tableElement, {
-        scale: 1,
-      })
-      const tableImgData = tableCanvas.toDataURL('image/png')
-      const tableImgWidth = pageWidth - 20
-      const tableImgHeight = (tableCanvas.height * tableImgWidth) / tableCanvas.width
-
-      // Ajustar altura de tabla si es muy grande
-      const maxTableHeight = 60
-      const adjustedTableHeight = Math.min(tableImgHeight, maxTableHeight)
-
-      pdf.addImage(tableImgData, 'PNG', 10, currentY, tableImgWidth, adjustedTableHeight)
-      currentY += adjustedTableHeight + 5
-    }
-
-    // Gráfico con leyenda en la misma página
-    const chartElement = reporteRef.value.querySelector('.chart-wrapper')
-    if (chartElement) {
-      const chartCanvas = await html2canvas(chartElement, {
-        scale: 1,
-      })
-      const chartImgData = chartCanvas.toDataURL('image/png')
-      const chartImgWidth = pageWidth - 20
-
-      // Calcular altura disponible restante en la página
-      const remainingHeight = pageHeight - currentY - 15
-      const chartImgHeight = (chartCanvas.height * chartImgWidth) / chartCanvas.width
-      const adjustedChartHeight = Math.min(chartImgHeight, remainingHeight)
-
-      // Añadir título del gráfico con separación
-      currentY += 15
-      pdf.setFontSize(11)
-      pdf.text('Gráfico de SLA por Rol', 10, currentY)
-      currentY += 6
-
-      // Añadir leyenda compacta
-      pdf.setFontSize(9)
-      pdf.setFillColor(33, 186, 69)
-      pdf.rect(10, currentY, 3, 3, 'F')
-      pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
-
-      pdf.setFillColor(246, 0, 8)
-      pdf.rect(85, currentY, 3, 3, 'F')
-      pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
-      // Gris para NA
-      pdf.setFillColor(158, 158, 158)
-      pdf.rect(165, currentY, 3, 3, 'F')
-      pdf.text('Sin recursos (NA)', 170, currentY + 2)
-      currentY += 6
-
-      // Añadir gráfico
-      pdf.addImage(chartImgData, 'PNG', 10, currentY, chartImgWidth, adjustedChartHeight)
-    }
-
+    // Generar PDF optimizado y descargar
+    const base64 = await generarPdfBase64()
+    if (!base64) throw new Error('No se pudo generar el PDF')
+    cachedPdfBase64.value = base64
     const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
       filtros.value.anio
     }.pdf`
-    pdf.save(fileName)
+    const link = document.createElement('a')
+    link.href = 'data:application/pdf;base64,' + base64
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
     $q.notify({
       type: 'positive',
@@ -1394,121 +1388,35 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
     })
     return
   }
-
-  enviandoCorreo.value = true
   try {
-    // Generar PDF con tabla y gráfico en una sola página A4
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    let currentY = 10
-
-    // Logo superior (arriba-derecha) y luego título
-    try {
-      const logoImg = await loadImage(LogoPng)
-      const logoW = 35 // mm
-      const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
-      const logoData = compressImage(logoImg, 320, 0.55)
-      pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, currentY, logoW, logoH)
-      currentY += logoH + 6
-    } catch (e) {
-      currentY += 4
+    // Generar (o reutilizar) PDF antes de activar loading para reducir tiempo de espera visible
+    let pdfBase64 = cachedPdfBase64.value
+    if (!pdfBase64) {
+      pdfBase64 = await generarPdfBase64()
+      cachedPdfBase64.value = pdfBase64
     }
 
-    // Título
-    pdf.setFontSize(14)
-    pdf.text('Reporte Indicadores SLA', 10, currentY)
-    currentY += 8
+    enviandoCorreo.value = true
 
-    pdf.setFontSize(10)
-    pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, currentY)
-    currentY += 5
-    pdf.text(`Código SLA: ${filtros.value.codigoSla}`, 10, currentY)
-    currentY += 7
-
-    // Tabla
-    const tableElement = reporteRef.value.querySelector('table')
-    if (tableElement) {
-      const tableCanvas = await html2canvas(tableElement, {
-        scale: 1,
-      })
-      const tableImgData = tableCanvas.toDataURL('image/png')
-      const tableImgWidth = pageWidth - 20
-      const tableImgHeight = (tableCanvas.height * tableImgWidth) / tableCanvas.width
-
-      // Ajustar altura de tabla si es muy grande
-      const maxTableHeight = 60
-      const adjustedTableHeight = Math.min(tableImgHeight, maxTableHeight)
-
-      pdf.addImage(tableImgData, 'PNG', 10, currentY, tableImgWidth, adjustedTableHeight)
-      currentY += adjustedTableHeight + 5
-    }
-
-    // Gráfico con leyenda en la misma página
-    const chartElement = reporteRef.value.querySelector('.chart-wrapper')
-    if (chartElement) {
-      const chartCanvas = await html2canvas(chartElement, {
-        scale: 1,
-      })
-      const chartImgData = chartCanvas.toDataURL('image/png')
-      const chartImgWidth = pageWidth - 20
-
-      // Calcular altura disponible restante en la página
-      const remainingHeight = pageHeight - currentY - 15
-      const chartImgHeight = (chartCanvas.height * chartImgWidth) / chartCanvas.width
-      const adjustedChartHeight = Math.min(chartImgHeight, remainingHeight)
-
-      // Añadir título del gráfico con separación
-      currentY += 15
-      pdf.setFontSize(11)
-      pdf.text('Gráfico de SLA por Rol', 10, currentY)
-      currentY += 6
-
-      // Añadir leyenda compacta
-      pdf.setFontSize(9)
-      pdf.setFillColor(33, 186, 69)
-      pdf.rect(10, currentY, 3, 3, 'F')
-      pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
-
-      pdf.setFillColor(246, 0, 8)
-      pdf.rect(85, currentY, 3, 3, 'F')
-      pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
-      currentY += 6
-
-      // Añadir gráfico
-      pdf.addImage(chartImgData, 'PNG', 10, currentY, chartImgWidth, adjustedChartHeight)
-    }
-
-    // Convertir PDF a base64
-    const pdfBase64 = pdf.output('datauristring').split(',')[1]
-
-    // Generar nombre de archivo
     const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
       filtros.value.anio
     }.pdf`
-
-    // Preparar payload para envío de correos
     const payload = {
       tos: correos,
       subject: `Reporte SLA - ${filtros.value.mes} ${filtros.value.anio}`,
       message: `<p>Adjunto encontrará el reporte de indicadores SLA para ${filtros.value.mes} ${filtros.value.anio}.</p><p><strong>Código SLA:</strong> ${filtros.value.codigoSla}</p>`,
-      pdfBase64: pdfBase64,
-      fileName: fileName,
+      pdfBase64,
+      fileName,
     }
 
-    // Enviar correos
     const res = await api.post('/api/reporte/enviar-correo', payload)
-
     console.log('Respuesta del envío de correos:', res.data)
-
     $q.notify({
       type: 'positive',
       message: `Reporte enviado exitosamente a ${correos.length} destinatario(s)`,
       position: 'top-right',
       timeout: 4000,
     })
-
-    // Cerrar diálogo
     dialogCorreo.value = false
   } catch (error) {
     console.error('Error al enviar correo:', error)
@@ -1560,6 +1468,104 @@ onBeforeUnmount(() => {
     pieChartInstance.destroy()
   }
 })
+
+// Invalidate PDF cache when filters or selected roles change
+watch(
+  () => ({ ...filtros.value }),
+  () => {
+    cachedPdfBase64.value = null
+  },
+  { deep: true },
+)
+watch(selectedRoles, () => {
+  cachedPdfBase64.value = null
+})
+
+// Generar PDF (reutilizable) devolviendo base64 sin prefijo
+const generarPdfBase64 = async () => {
+  if (!reporteRef.value) return null
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  let y = 10
+
+  // Logo
+  try {
+    const logoImg = await loadImage(LogoPng)
+    const logoW = 35
+    const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
+    const logoData = compressImage(logoImg, 320, 0.55)
+    pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, y, logoW, logoH)
+    y += logoH + 6
+  } catch (e) {
+    y += 4
+  }
+
+  // Títulos
+  pdf.setFontSize(14)
+  pdf.text('Reporte Indicadores SLA', 10, y)
+  y += 8
+  pdf.setFontSize(10)
+  pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, y)
+  y += 5
+  pdf.text(`Código SLA: ${filtros.value.codigoSla || 'N/A'}`, 10, y)
+  y += 7
+
+  // Tabla (usar html2canvas solo sobre la tabla para minimizar costo)
+  const tableElement = reporteRef.value.querySelector('table')
+  if (tableElement) {
+    const tableCanvas = await html2canvas(tableElement, { scale: 1 })
+    const imgData = tableCanvas.toDataURL('image/png')
+    const imgW = pageWidth - 20
+    const imgH = (tableCanvas.height * imgW) / tableCanvas.width
+    const maxH = 60
+    const adjH = Math.min(imgH, maxH)
+    pdf.addImage(imgData, 'PNG', 10, y, imgW, adjH)
+    y += adjH + 5
+  }
+
+  // Leyenda compacta
+  y += 10
+  pdf.setFontSize(11)
+  pdf.text('Gráfico de SLA por Rol', 10, y)
+  y += 6
+  pdf.setFontSize(9)
+  pdf.setFillColor(33, 186, 69)
+  pdf.rect(10, y, 3, 3, 'F')
+  pdf.text('SLA Cumplido (100%)', 15, y + 2)
+  pdf.setFillColor(246, 0, 8)
+  pdf.rect(85, y, 3, 3, 'F')
+  pdf.text('SLA Incumplido (<100%)', 90, y + 2)
+  pdf.setFillColor(158, 158, 158)
+  pdf.rect(165, y, 3, 3, 'F')
+  pdf.text('Sin recursos (NA)', 170, y + 2)
+  y += 8
+
+  // Gráfico principal (usar API ChartJS en lugar de html2canvas para performance)
+  if (chartInstance) {
+    const chartImg = chartInstance.toBase64Image('image/png', 1)
+    const chartW = pageWidth - 20
+    const chartH = chartW * 0.45
+    pdf.addImage(chartImg, 'PNG', 10, y, chartW, chartH)
+    y += chartH + 6
+  }
+
+  // Donut resumen (si existe)
+  if (pieChartInstance) {
+    const pieImg = pieChartInstance.toBase64Image('image/png', 1)
+    const pieW = (pageWidth - 20) * 0.5
+    const pieH = pieW * 0.65
+    if (y + pieH + 10 < pageHeight) {
+      pdf.setFontSize(11)
+      pdf.text('Resumen SLA Promedio', 10, y)
+      y += 6
+      pdf.addImage(pieImg, 'PNG', 10, y, pieW, pieH)
+    }
+  }
+
+  const dataUriString = pdf.output('datauristring')
+  return dataUriString.split(',')[1] // base64 sin prefijo
+}
 </script>
 
 <style scoped>
