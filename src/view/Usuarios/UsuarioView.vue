@@ -57,8 +57,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import { useRouter } from 'vue-router'
+//import { useRouter } from 'vue-router'
 import axios from 'axios'
+import { api } from 'boot/axios'
 import UserHeader from 'src/components/usuarios/UserHeader.vue'
 import UserInfoCard from 'src/components/usuarios/UserInfoCard.vue'
 import AccessInfoCard from 'src/components/usuarios/AccessInfoCard.vue'
@@ -66,16 +67,7 @@ import ConfirmPasswordDialog from 'src/components/usuarios/ConfirmPasswordDialog
 import ChangePasswordDialog from 'src/components/usuarios/ChangePasswordDialog.vue'
 
 const $q = useQuasar()
-const router = useRouter()
-
-const baseURL = 'http://localhost:5260'
-
-const getToken = () => localStorage.getItem('authToken')
-
-const getAuthHeaders = () => ({
-  Authorization: getToken() ? `Bearer ${getToken()}` : '',
-  'Content-Type': 'application/json',
-})
+//const router = useRouter()
 
 /* ------------------------------
    ESTADO
@@ -99,15 +91,33 @@ const cargarUsuario = async () => {
 
   try {
     // Obtener el ID del personal desde localStorage
-    const userData = JSON.parse(localStorage.getItem('user') || '{}')
-    const personalId = userData.id_personal || 1
+    // Obtener el ID del personal desde authUser (estructura oficial)
+    const rawAuthUser = localStorage.getItem('authUser')
+    let personalId = null
+
+    if (rawAuthUser) {
+      const authUser = JSON.parse(rawAuthUser)
+
+      personalId =
+        authUser.idPersonal ?? // formato de tu authUser actual
+        authUser.id_personal ?? // por si en algún momento vino snake_case
+        authUser.IdPersonal ?? // por si viene PascalCase
+        null
+    }
+
+    if (!personalId) {
+      console.error('❌ No se encontró idPersonal en authUser (localStorage)')
+      error.value = 'No se pudo identificar al usuario actual. Inicia sesión nuevamente.'
+      loading.value = false
+      // opcional:
+      // router.push('/login')
+      return
+    }
 
     console.log('📥 Intentando cargar personal con ID:', personalId)
 
     // GET /api/Personal/{id}
-    const personalResponse = await axios.get(`${baseURL}/api/Personal/${personalId}`, {
-      headers: getAuthHeaders(),
-    })
+    const personalResponse = await api.get(`/api/Personal/${personalId}`)
     const personalData = personalResponse.data
     console.log('✅ Personal cargado exitosamente:', personalData)
 
@@ -116,9 +126,7 @@ const cargarUsuario = async () => {
     // Si tiene usuario vinculado, obtener datos completos del usuario con rol
     if (personalData.idUsuario) {
       console.log('🔍 Obteniendo datos de usuario:', personalData.idUsuario)
-      const usuarioResponse = await axios.get(`${baseURL}/api/Usuario/${personalData.idUsuario}`, {
-        headers: getAuthHeaders(),
-      })
+      const usuarioResponse = await api.get(`/api/Usuario/${personalData.idUsuario}`)
       const usuarioData = usuarioResponse.data
       console.log('✅ Usuario obtenido:', usuarioData)
 
@@ -127,10 +135,7 @@ const cargarUsuario = async () => {
       if (usuarioData.idRolSistema) {
         console.log('🔍 Obteniendo rol del sistema:', usuarioData.idRolSistema)
         try {
-          const rolResponse = await axios.get(
-            `${baseURL}/api/RolesSistema/${usuarioData.idRolSistema}`,
-            { headers: getAuthHeaders() },
-          )
+          const rolResponse = await api.get(`/api/RolesSistema/${usuarioData.idRolSistema}`)
           rolData = rolResponse.data
           console.log('✅ Rol obtenido:', rolData)
         } catch (rolError) {
@@ -267,10 +272,10 @@ const confirmarCambioEmail = async (password) => {
 
     console.log('🔍 Validando contraseña con correo:', correoParaValidar)
 
-    // POST /api/Usuario/signin para validar contraseña
+    // POST /api/Usuario/signin para validar contraseña (sin token)
     try {
       await axios.post(
-        `${baseURL}/api/Usuario/signin`,
+        'http://localhost:5260/api/Usuario/signin',
         {
           email: correoParaValidar,
           password: password,
@@ -286,34 +291,26 @@ const confirmarCambioEmail = async (password) => {
     // PUT /api/Personal/{id} - Actualizar email en Personal
     if (usuario.value.personal) {
       console.log('📝 Actualizando correo en Personal...')
-      await axios.put(
-        `${baseURL}/api/Personal/${usuario.value.personal.id_personal}`,
-        {
-          nombres: usuario.value.personal.nombres,
-          apellidos: usuario.value.personal.apellidos,
-          documento: usuario.value.personal.documento,
-          correoCorporativo: emailEditado.value,
-          estado: usuario.value.estado,
-        },
-        { headers: getAuthHeaders() },
-      )
+      await api.put(`/api/Personal/${usuario.value.personal.id_personal}`, {
+        nombres: usuario.value.personal.nombres,
+        apellidos: usuario.value.personal.apellidos,
+        documento: usuario.value.personal.documento,
+        correoCorporativo: emailEditado.value,
+        estado: usuario.value.estado,
+      })
       console.log('✅ Correo actualizado en Personal')
     }
 
     // POST /api/Alerta - Registrar alerta
     try {
-      await axios.post(
-        `${baseURL}/api/Alerta`,
-        {
-          id_solicitud: null,
-          tipo_alerta: 'ACTUALIZACION',
-          nivel: 'INFO',
-          mensaje: `Personal ${usuario.value.personal.nombres} ${usuario.value.personal.apellidos} actualizó su correo corporativo`,
-          estado: 'PENDIENTE',
-          enviado_email: false,
-        },
-        { headers: getAuthHeaders() },
-      )
+      await api.post('/api/Alerta', {
+        id_solicitud: null,
+        tipo_alerta: 'ACTUALIZACION',
+        nivel: 'INFO',
+        mensaje: `Personal ${usuario.value.personal.nombres} ${usuario.value.personal.apellidos} actualizó su correo corporativo`,
+        estado: 'PENDIENTE',
+        enviado_email: false,
+      })
       console.log('✅ Alerta registrada')
     } catch (alertError) {
       console.warn('⚠️ No se pudo registrar la alerta:', alertError)
@@ -322,26 +319,16 @@ const confirmarCambioEmail = async (password) => {
 
     $q.notify({
       type: 'positive',
-      message: 'Correo actualizado exitosamente. Redirigiendo al inicio de sesión...',
+      message: 'Correo actualizado exitosamente',
       position: 'top',
-      timeout: 2500,
+      timeout: 3000,
     })
 
     editandoEmail.value = false
     dialogConfirmarPassword.value = false
 
-    // Redirigir al login después de 2 segundos
-    console.log('🔄 Redirigiendo al login...')
-    setTimeout(() => {
-      // Limpiar localStorage
-      localStorage.removeItem('user')
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userEmail')
-      localStorage.removeItem('username')
-
-      // Redirigir al login
-      router.push('/login')
-    }, 2500)
+    // Recargar datos del usuario para reflejar el cambio
+    await cargarUsuario()
   } catch (err) {
     console.error('❌ Error en confirmarCambioEmail:', err)
     throw err // Para que el dialog maneje el error
@@ -364,32 +351,24 @@ const guardarNuevaPassword = async ({ currentPassword, newPassword }) => {
     console.log('📧 Email del usuario:', emailUsuario)
 
     // PUT /api/Usuario/cambiar-password - Cambiar contraseña en el backend
-    await axios.put(
-      `${baseURL}/api/Usuario/cambiar-password`,
-      {
-        Email: emailUsuario,
-        PasswordActual: currentPassword,
-        NuevaPassword: newPassword,
-      },
-      { headers: getAuthHeaders() },
-    )
+    await api.put('/api/Usuario/cambiar-password', {
+      Email: emailUsuario,
+      PasswordActual: currentPassword,
+      NuevaPassword: newPassword,
+    })
 
     console.log('✅ Contraseña actualizada en el backend')
 
     // POST /api/Alerta - Registrar alerta de seguridad
     try {
-      await axios.post(
-        `${baseURL}/api/Alerta`,
-        {
-          id_solicitud: null,
-          tipo_alerta: 'SEGURIDAD',
-          nivel: 'WARNING',
-          mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
-          estado: 'PENDIENTE',
-          enviado_email: true,
-        },
-        { headers: getAuthHeaders() },
-      )
+      await api.post('/api/Alerta', {
+        id_solicitud: null,
+        tipo_alerta: 'SEGURIDAD',
+        nivel: 'WARNING',
+        mensaje: `Usuario ${usuario.value.username || usuario.value.personal.nombres} cambió su contraseña`,
+        estado: 'PENDIENTE',
+        enviado_email: true,
+      })
       console.log('✅ Alerta de seguridad registrada')
     } catch (alertError) {
       console.warn('⚠️ No se pudo registrar la alerta de seguridad:', alertError)
@@ -398,25 +377,14 @@ const guardarNuevaPassword = async ({ currentPassword, newPassword }) => {
 
     $q.notify({
       type: 'positive',
-      message: 'Contraseña actualizada exitosamente. Redirigiendo al inicio de sesión...',
+      message: 'Contraseña actualizada exitosamente',
+      caption: 'Tu contraseña ha sido cambiada de forma segura',
+      icon: 'check_circle',
       position: 'top',
-      timeout: 2500,
+      timeout: 3000,
     })
 
     dialogCambiarPassword.value = false
-
-    // Redirigir al login después de 2.5 segundos
-    console.log('🔄 Redirigiendo al login...')
-    setTimeout(() => {
-      // Limpiar localStorage
-      localStorage.removeItem('user')
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('userEmail')
-      localStorage.removeItem('username')
-
-      // Redirigir al login
-      router.push('/login')
-    }, 2500)
   } catch (err) {
     console.error('❌ Error en guardarNuevaPassword:', err)
 
