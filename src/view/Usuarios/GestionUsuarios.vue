@@ -82,10 +82,14 @@
               v-if="props.row.nombreRol"
               :color="
                 props.row.nombreRol === 'Administrador'
-                  ? 'purple'
-                  : props.row.nombreRol === 'Operador'
-                    ? 'blue'
-                    : 'grey'
+                  ? 'purple' // Color para Administrador
+                  : props.row.nombreRol === 'Super Administrador'
+                    ? 'indigo-9' // Color para Super Administrador
+                    : props.row.nombreRol === 'Especialista SLA'
+                      ? 'teal' // Color para Especialista SLA
+                      : props.row.nombreRol === 'Analista SLA'
+                        ? 'light-blue' // Color para Analista SLA
+                        : 'grey' // Color por defecto si el rol es nuevo o no coincide
               "
             >
               {{ props.row.nombreRol }}
@@ -1034,9 +1038,13 @@ const toggleEstadoCuenta = async (usuario) => {
   try {
     const nuevoEstado = usuario.estadoCuentaAcceso === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
 
-    await axios.patch(`${baseURL}/api/usuario/${usuario.idUsuario}/toggle-estado`, null, {
-      headers: getAuthHeaders(),
-    })
+    await axios.put(
+      `${baseURL}/api/usuario/${usuario.idUsuario}`,
+      { estado: nuevoEstado },
+      {
+        headers: getAuthHeaders(),
+      },
+    )
 
     const index = usuarios.value.findIndex((u) => u.idUsuario === usuario.idUsuario)
     if (index !== -1) {
