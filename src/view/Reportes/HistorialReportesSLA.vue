@@ -142,8 +142,20 @@ const columnas = [
 
 const formatFecha = (valor) => {
   if (!valor) return ''
-  const d = new Date(valor)
-  return d.toLocaleString()
+  // Si viene como ISO sin zona (ej: 2025-11-29T01:46:00) interpretarlo como UTC
+  const isoMatch = /^([0-9]{4})-([0-9]{2})-([0-9]{2})T([0-9]{2}):([0-9]{2})(?::([0-9]{2}))?/.exec(
+    valor,
+  )
+  let dateObj
+  if (isoMatch) {
+    const [, y, m, d, hh, mm, ss = '00'] = isoMatch
+    // Construimos como UTC para luego mostrarlo en America/Lima
+    dateObj = new Date(Date.UTC(+y, +m - 1, +d, +hh, +mm, +ss))
+  } else {
+    // Fallback: crear Date normal
+    dateObj = new Date(valor)
+  }
+  return dateObj.toLocaleString('es-PE', { timeZone: 'America/Lima' })
 }
 
 const formatFiltros = (filtrosJson) => {
