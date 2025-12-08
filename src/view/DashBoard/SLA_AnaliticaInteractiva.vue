@@ -183,6 +183,26 @@
             </div>
           </div>
 
+          <!-- Modo de Visualización -->
+          <div class="q-mt-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-4">
+                <q-select
+                  v-model="modoVisualizacion"
+                  :options="opcionesVisualizacion"
+                  label="Modo de Visualización"
+                  outlined
+                  dense
+                  @update:model-value="aplicarFiltros"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="analytics" color="orange" />
+                  </template>
+                </q-select>
+              </div>
+            </div>
+          </div>
+
           <!-- Botones de acción -->
           <div class="row q-col-gutter-sm q-mt-sm">
             <div class="col-12 col-sm-4 col-md-auto">
@@ -656,6 +676,13 @@ const aniosDisponibles = ref([])
 const tiposSlaDisponibles = ref([])
 const rolesDisponibles = ref([])
 
+// Filtro de SLA con chips
+const modoVisualizacion = ref({ label: 'Porcentaje (%)', value: 'porcentaje' })
+const opcionesVisualizacion = [
+  { label: 'Porcentaje (%)', value: 'porcentaje' },
+  { label: 'Cantidad (#)', value: 'cantidad' }
+]
+
 const graficos = ref([])
 
 const estadisticas = ref({
@@ -763,7 +790,7 @@ const cargarConfiguracionesIniciales = async () => {
       })
     }
   } catch (error) {
-    console.error('Error al cargar configuraciones:', error)
+    console.error('❌ Error al cargar configuraciones:', error)
   }
 }
 
@@ -852,10 +879,22 @@ const aplicarFiltros = async () => {
       return true
     })
 
-    // Determinar tipos SLA a procesar
-    const tiposSlaProcesar = filtros.value.tiposSla && filtros.value.tiposSla.length > 0
+    // Determinar tipos SLA a procesar (usar filtro existente de filtros.tiposSla)
+    const tiposSlaProcesar = filtros.value.tiposSla.length > 0
       ? filtros.value.tiposSla
       : tiposSlaDisponibles.value
+
+    // Validar que haya SLAs seleccionados
+    if (tiposSlaProcesar.length === 0) {
+      $q.notify({
+        type: 'warning',
+        message: 'Selecciona al menos un tipo de SLA para visualizar',
+        position: 'top-right',
+        timeout: 3000,
+      })
+      loading.value = false
+      return
+    }
 
     // Limpiar gráficos anteriores
     graficos.value = []
@@ -1006,32 +1045,39 @@ const aplicarFiltros = async () => {
           }
         } else {
           // Para barras y área, usar los 3 estados
+          const esArea = tipoGrafico.value.value === 'area'
           datosGrafico = {
             labels: labels,
             datasets: [
               {
                 label: 'Cumple',
                 data: cumplimientoPorRol.map((r) => r.cumplidos),
-                backgroundColor: '#4CAF50',
+                backgroundColor: esArea ? 'rgba(76, 175, 80, 0.5)' : '#4CAF50',
                 borderColor: '#4CAF50',
-                borderWidth: 1,
-                fill: tipoGrafico.value.value === 'area',
+                borderWidth: esArea ? 2 : 1,
+                fill: esArea,
+                tension: esArea ? 0.4 : 0,
+                pointRadius: esArea ? 0 : 3,
               },
               {
                 label: 'Proceso',
                 data: cumplimientoPorRol.map((r) => r.proceso || 0),
-                backgroundColor: '#FF9800',
+                backgroundColor: esArea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
                 borderColor: '#FF9800',
-                borderWidth: 1,
-                fill: tipoGrafico.value.value === 'area',
+                borderWidth: esArea ? 2 : 1,
+                fill: esArea,
+                tension: esArea ? 0.4 : 0,
+                pointRadius: esArea ? 0 : 3,
               },
               {
-                label: 'No_cumple',
+                label: 'No cumple',
                 data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
-                backgroundColor: '#F44336',
+                backgroundColor: esArea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
                 borderColor: '#F44336',
-                borderWidth: 1,
-                fill: tipoGrafico.value.value === 'area',
+                borderWidth: esArea ? 2 : 1,
+                fill: esArea,
+                tension: esArea ? 0.4 : 0,
+                pointRadius: esArea ? 0 : 3,
               },
             ],
           }
@@ -1253,20 +1299,21 @@ const crearGraficoUnificado = () => {
         return getColorByPercentage(rol.porcentaje)
       })
 
+      const esArea = tipoGrafico.value.value === 'area'
       return {
         label: grafico.codigoSla,
         data: data,
         datosRoles: grafico.datosRoles,
         borderColor: color,
-        backgroundColor: color.replace('0.8', '0.1'),
-        borderWidth: 2,
-        pointRadius: 6,
-        pointHoverRadius: 8,
+        backgroundColor: esArea ? color.replace('0.8', '0.3') : color.replace('0.8', '0.1'),
+        borderWidth: esArea ? 2 : 2,
+        pointRadius: esArea ? 0 : 6,
+        pointHoverRadius: esArea ? 0 : 8,
         pointBackgroundColor: pointColors,
         pointBorderColor: pointColors,
         pointBorderWidth: 2,
-        fill: tipoGrafico.value.value === 'area',
-        tension: 0.4,
+        fill: esArea,
+        tension: esArea ? 0.4 : 0.4,
       }
     })
 

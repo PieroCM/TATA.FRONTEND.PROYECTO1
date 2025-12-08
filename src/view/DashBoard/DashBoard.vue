@@ -140,6 +140,62 @@
               </q-chip>
             </div>
           </div>
+
+          <!-- Filtro por Tipo de SLA -->
+          <div class="q-mt-md q-pa-sm" style="background-color: #f5f5f5; border-radius: 8px;">
+            <div class="row items-center justify-between q-mb-sm">
+              <div class="text-subtitle2 text-weight-bold">
+                <q-icon name="filter_list" class="q-mr-xs" />
+                Filtrar por Tipo de SLA
+              </div>
+              <q-btn
+                flat
+                dense
+                size="sm"
+                color="primary"
+                :label="slasSeleccionados.length === tiposSlaParaFiltro.length ? 'Deseleccionar todos' : 'Seleccionar todos'"
+                @click="toggleTodosSlas"
+              />
+            </div>
+            <div class="row q-gutter-sm">
+              <q-chip
+                v-for="sla in tiposSlaParaFiltro"
+                :key="sla.codigo"
+                clickable
+                :outline="!slasSeleccionados.includes(sla.codigo)"
+                :color="slasSeleccionados.includes(sla.codigo) ? 'info' : 'grey-4'"
+                :text-color="slasSeleccionados.includes(sla.codigo) ? 'white' : 'grey-8'"
+                icon="assignment"
+                @click="toggleSla(sla.codigo)"
+              >
+                {{ sla.codigo }} - {{ sla.nombre }}
+              </q-chip>
+            </div>
+            <div v-if="slasSeleccionados.length === 0" class="text-caption text-orange-8 q-mt-sm">
+              <q-icon name="info" size="xs" />
+              Selecciona al menos un tipo de SLA para ver datos en el gráfico de cumplimiento
+            </div>
+          </div>
+
+          <!-- Modo de Visualización -->
+          <div class="q-mt-md">
+            <div class="row q-col-gutter-md">
+              <div class="col-12 col-md-4">
+                <q-select
+                  v-model="modoVisualizacion"
+                  :options="opcionesVisualizacion"
+                  label="Modo de Visualización"
+                  outlined
+                  dense
+                  @update:model-value="cargarDashboard"
+                >
+                  <template v-slot:prepend>
+                    <q-icon name="analytics" color="orange" />
+                  </template>
+                </q-select>
+              </div>
+            </div>
+          </div>
         </q-card-section>
       </q-card>
 
@@ -243,15 +299,18 @@
           <q-spinner-gears size="50px" color="primary" />
         </q-inner-loading>
 
-        <!-- Gráfico: N° de Cumplimiento por Mes -->
+        <!-- Gráfico: Grado de Cumplimiento por Tipo de SLA -->
         <div class="col-12 col-lg-6">
           <q-card flat bordered>
             <q-card-section>
               <div class="text-h6 text-weight-medium q-mb-md">
                 <q-icon name="show_chart" color="primary" class="q-mr-sm" />
-                N° de Cumplimiento por Mes
+                Grado de Cumplimiento por Tipo de SLA
               </div>
-              <canvas id="graficoMensual" style="max-height: 300px"></canvas>
+              <div class="text-caption text-grey-7 q-mb-sm">
+                Porcentaje de cumplimiento mensual por cada tipo de SLA seleccionado
+              </div>
+              <canvas id="graficoMensual" style="max-height: 350px"></canvas>
             </q-card-section>
           </q-card>
         </div>
@@ -552,6 +611,15 @@ const todosLosRoles = ref([])
 
 // Filtro por estado
 const filtroEstado = ref('Todos')
+
+// Filtro por tipo de SLA
+const slasSeleccionados = ref([])
+const tiposSlaParaFiltro = ref([])
+const modoVisualizacion = ref({ label: 'Porcentaje (%)', value: 'porcentaje' })
+const opcionesVisualizacion = [
+  { label: 'Porcentaje (%)', value: 'porcentaje' },
+  { label: 'Cantidad (#)', value: 'cantidad' }
+]
 
 // Total de solicitudes
 const totalSolicitudes = ref(0)
@@ -984,6 +1052,12 @@ const restablecerFiltros = () => {
     rol.activo = rolesSeleccionados.value.includes(rol.nombre)
   })
 
+  // Restablecer estado
+  filtroEstado.value = 'Todos'
+
+  // Restablecer SLAs seleccionados (todos)
+  slasSeleccionados.value = tiposSlaParaFiltro.value.map(sla => sla.codigo)
+
   cargarDashboard()
 }
 
@@ -1017,7 +1091,68 @@ const removerRol = (rol) => {
   }
 }
 
-// Crear gráfico de cumplimiento mensual
+// Funciones para filtro de SLAs
+const toggleSla = (codigoSla) => {
+  const index = slasSeleccionados.value.indexOf(codigoSla)
+  if (index > -1) {
+    slasSeleccionados.value.splice(index, 1)
+  } else {
+    slasSeleccionados.value.push(codigoSla)
+  }
+
+  // Actualizar el gráfico de cumplimiento mensual si hay cambios
+  if (graficoMensualInstance) {
+    cargarDashboard()
+  }
+}
+
+const toggleTodosSlas = () => {
+  if (slasSeleccionados.value.length === tiposSlaParaFiltro.value.length) {
+    // Deseleccionar todos
+    slasSeleccionados.value = []
+  } else {
+    // Seleccionar todos
+    slasSeleccionados.value = tiposSlaParaFiltro.value.map(sla => sla.codigo)
+  }
+
+  // Actualizar gráfico
+  if (graficoMensualInstance) {
+    cargarDashboard()
+  }
+}
+
+const cargarTiposSlaParaFiltro = async () => {
+  try {
+    const configSlaData = await slaStore.fetchConfigSla(false)
+    if (configSlaData && configSlaData.length > 0) {
+      tiposSlaParaFiltro.value = configSlaData.map(sla => ({
+        codigo: sla.codigoSla,
+        nombre: sla.tipoSolicitud,
+        idSla: sla.idSla
+      }))
+
+      // Seleccionar todos por defecto
+      slasSeleccionados.value = tiposSlaParaFiltro.value.map(sla => sla.codigo)
+
+      console.log('📊 Dashboard - Chips de SLA cargados:', tiposSlaParaFiltro.value)
+      console.log('📊 Dashboard - SLAs seleccionados:', slasSeleccionados.value)
+    }
+  } catch (error) {
+    console.error('Error al cargar tipos de SLA:', error)
+    // Valores por defecto
+    tiposSlaParaFiltro.value = [
+      { codigo: 'SLA1', nombre: 'Crítico', idSla: 1 },
+      { codigo: 'SLA2', nombre: 'Alto', idSla: 2 },
+      { codigo: 'SLA3', nombre: 'Medio', idSla: 3 },
+      { codigo: 'SLA4', nombre: 'Bajo', idSla: 4 },
+      { codigo: 'SLA5', nombre: 'Incidente', idSla: 5 },
+      { codigo: 'SLA6', nombre: 'Consulta', idSla: 6 }
+    ]
+    slasSeleccionados.value = tiposSlaParaFiltro.value.map(sla => sla.codigo)
+  }
+}
+
+// Crear gráfico de cumplimiento mensual con líneas por SLA
 const crearGraficoCumplimientoMes = async (todasSolicitudes, configsSla) => {
   const ctx = document.getElementById('graficoMensual')
   if (!ctx) return
@@ -1027,85 +1162,159 @@ const crearGraficoCumplimientoMes = async (todasSolicitudes, configsSla) => {
     graficoMensualInstance.destroy()
   }
 
-  // Agrupar solicitudes por mes del año seleccionado
-  const mesesData = Array(12).fill(0).map(() => ({ cumple: 0, proceso: 0, noCumple: 0 }))
+  // Si no hay SLAs seleccionados, mostrar mensaje
+  if (slasSeleccionados.value.length === 0) {
+    graficoMensualInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
+        datasets: []
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        plugins: {
+          title: {
+            display: true,
+            text: 'Selecciona al menos un tipo de SLA para ver datos',
+            color: '#FF9800'
+          }
+        }
+      }
+    })
+    return
+  }
 
+  // Colores para cada SLA
+  const coloresSla = [
+    '#2196F3', // Azul
+    '#4CAF50', // Verde
+    '#FF9800', // Naranja
+    '#9C27B0', // Púrpura
+    '#F44336', // Rojo
+    '#00BCD4', // Cian
+    '#FFEB3B', // Amarillo
+    '#795548'  // Marrón
+  ]
+
+  // Agrupar solicitudes por SLA y mes
+  const datosPorSla = {}
+
+  // Inicializar estructura de datos para cada SLA seleccionado
+  slasSeleccionados.value.forEach(codigoSla => {
+    datosPorSla[codigoSla] = Array(12).fill(0).map(() => ({
+      total: 0,
+      cumple: 0
+    }))
+  })
+
+  // Procesar solicitudes
   todasSolicitudes.forEach(sol => {
     if (!sol.fechaSolicitud) return
     const fecha = new Date(sol.fechaSolicitud)
     if (fecha.getFullYear() !== filtros.value.anio) return
 
-    const mes = fecha.getMonth()
     const config = configsSla.find(c => c.idSla === sol.idSla)
-    const diasUmbral = config?.diasUmbral || 0
+    if (!config) return
 
+    const codigoSla = config.codigoSla
+
+    // Solo procesar si el SLA está seleccionado
+    if (!slasSeleccionados.value.includes(codigoSla)) return
+
+    const mes = fecha.getMonth()
+    const diasUmbral = config.diasUmbral || 0
+
+    datosPorSla[codigoSla][mes].total++
+
+    // Determinar si cumple
     if (sol.fechaSolicitud && sol.fechaIngreso) {
       const fechaSol = new Date(sol.fechaSolicitud)
       const fechaIng = new Date(sol.fechaIngreso)
       const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
       if (diasTranscurridos <= diasUmbral) {
-        mesesData[mes].cumple++
-      } else {
-        mesesData[mes].noCumple++
-      }
-    } else if (sol.fechaSolicitud && !sol.fechaIngreso) {
-      const fechaSol = new Date(sol.fechaSolicitud)
-      const hoy = new Date()
-      const diasTranscurridos = Math.floor((hoy - fechaSol) / (1000 * 60 * 60 * 24))
-      if (diasTranscurridos > diasUmbral) {
-        mesesData[mes].noCumple++
-      } else {
-        mesesData[mes].proceso++
+        datosPorSla[codigoSla][mes].cumple++
       }
     }
   })
 
+  // Crear datasets (una línea por cada SLA)
+  const datasets = slasSeleccionados.value.map((codigoSla, index) => {
+    const slaInfo = tiposSlaParaFiltro.value.find(s => s.codigo === codigoSla)
+    const nombreSla = slaInfo ? `${slaInfo.codigo} - ${slaInfo.nombre}` : codigoSla
+
+    // Calcular porcentaje de cumplimiento por mes
+    const porcentajesCumplimiento = datosPorSla[codigoSla].map(mes => {
+      if (mes.total === 0) return null // null para no dibujar punto cuando no hay datos
+      return ((mes.cumple / mes.total) * 100).toFixed(1)
+    })
+
+    return {
+      label: nombreSla,
+      data: porcentajesCumplimiento,
+      borderColor: coloresSla[index % coloresSla.length],
+      backgroundColor: coloresSla[index % coloresSla.length] + '20', // Transparencia
+      borderWidth: 3,
+      tension: 0.3, // Curvas suaves
+      fill: false,
+      pointRadius: 5,
+      pointHoverRadius: 7,
+      spanGaps: true // Conectar puntos aunque haya nulls
+    }
+  })
+
   graficoMensualInstance = new Chart(ctx, {
-    type: 'bar',
+    type: 'line',
     data: {
       labels: ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'],
-      datasets: [
-        {
-          label: 'Cumple',
-          data: mesesData.map(m => m.cumple),
-          backgroundColor: '#4CAF50',
-          borderColor: '#4CAF50',
-          borderWidth: 1
-        },
-        {
-          label: 'Proceso',
-          data: mesesData.map(m => m.proceso),
-          backgroundColor: '#FF9800',
-          borderColor: '#FF9800',
-          borderWidth: 1
-        },
-        {
-          label: 'No cumple',
-          data: mesesData.map(m => m.noCumple),
-          backgroundColor: '#F44336',
-          borderColor: '#F44336',
-          borderWidth: 1
-        }
-      ]
+      datasets: datasets
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      scales: {
-        x: { stacked: false },
-        y: {
-          stacked: false,
-          beginAtZero: true,
-          ticks: { precision: 0 }
-        }
+      interaction: {
+        mode: 'index',
+        intersect: false
       },
       plugins: {
-        legend: { position: 'top' },
+        title: {
+          display: true,
+          text: 'Grado de Cumplimiento por Tipo de SLA (%)'
+        },
+        legend: {
+          display: true,
+          position: 'top'
+        },
         tooltip: {
           callbacks: {
-            footer: (tooltipItems) => {
-              const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0)
-              return `Total: ${total} solicitudes`
+            label: function(context) {
+              const label = context.dataset.label || ''
+              const value = context.parsed.y
+              if (value === null) return label + ': Sin datos'
+              return label + ': ' + value + '%'
+            }
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          title: {
+            display: true,
+            text: 'Mes'
+          }
+        },
+        y: {
+          display: true,
+          beginAtZero: true,
+          max: 100,
+          title: {
+            display: true,
+            text: 'Porcentaje de Cumplimiento (%)'
+          },
+          ticks: {
+            callback: function(value) {
+              return value + '%'
             }
           }
         }
@@ -1377,6 +1586,7 @@ onMounted(() => {
   // Cargar configuraciones iniciales (no bloqueante)
   cargarAniosDisponibles()
   cargarRolesDisponibles()
+  cargarTiposSlaParaFiltro() // Cargar tipos de SLA para el filtro
 
   // Cargar dashboard (usará datos en caché si ya están disponibles)
   cargarDashboard()

@@ -487,6 +487,35 @@ export const usePrediccionStore = defineStore('prediccion', {
     },
 
     /**
+     * Obtiene la importancia de las variables del modelo
+     * Para mostrar qué factores tienen más peso en las predicciones
+     */
+    async fetchImportanciaVariables() {
+      try {
+        const baseUrl = await this._getPrediccionUrl()
+        const response = await fetch(`${baseUrl}/modelo/importancia`)
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`)
+        }
+
+        const responseData = await response.json()
+        return {
+          features: responseData.features || [],
+          interpretacion: responseData.interpretacion || {},
+          recomendacion: responseData.recomendacion || ''
+        }
+      } catch (error) {
+        console.error('Error al obtener importancia de variables:', error)
+        return {
+          features: [],
+          interpretacion: {},
+          recomendacion: 'No se pudo obtener la importancia de variables'
+        }
+      }
+    },
+
+    /**
      * Limpia el estado (útil al cerrar sesión)
      */
     limpiarEstado() {

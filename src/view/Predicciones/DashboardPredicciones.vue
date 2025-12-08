@@ -103,6 +103,84 @@
         </div>
       </div>
 
+      <!-- Cards Estados de Solicitudes -->
+      <div class="row q-col-gutter-md q-mb-lg">
+        <!-- En Proceso -->
+        <div class="col-12 col-md-4">
+          <q-card flat bordered class="status-card">
+            <q-card-section>
+              <div class="row items-center justify-between">
+                <div>
+                  <q-icon name="hourglass_empty" size="32px" color="blue" />
+                  <div class="text-h5 text-weight-bold q-mt-sm">{{ resumen?.enProceso || 0 }}</div>
+                  <div class="text-caption text-grey-7">Solicitudes en Proceso</div>
+                </div>
+                <q-circular-progress
+                  :value="calcularPorcentaje(resumen?.enProceso || 0)"
+                  size="60px"
+                  :thickness="0.15"
+                  color="blue"
+                  track-color="grey-3"
+                  class="q-ma-sm"
+                >
+                  <div class="text-caption">{{ calcularPorcentaje(resumen?.enProceso || 0) }}%</div>
+                </q-circular-progress>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Completadas -->
+        <div class="col-12 col-md-4">
+          <q-card flat bordered class="status-card">
+            <q-card-section>
+              <div class="row items-center justify-between">
+                <div>
+                  <q-icon name="check_circle" size="32px" color="positive" />
+                  <div class="text-h5 text-weight-bold q-mt-sm">{{ resumen?.completadas || 0 }}</div>
+                  <div class="text-caption text-grey-7">Completadas</div>
+                </div>
+                <q-circular-progress
+                  :value="calcularPorcentaje(resumen?.completadas || 0)"
+                  size="60px"
+                  :thickness="0.15"
+                  color="positive"
+                  track-color="grey-3"
+                  class="q-ma-sm"
+                >
+                  <div class="text-caption">{{ calcularPorcentaje(resumen?.completadas || 0) }}%</div>
+                </q-circular-progress>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+
+        <!-- Canceladas -->
+        <div class="col-12 col-md-4">
+          <q-card flat bordered class="status-card">
+            <q-card-section>
+              <div class="row items-center justify-between">
+                <div>
+                  <q-icon name="cancel" size="32px" color="grey" />
+                  <div class="text-h5 text-weight-bold q-mt-sm">{{ resumen?.canceladas || 0 }}</div>
+                  <div class="text-caption text-grey-7">Canceladas</div>
+                </div>
+                <q-circular-progress
+                  :value="calcularPorcentaje(resumen?.canceladas || 0)"
+                  size="60px"
+                  :thickness="0.15"
+                  color="grey"
+                  track-color="grey-3"
+                  class="q-ma-sm"
+                >
+                  <div class="text-caption">{{ calcularPorcentaje(resumen?.canceladas || 0) }}%</div>
+                </q-circular-progress>
+              </div>
+            </q-card-section>
+          </q-card>
+        </div>
+      </div>
+
       <div class="row q-col-gutter-md">
         <!-- Gráfico de distribución -->
         <div class="col-12 col-md-6">
@@ -204,6 +282,100 @@
         </div>
       </div>
 
+      <!-- Importancia de Variables del Modelo -->
+      <q-card flat bordered class="q-mt-lg">
+        <q-card-section>
+          <div class="row items-center justify-between q-mb-md">
+            <div class="text-h6 text-weight-medium">
+              <q-icon name="insights" class="q-mr-sm" color="primary" />
+              Factores que Impactan las Predicciones
+            </div>
+            <q-btn
+              flat
+              dense
+              icon="help_outline"
+              color="primary"
+              @click="mostrarAyudaImportancia = !mostrarAyudaImportancia"
+            >
+              <q-tooltip>¿Qué significa esto?</q-tooltip>
+            </q-btn>
+          </div>
+          <q-separator class="q-mb-md" />
+
+          <!-- Ayuda contextual -->
+          <q-banner v-if="mostrarAyudaImportancia" rounded class="bg-blue-1 q-mb-md">
+            <template v-slot:avatar>
+              <q-icon name="lightbulb" color="primary" />
+            </template>
+            <div class="text-body2">
+              <strong>¿Cómo interpretar esta información?</strong><br>
+              Las variables con mayor porcentaje tienen más influencia en las predicciones del modelo.
+              Enfoca tus planes de acción en optimizar estos factores para reducir el riesgo de incumplimiento.
+            </div>
+          </q-banner>
+
+          <div v-if="loadingImportancia" class="text-center q-pa-lg">
+            <q-spinner color="primary" size="40px" />
+            <div class="text-caption q-mt-sm">Analizando modelo...</div>
+          </div>
+
+          <div v-else-if="importanciaVariables.features && importanciaVariables.features.length > 0">
+            <div v-for="feature in importanciaVariables.features" :key="feature.nombre" class="q-mb-md">
+              <div class="row items-center justify-between q-mb-xs">
+                <div class="text-weight-medium">{{ feature.descripcion }}</div>
+                <div class="text-weight-bold text-primary">{{ feature.porcentaje.toFixed(1) }}%</div>
+              </div>
+              <q-linear-progress
+                :value="feature.importancia"
+                :color="getImportanciaColor(feature.porcentaje)"
+                size="20px"
+                class="rounded-borders"
+              >
+                <div class="absolute-full flex flex-center">
+                  <q-badge :color="getImportanciaColor(feature.porcentaje)" text-color="white">
+                    {{ feature.nombre }}
+                  </q-badge>
+                </div>
+              </q-linear-progress>
+            </div>
+
+            <!-- Recomendación -->
+            <q-banner rounded class="bg-amber-1 q-mt-md">
+              <template v-slot:avatar>
+                <q-icon name="tips_and_updates" color="amber-8" />
+              </template>
+              <div class="text-body2">
+                <strong>Recomendación:</strong> {{ importanciaVariables.recomendacion }}
+              </div>
+            </q-banner>
+
+            <!-- Interpretación -->
+            <div class="q-mt-md">
+              <div class="text-caption text-grey-7 q-mb-xs">Niveles de impacto:</div>
+              <div class="row q-gutter-sm">
+                <q-chip dense color="red-2" text-color="red-10" size="sm">
+                  <q-icon name="priority_high" left size="xs" />
+                  Alto (&gt;40%): {{ importanciaVariables.interpretacion?.alto }}
+                </q-chip>
+                <q-chip dense color="orange-2" text-color="orange-10" size="sm">
+                  <q-icon name="warning" left size="xs" />
+                  Medio (20-40%): {{ importanciaVariables.interpretacion?.medio }}
+                </q-chip>
+                <q-chip dense color="blue-2" text-color="blue-10" size="sm">
+                  <q-icon name="info" left size="xs" />
+                  Bajo (&lt;20%): {{ importanciaVariables.interpretacion?.bajo }}
+                </q-chip>
+              </div>
+            </div>
+          </div>
+
+          <div v-else class="text-center text-grey-6 q-pa-lg">
+            <q-icon name="error_outline" size="48px" />
+            <div>No se pudo obtener la importancia de variables</div>
+          </div>
+        </q-card-section>
+      </q-card>
+
       <!-- Gráfico de barras por SLA -->
       <q-card flat bordered class="q-mt-lg">
         <q-card-section>
@@ -264,11 +436,14 @@ const appStore = useAppStore()
 // Estados
 const loading = ref(false)
 const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
+const loadingImportancia = ref(false)
+const mostrarAyudaImportancia = ref(false)
 
 // Datos
 const resumen = ref(null)
 const prediccionesCriticas = ref([])
 const health = ref(null)
+const importanciaVariables = ref({ features: [], interpretacion: {}, recomendacion: '' })
 
 // Refs para gráficos
 const chartPieRef = ref(null)
@@ -279,6 +454,7 @@ let chartBarInstance = null
 // Métodos
 const cargarDatos = async () => {
   loading.value = true
+  loadingImportancia.value = true
   try {
     const [resumenData, criticasData, healthData] = await Promise.all([
       prediccionStore.fetchResumen(true),
@@ -289,6 +465,9 @@ const cargarDatos = async () => {
     resumen.value = resumenData
     prediccionesCriticas.value = criticasData || []
     health.value = healthData
+
+    // Cargar importancia de variables
+    await cargarImportanciaVariables()
 
     await nextTick()
     renderCharts()
@@ -303,8 +482,29 @@ const cargarDatos = async () => {
     })
   } finally {
     loading.value = false
+    loadingImportancia.value = false
     appStore.markAsLoaded()
   }
+}
+
+const cargarImportanciaVariables = async () => {
+  try {
+    const data = await prediccionStore.fetchImportanciaVariables()
+    importanciaVariables.value = data
+  } catch (error) {
+    console.error('Error al cargar importancia de variables:', error)
+  }
+}
+
+const calcularPorcentaje = (valor) => {
+  if (!resumen.value?.totalAnalizadas || resumen.value.totalAnalizadas === 0) return 0
+  return Math.round((valor / resumen.value.totalAnalizadas) * 100)
+}
+
+const getImportanciaColor = (porcentaje) => {
+  if (porcentaje >= 40) return 'negative'
+  if (porcentaje >= 20) return 'warning'
+  return 'info'
 }
 
 const recargarDatos = async () => {
@@ -504,6 +704,17 @@ onBeforeUnmount(() => {
 
 .kpi-card.warning {
   border-top: 3px solid #ff9800;
+}
+
+.status-card {
+  background: white;
+  border-radius: 8px;
+  transition: all 0.3s ease;
+}
+
+.status-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .fullscreen-loading {
