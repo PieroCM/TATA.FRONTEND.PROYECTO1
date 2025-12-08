@@ -99,6 +99,18 @@ const routes = [
         component: () => import('src/view/Usuarios/GestionUsuarios.vue'),
         meta: { title: 'Gestión de Usuarios' },
       },
+      {
+        path: 'predicciones/dashboard',
+        name: 'predicciones-dashboard',
+        component: () => import('src/view/Predicciones/DashboardPredicciones.vue'),
+        meta: { title: 'Dashboard de Predicciones' },
+      },
+      {
+        path: 'predicciones/riesgo',
+        name: 'predicciones-riesgo',
+        component: () => import('src/view/Predicciones/PrediccionesRiesgoSLA.vue'),
+        meta: { title: 'Predicción de Riesgo SLA' },
+      },
     ],
   },
 
