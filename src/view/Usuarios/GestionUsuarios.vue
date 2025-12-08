@@ -236,8 +236,11 @@
               outlined
               dense
               class="q-mb-md"
+              @blur="verificarCorreoCorporativoDisponible"
               hint="Correo electrónico corporativo"
               ><template #prepend><q-icon name="mail" /></template
+              ><template #append v-if="verificandoCorreo"
+                ><q-spinner color="primary" size="20px" /></template
             ></q-input>
           </div>
 
@@ -513,6 +516,7 @@ const loadingGuardar = ref(false)
 const loadingEliminar = ref(false)
 const loadingCrearCuenta = ref(false)
 const verificandoDoc = ref(false)
+const verificandoCorreo = ref(false)
 const loadingRoles = ref(false)
 const rolesSistema = ref([])
 const dialogUsuario = ref(false)
@@ -788,6 +792,52 @@ const verificarDocumentoDisponible = async () => {
   }
 }
 
+// Función utilitaria para normalizar correos (trim + lowercase)
+const normalizarCorreo = (correo) => (correo || '').trim().toLowerCase()
+
+const verificarCorreoCorporativoDisponible = async () => {
+  // No verificar si no hay correo ingresado
+  if (!formUsuario.value.correoCorporativo) {
+    return
+  }
+
+  const correoTrimmed = formUsuario.value.correoCorporativo.trim()
+
+  // Validar formato básico de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(correoTrimmed)) {
+    return // No verificar si el formato es inválido
+  }
+
+  verificandoCorreo.value = true
+  try {
+    console.log('🔄 Verificando disponibilidad de correo corporativo...')
+
+    // Verificar si el correo ya existe en la lista actual de usuarios
+    // En modo edición, excluir el registro actual de la comparación
+    const correoExiste = usuarios.value.some(
+      (u) =>
+        u.idPersonal !== formUsuario.value.id &&
+        normalizarCorreo(u.correoCorporativo) === normalizarCorreo(correoTrimmed),
+    )
+
+    if (correoExiste) {
+      $q.notify({
+        type: 'warning',
+        message: '⚠️ Este correo ya existe en el sistema',
+        caption: `El correo ${correoTrimmed} ya está registrado`,
+        icon: 'warning',
+        position: 'top',
+        timeout: 4000,
+      })
+    }
+  } catch (error) {
+    console.error('❌ Error al verificar correo:', error)
+  } finally {
+    verificandoCorreo.value = false
+  }
+}
+
 const guardarUsuario = async () => {
   if (!formUsuario.value.nombres || !formUsuario.value.apellidos) {
     return $q.notify({
@@ -795,6 +845,56 @@ const guardarUsuario = async () => {
       message: 'Los nombres y apellidos son obligatorios',
       position: 'top',
     })
+  }
+
+  // ✅ Validar que el correo corporativo no esté duplicado
+  // NOTA: Esta validación también debe reforzarse en el backend con una restricción
+  // UNIQUE sobre CorreoCorporativo en la tabla Personal. Si el backend devuelve 409 Conflict,
+  // capturarlo en el catch y mostrar un mensaje claro al usuario.
+  if (formUsuario.value.correoCorporativo) {
+    const correoNormalizado = normalizarCorreo(formUsuario.value.correoCorporativo)
+
+    // En modo creación: validar contra todos los usuarios
+    // En modo edición: validar contra todos excepto el registro actual
+    const correoExiste = usuarios.value.some((u) => {
+      // En edición, ignorar el propio registro
+      if (modoEdicion.value && u.idPersonal === formUsuario.value.id) {
+        return false
+      }
+      return normalizarCorreo(u.correoCorporativo) === correoNormalizado
+    })
+
+    if (correoExiste) {
+      return $q.notify({
+        type: 'negative',
+        message: '❌ Este correo ya existe en el sistema',
+        caption: 'Usa otro correo corporativo.',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      })
+    }
+  }
+
+  // ✅ Validar que el documento no esté duplicado (solo en modo creación)
+  if (
+    !modoEdicion.value &&
+    formUsuario.value.documento &&
+    formUsuario.value.documento.trim().length >= 8
+  ) {
+    const documentoTrimmed = formUsuario.value.documento.trim()
+    const documentoExiste = usuarios.value.some((u) => u.documento === documentoTrimmed)
+
+    if (documentoExiste) {
+      return $q.notify({
+        type: 'negative',
+        message: '❌ Este documento ya existe en el sistema',
+        caption: `El documento ${formUsuario.value.documento} ya está registrado. Por favor, verifica el número de documento.`,
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      })
+    }
   }
 
   if (!modoEdicion.value && formUsuario.value.crearCuentaUsuario) {
