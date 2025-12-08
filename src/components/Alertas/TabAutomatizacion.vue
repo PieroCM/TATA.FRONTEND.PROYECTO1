@@ -70,14 +70,32 @@
                 <q-input
                   outlined
                   v-model="configuracion.horaResumen"
-                  type="time"
+                  readonly
                   dense
-                  style="max-width: 200px"
-                  step="1"
-                  hint="Formato HH:mm:ss"
+                  style="max-width: 250px"
+                  hint="Selecciona la hora para enviar el resumen"
+                  class="time-picker-input"
                 >
                   <template v-slot:prepend>
-                    <q-icon name="access_time" />
+                    <q-icon name="access_time" color="primary" />
+                  </template>
+                  <template v-slot:append>
+                    <q-icon name="schedule" class="cursor-pointer" color="primary">
+                      <q-popup-proxy transition-show="scale" transition-hide="scale">
+                        <q-time
+                          v-model="configuracion.horaResumen"
+                          mask="HH:mm:ss"
+                          format24h
+                          with-seconds
+                          class="time-picker-popup"
+                        >
+                          <div class="row items-center justify-end q-gutter-sm">
+                            <q-btn label="Cancelar" color="grey-7" flat v-close-popup />
+                            <q-btn label="Aceptar" color="primary" flat v-close-popup />
+                          </div>
+                        </q-time>
+                      </q-popup-proxy>
+                    </q-icon>
                   </template>
                 </q-input>
               </div>
@@ -94,6 +112,7 @@
               type="submit"
               class="q-px-xl"
               :loading="guardando"
+              :disable="!puedeGuardar"
             />
             <q-btn
               outline
@@ -103,6 +122,7 @@
               @click="probarEnvio"
               class="q-px-xl"
               :loading="probando"
+              :disable="!puedeProbarEnvio"
             />
           </div>
         </q-form>
@@ -115,7 +135,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import TablaEjecuciones from './TablaEjecuciones.vue'
@@ -138,6 +158,50 @@ const guardando = ref(false)
 const probando = ref(false)
 const cargando = ref(false)
 
+// Estado para rastrear si hubo cambios
+const configuracionInicial = ref(null)
+
+/**
+ * Computed para habilitar/deshabilitar el botón Guardar
+ */
+const puedeGuardar = computed(() => {
+  // Si no hay configuración inicial cargada, deshabilitar
+  if (!configuracionInicial.value) return false
+
+  // Verificar si hay cambios
+  const huboGambios =
+    configuracion.value.destinatarioResumen !== configuracionInicial.value.destinatarioResumen ||
+    configuracion.value.envioInmediato !== configuracionInicial.value.envioInmediato ||
+    configuracion.value.resumenDiario !== configuracionInicial.value.resumenDiario ||
+    configuracion.value.horaResumen !== configuracionInicial.value.horaResumen
+
+  if (!huboGambios) return false
+
+  // Validar destinatario (requerido)
+  if (!configuracion.value.destinatarioResumen?.trim()) return false
+
+  // Si resumenDiario está activo, validar hora
+  if (configuracion.value.resumenDiario) {
+    if (!configuracion.value.horaResumen?.trim()) return false
+
+    // Validar formato HH:mm:ss
+    const timeRegex = /^([0-1][0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])$/
+    if (!timeRegex.test(configuracion.value.horaResumen)) return false
+  }
+
+  return true
+})
+
+/**
+ * Computed para habilitar/deshabilitar el botón Probar envío
+ */
+const puedeProbarEnvio = computed(() => {
+  // Validar que haya un destinatario configurado
+  if (!configuracion.value.destinatarioResumen?.trim()) return false
+
+  return true
+})
+
 /**
  * Carga la configuración desde el backend
  */
@@ -157,6 +221,9 @@ const cargarConfiguracion = async () => {
         horaResumen: response.data.horaResumen || '06:00:00',
       }
 
+      // Guardar configuración inicial para detectar cambios
+      configuracionInicial.value = { ...configuracion.value }
+
       console.log('✅ Configuración cargada:', configuracion.value)
     }
   } catch (error) {
@@ -168,6 +235,9 @@ const cargarConfiguracion = async () => {
       position: 'top-right',
       timeout: 3000,
     })
+
+    // Establecer configuración inicial como valores por defecto
+    configuracionInicial.value = { ...configuracion.value }
   } finally {
     cargando.value = false
   }
@@ -183,7 +253,10 @@ const guardarConfiguracion = async () => {
     console.log('💾 Guardando configuración:', configuracion.value)
 
     // Llamar a PUT /api/email/config
-    await api.put('/api/email/config', configuracion.value)
+    await api.put('/api/email/config/1', configuracion.value)
+
+    // Actualizar configuración inicial después de guardar exitosamente
+    configuracionInicial.value = { ...configuracion.value }
 
     $q.notify({
       type: 'positive',
@@ -220,20 +293,41 @@ const probarEnvio = async () => {
     // Llamar a POST /api/email/send-summary
     const response = await api.post('/api/email/send-summary')
 
-    $q.notify({
-      type: 'positive',
-      message: 'Resumen enviado exitosamente',
-      position: 'top-right',
-      icon: 'send',
-      timeout: 2000,
-    })
+    // Capturar el mensaje de respuesta del backend
+    const mensaje = response.data?.mensaje || response.data?.message || ''
 
-    console.log('✅ Resumen enviado:', response.data)
+    console.log('📩 Respuesta del servidor:', response.data)
 
-    // Recargar tabla de ejecuciones después de enviar
-    if (tablaEjecucionesRef.value && tablaEjecucionesRef.value.cargarEjecuciones) {
-      console.log('🔄 Recargando historial de ejecuciones...')
-      await tablaEjecucionesRef.value.cargarEjecuciones()
+    // Verificar si no había alertas para enviar
+    if (mensaje.toLowerCase().includes('no se encontraron alertas')) {
+      $q.notify({
+        type: 'warning',
+        message: 'No hay alertas pendientes para enviar en este momento.',
+        position: 'top-right',
+        icon: 'info',
+        timeout: 3000,
+      })
+
+      console.log('⚠️ Sin alertas para enviar - No se registra ejecución')
+
+      // No recargar tabla porque no hubo registro de ejecución
+    } else {
+      // Envío exitoso con alertas
+      $q.notify({
+        type: 'positive',
+        message: 'Resumen de alertas enviado correctamente.',
+        position: 'top-right',
+        icon: 'send',
+        timeout: 2000,
+      })
+
+      console.log('✅ Resumen enviado exitosamente')
+
+      // Recargar tabla de ejecuciones solo cuando hubo envío real
+      if (tablaEjecucionesRef.value && tablaEjecucionesRef.value.cargarEjecuciones) {
+        console.log('🔄 Recargando historial de ejecuciones...')
+        await tablaEjecucionesRef.value.cargarEjecuciones()
+      }
     }
   } catch (error) {
     console.error('❌ Error al probar envío:', error)
