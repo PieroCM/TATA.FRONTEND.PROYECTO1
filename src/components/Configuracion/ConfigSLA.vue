@@ -159,7 +159,7 @@ const fetchConfigs = async () => {
   loading.value = true
   try {
     const { data } = await api.get('/api/ConfigSla', {
-      params: { soloActivos: true }
+      params: { soloActivos: false }
     })
     configs.value = data
   } catch (error) {
