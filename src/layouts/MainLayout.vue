@@ -118,8 +118,11 @@
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios']"
+            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios', '/sistema/configuracion']"
           >
+            <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
+            <SidebarItemChild icon="people" label="Gestión de Usuarios" to="/sistema/usuarios" />
+            <SidebarItemChild icon="settings" label="Configuración" to="/sistema/configuracion" />
             <SidebarItemChild
               v-if="hasPerm('LOGS')"
               icon="monitor_heart"

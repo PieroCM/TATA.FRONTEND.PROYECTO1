@@ -119,6 +119,12 @@ const routes = [
         component: () => import('src/view/Usuarios/GestionUsuarios.vue'),
         meta: { title: 'Gestión de Usuarios', permisos: ['GESTION_USUARIOS'] },
       },
+      {
+        path: 'configuracion',
+        name: 'configuracion-sistema',
+        component: () => import('src/view/Sistemas/ConfiguracionView.vue'),
+        meta: { title: 'Configuración del Sistema' },
+      },
     ],
   },
 
