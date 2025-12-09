@@ -98,6 +98,7 @@
       v-model="showEditModal"
       :rol="selectedRol"
       :is-create="isCreateMode"
+      :names-in-use="roles.map(x => ({ nombre: x.nombreRol, id: x.idRolRegistro }))"
       @save="handleSave"
       @close="closeEditModal"
     />

@@ -12,6 +12,8 @@
       :breakpoint="600"
       bordered
       class="sidebar"
+      @mouseenter="handleDrawerMouseEnter"
+      @mouseleave="handleDrawerMouseLeave"
     >
       <!-- Botón cerrar solo en mobile -->
       <div v-if="isMobile" class="mobile-header">
@@ -276,6 +278,7 @@ export default {
     return {
       drawerOpen: true,
       drawerMini: false,
+      hoverExpanded: false,
     }
   },
 
@@ -331,6 +334,28 @@ export default {
       } else {
         // En tablet y desktop (>=600px), toggle del modo mini (expandir/contraer)
         this.drawerMini = !this.drawerMini
+        // Desactivar hover expansion cuando el usuario hace clic manualmente
+        this.hoverExpanded = false
+      }
+    },
+    handleDrawerMouseEnter() {
+      // Solo aplicar hover en desktop/tablet (>=600px)
+      if (!this.isDesktopMode) return
+      
+      // Solo expandir si el drawer está en modo mini
+      if (this.drawerMini) {
+        this.drawerMini = false
+        this.hoverExpanded = true
+      }
+    },
+    handleDrawerMouseLeave() {
+      // Solo aplicar hover en desktop/tablet (>=600px)
+      if (!this.isDesktopMode) return
+      
+      // Solo colapsar si fue expandido por hover (no por clic manual)
+      if (this.hoverExpanded) {
+        this.drawerMini = true
+        this.hoverExpanded = false
       }
     },
     handleDrawerClick() {
