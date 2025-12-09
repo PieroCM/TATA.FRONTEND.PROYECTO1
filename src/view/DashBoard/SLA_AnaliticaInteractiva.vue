@@ -2,468 +2,473 @@
   <q-page class="dashboard-page">
     <!-- Contenido -->
 
-      <!-- Header -->
-      <div class="dashboard-header q-mb-lg">
-        <div class="row items-center">
-          <q-icon name="insights" size="40px" color="primary" class="q-mr-md" />
-          <div>
-            <div class="text-h5 text-weight-medium">Visualización Analítica Interactiva SLA</div>
-            <div class="text-grey-7">Análisis detallado y comparativas por período</div>
-          </div>
+    <!-- Header -->
+    <div class="dashboard-header q-mb-lg">
+      <div class="row items-center">
+        <q-icon name="insights" size="40px" color="primary" class="q-mr-md" />
+        <div>
+          <div class="text-h5 text-weight-medium">Visualización Analítica Interactiva SLA</div>
+          <div class="text-grey-7">Análisis detallado y comparativas por período</div>
         </div>
       </div>
+    </div>
 
-      <!-- Filtros -->
-      <q-card flat bordered class="filters-card q-mb-lg">
-        <q-inner-loading :showing="loading">
-          <q-spinner-gears size="50px" color="primary" />
-        </q-inner-loading>
+    <!-- Filtros -->
+    <q-card flat bordered class="filters-card q-mb-lg">
+      <q-inner-loading :showing="loading">
+        <q-spinner-gears size="50px" color="primary" />
+      </q-inner-loading>
+      <q-card-section>
+        <div class="text-subtitle1 text-weight-medium q-mb-md">
+          <q-icon name="filter_list" class="q-mr-sm" />
+          Filtros
+        </div>
+
+        <!-- Fila 1: Rango de Fechas -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <!-- Mes Inicio -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.mesInicio"
+              :options="mesesDisponibles"
+              label="Mes Inicio"
+              outlined
+              dense
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="event" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Mes Fin -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.mesFin"
+              :options="mesesDisponibles"
+              label="Mes Fin"
+              outlined
+              dense
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="event" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Año Inicio -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.anioInicio"
+              :options="aniosDisponibles"
+              label="Año Inicio"
+              outlined
+              dense
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="calendar_today" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Año Fin -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.anioFin"
+              :options="aniosDisponibles"
+              label="Año Fin"
+              outlined
+              dense
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="calendar_today" color="primary" />
+              </template>
+            </q-select>
+          </div>
+        </div>
+
+        <!-- Fila 2: Filtros de Datos -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <!-- Tipos SLA -->
+          <div class="col-12 col-sm-6 col-md-4">
+            <q-select
+              v-model="filtros.tiposSla"
+              :options="tiposSlaDisponibles"
+              label="Tipos SLA"
+              outlined
+              dense
+              multiple
+              use-chips
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="category" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Roles -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.roles"
+              :options="rolesDisponibles"
+              label="Roles/Áreas"
+              outlined
+              dense
+              multiple
+              use-chips
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="people" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Estado SLA -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.estado"
+              :options="estadosDisponibles"
+              label="Estado de Cumplimiento"
+              outlined
+              dense
+              clearable
+              emit-value
+              map-options
+            >
+              <template v-slot:prepend>
+                <q-icon name="track_changes" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Tipo de Gráfico -->
+          <div class="col-12 col-sm-6 col-md-2">
+            <q-select
+              v-model="tipoGrafico"
+              :options="tiposGraficoDisponibles"
+              label="Tipo Gráfico"
+              outlined
+              dense
+            >
+              <template v-slot:prepend>
+                <q-icon name="show_chart" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Vista de Gráficos (Toggle Switch) -->
+          <div class="col-12 col-sm-6 col-md-2">
+            <q-field outlined dense stack-label label="Vista de Gráficos">
+              <template v-slot:prepend>
+                <q-icon name="view_module" color="primary" />
+              </template>
+              <template v-slot:control>
+                <div class="self-center full-width no-outline q-px-sm">
+                  <q-toggle
+                    v-model="vistaUnificada"
+                    color="primary"
+                    size="sm"
+                    :label="vistaUnificada ? 'Unificado' : 'Separado'"
+                    dense
+                  />
+                </div>
+              </template>
+            </q-field>
+          </div>
+        </div>
+
+        <!-- Botones de acción -->
+        <div class="row q-col-gutter-sm q-mt-sm">
+          <div class="col-12 col-sm-4 col-md-auto">
+            <q-btn
+              color="primary"
+              label="Aplicar Filtros"
+              icon="search"
+              @click="aplicarFiltros"
+              :loading="loading"
+              class="full-width"
+            />
+          </div>
+          <div class="col-12 col-sm-4 col-md-auto">
+            <q-btn
+              outline
+              color="grey-7"
+              label="Restablecer"
+              icon="refresh"
+              @click="restablecerFiltros"
+              class="full-width"
+            />
+          </div>
+          <div class="col-12 col-sm-4 col-md-auto">
+            <q-btn
+              outline
+              color="positive"
+              label="Exportar PDF"
+              icon="picture_as_pdf"
+              @click="mostrarDialogoExportacion"
+              :disable="graficos.length === 0"
+              class="full-width"
+            />
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Loading Indicator -->
+    <div v-if="loading" class="row justify-center q-my-xl">
+      <q-spinner-dots color="primary" size="40px" />
+      <div class="text-grey-7 q-ml-sm self-center">Procesando datos analíticos...</div>
+    </div>
+
+    <!-- Gráficos Interactivos -->
+    <div v-if="graficos.length > 0">
+      <!-- Vista Unificada: Un solo gráfico con todos los SLAs -->
+      <q-card v-if="vistaUnificada" flat bordered class="q-mb-lg">
         <q-card-section>
-          <div class="text-subtitle1 text-weight-medium q-mb-md">
-            <q-icon name="filter_list" class="q-mr-sm" />
-            Filtros
+          <div class="text-h6 text-weight-medium q-mb-md">
+            <q-icon name="bar_chart" class="q-mr-sm" />
+            Comparación Unificada de Tipos SLA
           </div>
+          <q-separator class="q-mb-md" />
 
-          <!-- Fila 1: Rango de Fechas -->
-          <div class="row q-col-gutter-md q-mb-md">
-            <!-- Mes Inicio -->
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="filtros.mesInicio"
-                :options="mesesDisponibles"
-                label="Mes Inicio"
-                outlined
-                dense
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="event" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Mes Fin -->
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="filtros.mesFin"
-                :options="mesesDisponibles"
-                label="Mes Fin"
-                outlined
-                dense
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="event" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Año Inicio -->
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="filtros.anioInicio"
-                :options="aniosDisponibles"
-                label="Año Inicio"
-                outlined
-                dense
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="calendar_today" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Año Fin -->
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="filtros.anioFin"
-                :options="aniosDisponibles"
-                label="Año Fin"
-                outlined
-                dense
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="calendar_today" color="primary" />
-                </template>
-              </q-select>
-            </div>
-          </div>
-
-          <!-- Fila 2: Filtros de Datos -->
-          <div class="row q-col-gutter-md q-mb-md">
-            <!-- Tipos SLA -->
-            <div class="col-12 col-sm-6 col-md-4">
-              <q-select
-                v-model="filtros.tiposSla"
-                :options="tiposSlaDisponibles"
-                label="Tipos SLA"
-                outlined
-                dense
-                multiple
-                use-chips
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="category" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Roles -->
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="filtros.roles"
-                :options="rolesDisponibles"
-                label="Roles/Áreas"
-                outlined
-                dense
-                multiple
-                use-chips
-                clearable
-              >
-                <template v-slot:prepend>
-                  <q-icon name="people" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Estado SLA -->
-            <div class="col-12 col-sm-6 col-md-3">
-              <q-select
-                v-model="filtros.estado"
-                :options="estadosDisponibles"
-                label="Estado de Cumplimiento"
-                outlined
-                dense
-                clearable
-                emit-value
-                map-options
-              >
-                <template v-slot:prepend>
-                  <q-icon name="track_changes" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Tipo de Gráfico -->
-            <div class="col-12 col-sm-6 col-md-2">
-              <q-select
-                v-model="tipoGrafico"
-                :options="tiposGraficoDisponibles"
-                label="Tipo Gráfico"
-                outlined
-                dense
-              >
-                <template v-slot:prepend>
-                  <q-icon name="show_chart" color="primary" />
-                </template>
-              </q-select>
-            </div>
-
-            <!-- Vista de Gráficos (Toggle Switch) -->
-            <div class="col-12 col-sm-6 col-md-2">
-              <q-field outlined dense stack-label label="Vista de Gráficos">
-                <template v-slot:prepend>
-                  <q-icon name="view_module" color="primary" />
-                </template>
-                <template v-slot:control>
-                  <div class="self-center full-width no-outline q-px-sm">
-                    <q-toggle
-                      v-model="vistaUnificada"
-                      color="primary"
-                      size="sm"
-                      :label="vistaUnificada ? 'Unificado' : 'Separado'"
-                      dense
-                    />
-                  </div>
-                </template>
-              </q-field>
-            </div>
-          </div>
-
-          <!-- Botones de acción -->
-          <div class="row q-col-gutter-sm q-mt-sm">
-            <div class="col-12 col-sm-4 col-md-auto">
-              <q-btn
-                color="primary"
-                label="Aplicar Filtros"
-                icon="search"
-                @click="aplicarFiltros"
-                :loading="loading"
-                class="full-width"
-              />
-            </div>
-            <div class="col-12 col-sm-4 col-md-auto">
-              <q-btn
-                outline
-                color="grey-7"
-                label="Restablecer"
-                icon="refresh"
-                @click="restablecerFiltros"
-                class="full-width"
-              />
-            </div>
-            <div class="col-12 col-sm-4 col-md-auto">
-              <q-btn
-                outline
-                color="positive"
-                label="Exportar PDF"
-                icon="picture_as_pdf"
-                @click="mostrarDialogoExportacion"
-                :disable="graficos.length === 0"
-                class="full-width"
-              />
+          <div class="row">
+            <!-- Gráfico Unificado - Ancho completo sin leyenda -->
+            <div class="col-12">
+              <div class="chart-wrapper">
+                <canvas id="chartUnificadoCanvas" ref="chartUnificadoCanvas"></canvas>
+              </div>
             </div>
           </div>
         </q-card-section>
       </q-card>
 
-      <!-- Loading Indicator -->
-      <div v-if="loading" class="row justify-center q-my-xl">
-        <q-spinner-dots color="primary" size="40px" />
-        <div class="text-grey-7 q-ml-sm self-center">Procesando datos analíticos...</div>
-      </div>
-
-      <!-- Gráficos Interactivos -->
-      <div v-if="graficos.length > 0">
-        <!-- Vista Unificada: Un solo gráfico con todos los SLAs -->
-        <q-card v-if="vistaUnificada" flat bordered class="q-mb-lg">
+      <!-- Vista Separada: Un gráfico por cada tipo SLA -->
+      <template v-else>
+        <q-card
+          v-for="(grafico, index) in graficos"
+          :key="index"
+          flat
+          bordered
+          :class="{ 'q-mb-lg': index < graficos.length - 1 }"
+        >
           <q-card-section>
             <div class="text-h6 text-weight-medium q-mb-md">
               <q-icon name="bar_chart" class="q-mr-sm" />
-              Comparación Unificada de Tipos SLA
+              {{ grafico.titulo }}
             </div>
             <q-separator class="q-mb-md" />
 
-            <div class="row">
-              <!-- Gráfico Unificado - Ancho completo sin leyenda -->
-              <div class="col-12">
-                <div class="chart-wrapper">
-                  <canvas id="chartUnificadoCanvas" ref="chartUnificadoCanvas"></canvas>
+            <div v-if="grafico.datos.labels && grafico.datos.labels.length > 0">
+              <div class="row">
+                <!-- Gráfico -->
+                <div class="col-12 col-md-9">
+                  <div class="chart-wrapper">
+                    <canvas
+                      :id="`chartCanvas_${grafico.codigoSla}`"
+                      :ref="(el) => setChartRef(el, index)"
+                    ></canvas>
+                  </div>
+                </div>
+
+                <!-- Leyenda de colores a la derecha -->
+                <div class="col-12 col-md-3">
+                  <div class="color-legend">
+                    <div class="text-subtitle2 text-weight-medium q-mb-md">
+                      Leyenda de Estado SLA:
+                    </div>
+                    <div class="legend-items">
+                      <div class="legend-item q-mb-sm">
+                        <q-chip color="positive" text-color="white" dense>
+                          <q-icon name="check_circle" left />
+                          Cumple
+                        </q-chip>
+                        <div class="text-caption text-grey-7 q-mt-xs">
+                          Completado dentro del umbral
+                        </div>
+                      </div>
+                      <div class="legend-item q-mb-sm">
+                        <q-chip color="orange" text-color="white" dense>
+                          <q-icon name="schedule" left />
+                          Proceso
+                        </q-chip>
+                        <div class="text-caption text-grey-7 q-mt-xs">
+                          En curso dentro del tiempo
+                        </div>
+                      </div>
+                      <div class="legend-item">
+                        <q-chip color="negative" text-color="white" dense>
+                          <q-icon name="cancel" left />
+                          No_cumple
+                        </q-chip>
+                        <div class="text-caption text-grey-7 q-mt-xs">Excedió el umbral</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div v-else class="text-center text-grey-7 q-pa-xl">
+              <q-icon name="insert_chart_outlined" size="64px" color="grey-5" />
+              <div class="text-h6 q-mt-md">No existen registros para este tipo SLA</div>
+            </div>
+          </q-card-section>
+        </q-card>
+      </template>
+    </div>
+
+    <!-- Mensaje cuando no hay datos -->
+    <q-card v-else flat bordered>
+      <q-card-section>
+        <div class="text-center text-grey-7 q-pa-xl">
+          <q-icon name="insert_chart_outlined" size="64px" color="grey-5" />
+          <div class="text-h6 q-mt-md">No existen registros para los filtros seleccionados</div>
+          <div class="text-body2 q-mt-sm">
+            Intenta ajustar los filtros o seleccionar otro período
+          </div>
+        </div>
+      </q-card-section>
+    </q-card>
+
+    <!-- Análisis Detallado: Top 5 Roles con Más Incumplimientos -->
+    <div v-if="graficos.length > 0" class="row q-col-gutter-lg q-mt-lg q-mb-lg">
+      <div class="col-12">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6 text-weight-medium q-mb-md">
+              <q-icon name="priority_high" color="negative" class="q-mr-sm" />
+              Top 5 Roles con Mayor Incumplimiento por Tipo de SLA
+            </div>
+            <q-separator class="q-mb-md" />
+
+            <div class="row q-col-gutter-md">
+              <div v-for="grafico in graficos" :key="grafico.codigoSla" class="col-12 col-md-4">
+                <div class="tipo-sla-card">
+                  <div class="text-subtitle2 text-weight-bold q-mb-sm">
+                    {{ grafico.codigoSla }}
+                  </div>
+                  <div v-if="grafico.topIncumplidores && grafico.topIncumplidores.length > 0">
+                    <div
+                      v-for="(rol, idx) in grafico.topIncumplidores.slice(0, 5)"
+                      :key="idx"
+                      class="incumplidor-item q-mb-sm"
+                    >
+                      <div class="row items-center justify-between">
+                        <div class="col">
+                          <div class="text-body2">
+                            <q-badge
+                              :color="idx === 0 ? 'negative' : idx === 1 ? 'orange' : 'grey-6'"
+                              :label="idx + 1"
+                              class="q-mr-xs"
+                            />
+                            {{ rol.nombre }}
+                          </div>
+                        </div>
+                        <div class="col-auto">
+                          <q-chip dense color="negative" text-color="white" size="sm">
+                            {{ rol.noCumplen }} incumplimientos
+                          </q-chip>
+                        </div>
+                      </div>
+                      <q-linear-progress
+                        :value="rol.noCumplen / (grafico.totalNoCumplen || 1)"
+                        color="negative"
+                        class="q-mt-xs"
+                      />
+                    </div>
+                  </div>
+                  <div v-else class="text-center text-grey-6 q-py-md">
+                    <q-icon name="check_circle" size="sm" color="positive" />
+                    <div class="text-caption">Sin incumplimientos</div>
+                  </div>
                 </div>
               </div>
             </div>
           </q-card-section>
         </q-card>
-
-        <!-- Vista Separada: Un gráfico por cada tipo SLA -->
-        <template v-else>
-          <q-card
-            v-for="(grafico, index) in graficos"
-            :key="index"
-            flat
-            bordered
-            :class="{ 'q-mb-lg': index < graficos.length - 1 }"
-          >
-            <q-card-section>
-              <div class="text-h6 text-weight-medium q-mb-md">
-                <q-icon name="bar_chart" class="q-mr-sm" />
-                {{ grafico.titulo }}
-              </div>
-              <q-separator class="q-mb-md" />
-
-              <div v-if="grafico.datos.labels && grafico.datos.labels.length > 0">
-                <div class="row">
-                  <!-- Gráfico -->
-                  <div class="col-12 col-md-9">
-                    <div class="chart-wrapper">
-                      <canvas :id="`chartCanvas_${grafico.codigoSla}`" :ref="(el) => setChartRef(el, index)"></canvas>
-                    </div>
-                  </div>
-
-                  <!-- Leyenda de colores a la derecha -->
-                  <div class="col-12 col-md-3">
-                    <div class="color-legend">
-                      <div class="text-subtitle2 text-weight-medium q-mb-md">
-                        Leyenda de Estado SLA:
-                      </div>
-                      <div class="legend-items">
-                        <div class="legend-item q-mb-sm">
-                          <q-chip color="positive" text-color="white" dense>
-                            <q-icon name="check_circle" left />
-                            Cumple
-                          </q-chip>
-                          <div class="text-caption text-grey-7 q-mt-xs">Completado dentro del umbral</div>
-                        </div>
-                        <div class="legend-item q-mb-sm">
-                          <q-chip color="orange" text-color="white" dense>
-                            <q-icon name="schedule" left />
-                            Proceso
-                          </q-chip>
-                          <div class="text-caption text-grey-7 q-mt-xs">En curso dentro del tiempo</div>
-                        </div>
-                        <div class="legend-item">
-                          <q-chip color="negative" text-color="white" dense>
-                            <q-icon name="cancel" left />
-                            No_cumple
-                          </q-chip>
-                          <div class="text-caption text-grey-7 q-mt-xs">Excedió el umbral</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-              <div v-else class="text-center text-grey-7 q-pa-xl">
-                <q-icon name="insert_chart_outlined" size="64px" color="grey-5" />
-                <div class="text-h6 q-mt-md">No existen registros para este tipo SLA</div>
-              </div>
-            </q-card-section>
-          </q-card>
-        </template>
       </div>
+    </div>
 
-      <!-- Mensaje cuando no hay datos -->
-      <q-card v-else flat bordered>
-        <q-card-section>
-          <div class="text-center text-grey-7 q-pa-xl">
-            <q-icon name="insert_chart_outlined" size="64px" color="grey-5" />
-            <div class="text-h6 q-mt-md">No existen registros para los filtros seleccionados</div>
-            <div class="text-body2 q-mt-sm">
-              Intenta ajustar los filtros o seleccionar otro período
+    <!-- Gráficos de Distribución de Estados -->
+    <div v-if="graficos.length > 0" class="row q-col-gutter-lg q-mb-lg">
+      <div class="col-12 col-lg-6">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6 text-weight-medium q-mb-md">
+              <q-icon name="donut_small" color="primary" class="q-mr-sm" />
+              Distribución de Estados por Solicitud
             </div>
-          </div>
-        </q-card-section>
-      </q-card>
-
-      <!-- Análisis Detallado: Top 5 Roles con Más Incumplimientos -->
-      <div v-if="graficos.length > 0" class="row q-col-gutter-lg q-mt-lg q-mb-lg">
-        <div class="col-12">
-          <q-card flat bordered>
-            <q-card-section>
-              <div class="text-h6 text-weight-medium q-mb-md">
-                <q-icon name="priority_high" color="negative" class="q-mr-sm" />
-                Top 5 Roles con Mayor Incumplimiento por Tipo de SLA
-              </div>
-              <q-separator class="q-mb-md" />
-
-              <div class="row q-col-gutter-md">
-                <div
-                  v-for="grafico in graficos"
-                  :key="grafico.codigoSla"
-                  class="col-12 col-md-4"
-                >
-                  <div class="tipo-sla-card">
-                    <div class="text-subtitle2 text-weight-bold q-mb-sm">
-                      {{ grafico.codigoSla }}
-                    </div>
-                    <div v-if="grafico.topIncumplidores && grafico.topIncumplidores.length > 0">
-                      <div
-                        v-for="(rol, idx) in grafico.topIncumplidores.slice(0, 5)"
-                        :key="idx"
-                        class="incumplidor-item q-mb-sm"
-                      >
-                        <div class="row items-center justify-between">
-                          <div class="col">
-                            <div class="text-body2">
-                              <q-badge
-                                :color="idx === 0 ? 'negative' : idx === 1 ? 'orange' : 'grey-6'"
-                                :label="idx + 1"
-                                class="q-mr-xs"
-                              />
-                              {{ rol.nombre }}
-                            </div>
-                          </div>
-                          <div class="col-auto">
-                            <q-chip
-                              dense
-                              color="negative"
-                              text-color="white"
-                              size="sm"
-                            >
-                              {{ rol.noCumplen }} incumplimientos
-                            </q-chip>
-                          </div>
-                        </div>
-                        <q-linear-progress
-                          :value="rol.noCumplen / (grafico.totalNoCumplen || 1)"
-                          color="negative"
-                          class="q-mt-xs"
-                        />
-                      </div>
-                    </div>
-                    <div v-else class="text-center text-grey-6 q-py-md">
-                      <q-icon name="check_circle" size="sm" color="positive" />
-                      <div class="text-caption">Sin incumplimientos</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
+            <canvas id="graficoDistribucionEstadosAnalytic" style="max-height: 350px"></canvas>
+            <div class="text-center text-caption text-grey-7 q-mt-sm">
+              Total de {{ estadisticas.totalSolicitudes }} solicitudes analizadas
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
 
-      <!-- Gráficos de Distribución de Estados -->
-      <div v-if="graficos.length > 0" class="row q-col-gutter-lg q-mb-lg">
-        <div class="col-12 col-lg-6">
-          <q-card flat bordered>
-            <q-card-section>
-              <div class="text-h6 text-weight-medium q-mb-md">
-                <q-icon name="donut_small" color="primary" class="q-mr-sm" />
-                Distribución de Estados por Solicitud
-              </div>
-              <canvas id="graficoDistribucionEstadosAnalytic" style="max-height: 350px"></canvas>
-              <div class="text-center text-caption text-grey-7 q-mt-sm">
-                Total de {{ estadisticas.totalSolicitudes }} solicitudes analizadas
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
+      <div class="col-12 col-lg-6">
+        <q-card flat bordered>
+          <q-card-section>
+            <div class="text-h6 text-weight-medium q-mb-md">
+              <q-icon name="assessment" color="primary" class="q-mr-sm" />
+              Resumen de Incumplimientos por Tipo SLA
+            </div>
+            <canvas id="graficoResumenIncumplimientosAnalytic" style="max-height: 350px"></canvas>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
 
-        <div class="col-12 col-lg-6">
-          <q-card flat bordered>
-            <q-card-section>
-              <div class="text-h6 text-weight-medium q-mb-md">
-                <q-icon name="assessment" color="primary" class="q-mr-sm" />
-                Resumen de Incumplimientos por Tipo SLA
-              </div>
-              <canvas id="graficoResumenIncumplimientosAnalytic" style="max-height: 350px"></canvas>
-            </q-card-section>
-          </q-card>
-        </div>
+    <!-- Estadísticas Rápidas -->
+    <div class="row q-col-gutter-md q-mt-lg">
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="stat-card">
+          <q-card-section>
+            <div class="text-grey-7 text-subtitle2">Total Solicitudes</div>
+            <div class="text-h4 text-weight-bold text-primary q-mt-sm">
+              {{ estadisticas.totalSolicitudes }}
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
 
-      <!-- Estadísticas Rápidas -->
-      <div class="row q-col-gutter-md q-mt-lg">
-        <div class="col-12 col-md-4">
-          <q-card flat bordered class="stat-card">
-            <q-card-section>
-              <div class="text-grey-7 text-subtitle2">Total Solicitudes</div>
-              <div class="text-h4 text-weight-bold text-primary q-mt-sm">
-                {{ estadisticas.totalSolicitudes }}
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <div class="col-12 col-md-4">
-          <q-card flat bordered class="stat-card">
-            <q-card-section>
-              <div class="text-grey-7 text-subtitle2">Promedio SLA</div>
-              <div class="text-h4 text-weight-bold text-primary q-mt-sm">
-                {{ estadisticas.promedioSla }}%
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
-
-        <div class="col-12 col-md-4">
-          <q-card flat bordered class="stat-card">
-            <q-card-section>
-              <div class="text-grey-7 text-subtitle2">Roles Analizados</div>
-              <div class="text-h4 text-weight-bold text-primary q-mt-sm">
-                {{ estadisticas.rolesAnalizados }}
-              </div>
-            </q-card-section>
-          </q-card>
-        </div>
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="stat-card">
+          <q-card-section>
+            <div class="text-grey-7 text-subtitle2">Promedio SLA</div>
+            <div class="text-h4 text-weight-bold text-primary q-mt-sm">
+              {{ estadisticas.promedioSla }}%
+            </div>
+          </q-card-section>
+        </q-card>
       </div>
+
+      <div class="col-12 col-md-4">
+        <q-card flat bordered class="stat-card">
+          <q-card-section>
+            <div class="text-grey-7 text-subtitle2">Roles Analizados</div>
+            <div class="text-h4 text-weight-bold text-primary q-mt-sm">
+              {{ estadisticas.rolesAnalizados }}
+            </div>
+          </q-card-section>
+        </q-card>
+      </div>
+    </div>
 
     <!-- Diálogo de Selección de Exportación -->
-    <q-dialog v-model="dialogoExportacion" persistent maximized transition-show="slide-up" transition-hide="slide-down" class="export-dialog">
+    <q-dialog
+      v-model="dialogoExportacion"
+      persistent
+      maximized
+      transition-show="slide-up"
+      transition-hide="slide-down"
+      class="export-dialog"
+    >
       <q-card class="export-dialog-card">
         <q-bar class="bg-primary text-white">
           <q-icon name="picture_as_pdf" />
@@ -474,7 +479,9 @@
 
         <q-card-section class="q-pb-sm">
           <div class="text-subtitle1 text-weight-medium">Selecciona las secciones a incluir</div>
-          <div class="text-caption text-grey-7 q-mt-xs">Elige qué información deseas exportar en el PDF</div>
+          <div class="text-caption text-grey-7 q-mt-xs">
+            Elige qué información deseas exportar en el PDF
+          </div>
         </q-card-section>
 
         <q-separator />
@@ -546,14 +553,7 @@
         <q-separator />
 
         <q-card-actions align="between" class="q-pa-md bg-grey-1">
-          <q-btn
-            flat
-            label="CANCELAR"
-            color="grey-8"
-            v-close-popup
-            class="q-px-lg"
-            icon="close"
-          />
+          <q-btn flat label="CANCELAR" color="grey-8" v-close-popup class="q-px-lg" icon="close" />
           <div class="row q-gutter-sm">
             <q-btn
               outline
@@ -587,6 +587,7 @@ import { useAppStore } from 'stores/app-store'
 import { useSlaStore } from 'stores/useSlaStore'
 import { jsPDF } from 'jspdf'
 import html2canvas from 'html2canvas'
+import { getPorcentajeColorHex } from 'src/utils/slaMappers'
 
 Chart.register(...registerables)
 
@@ -647,7 +648,7 @@ const estadosDisponibles = [
   { label: 'Todos', value: null },
   { label: 'Cumple', value: 'Cumple' },
   { label: 'Proceso', value: 'Proceso' },
-  { label: 'No cumple', value: 'No_cumple' }
+  { label: 'No cumple', value: 'No_cumple' },
 ]
 
 const tipoGrafico = ref({ label: 'Barras', value: 'bar' })
@@ -674,10 +675,12 @@ const seccionesExportar = ref({
 })
 
 const algunaSeccionSeleccionada = computed(() => {
-  return seccionesExportar.value.graficos ||
-         seccionesExportar.value.topRoles ||
-         seccionesExportar.value.distribucion ||
-         seccionesExportar.value.resumen
+  return (
+    seccionesExportar.value.graficos ||
+    seccionesExportar.value.topRoles ||
+    seccionesExportar.value.distribucion ||
+    seccionesExportar.value.resumen
+  )
 })
 
 // Computed
@@ -853,9 +856,10 @@ const aplicarFiltros = async () => {
     })
 
     // Determinar tipos SLA a procesar
-    const tiposSlaProcesar = filtros.value.tiposSla && filtros.value.tiposSla.length > 0
-      ? filtros.value.tiposSla
-      : tiposSlaDisponibles.value
+    const tiposSlaProcesar =
+      filtros.value.tiposSla && filtros.value.tiposSla.length > 0
+        ? filtros.value.tiposSla
+        : tiposSlaDisponibles.value
 
     // Limpiar gráficos anteriores
     graficos.value = []
@@ -911,7 +915,7 @@ const aplicarFiltros = async () => {
 
       // Filtrar por estado si está seleccionado
       const solicitudesFiltradas = filtros.value.estado
-        ? solicitudesConSla.filter(s => s.estadoSla === filtros.value.estado)
+        ? solicitudesConSla.filter((s) => s.estadoSla === filtros.value.estado)
         : solicitudesConSla
 
       // Preparar datos por rol para este tipo SLA usando solicitudes filtradas por estado
@@ -952,11 +956,11 @@ const aplicarFiltros = async () => {
               {
                 label: 'Cumple',
                 data: cumplimientoPorRol.map((r) => r.cumplidos),
-                borderColor: '#4CAF50',
+                borderColor: getPorcentajeColorHex(100), // Verde - cumplimiento total
                 backgroundColor: 'rgba(76, 175, 80, 0.1)',
                 borderWidth: 2,
-                pointBackgroundColor: '#4CAF50',
-                pointBorderColor: '#4CAF50',
+                pointBackgroundColor: getPorcentajeColorHex(100),
+                pointBorderColor: getPorcentajeColorHex(100),
                 pointRadius: 5,
                 pointHoverRadius: 7,
                 fill: false,
@@ -965,11 +969,11 @@ const aplicarFiltros = async () => {
               {
                 label: 'Proceso',
                 data: cumplimientoPorRol.map((r) => r.proceso || 0),
-                borderColor: '#FF9800',
+                borderColor: getPorcentajeColorHex(80), // Naranja - cumplimiento medio
                 backgroundColor: 'rgba(255, 152, 0, 0.1)',
                 borderWidth: 2,
-                pointBackgroundColor: '#FF9800',
-                pointBorderColor: '#FF9800',
+                pointBackgroundColor: getPorcentajeColorHex(80),
+                pointBorderColor: getPorcentajeColorHex(80),
                 pointRadius: 5,
                 pointHoverRadius: 7,
                 fill: false,
@@ -978,11 +982,11 @@ const aplicarFiltros = async () => {
               {
                 label: 'No_cumple',
                 data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
-                borderColor: '#F44336',
+                borderColor: getPorcentajeColorHex(50), // Rojo - incumplimiento
                 backgroundColor: 'rgba(244, 67, 54, 0.1)',
                 borderWidth: 2,
-                pointBackgroundColor: '#F44336',
-                pointBorderColor: '#F44336',
+                pointBackgroundColor: getPorcentajeColorHex(50),
+                pointBorderColor: getPorcentajeColorHex(50),
                 pointRadius: 5,
                 pointHoverRadius: 7,
                 fill: false,
@@ -1012,24 +1016,24 @@ const aplicarFiltros = async () => {
               {
                 label: 'Cumple',
                 data: cumplimientoPorRol.map((r) => r.cumplidos),
-                backgroundColor: '#4CAF50',
-                borderColor: '#4CAF50',
+                backgroundColor: getPorcentajeColorHex(100), // Verde
+                borderColor: getPorcentajeColorHex(100),
                 borderWidth: 1,
                 fill: tipoGrafico.value.value === 'area',
               },
               {
                 label: 'Proceso',
                 data: cumplimientoPorRol.map((r) => r.proceso || 0),
-                backgroundColor: '#FF9800',
-                borderColor: '#FF9800',
+                backgroundColor: getPorcentajeColorHex(80), // Naranja
+                borderColor: getPorcentajeColorHex(80),
                 borderWidth: 1,
                 fill: tipoGrafico.value.value === 'area',
               },
               {
                 label: 'No_cumple',
                 data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
-                backgroundColor: '#F44336',
-                borderColor: '#F44336',
+                backgroundColor: getPorcentajeColorHex(50), // Rojo
+                borderColor: getPorcentajeColorHex(50),
                 borderWidth: 1,
                 fill: tipoGrafico.value.value === 'area',
               },
@@ -1039,7 +1043,7 @@ const aplicarFiltros = async () => {
 
         // Calcular top incumplidores para este tipo de SLA
         const topIncumplidores = cumplimientoPorRol
-          .filter(r => r.noCumplen > 0)
+          .filter((r) => r.noCumplen > 0)
           .sort((a, b) => b.noCumplen - a.noCumplen)
           .slice(0, 5)
 
@@ -1051,21 +1055,21 @@ const aplicarFiltros = async () => {
           datos: datosGrafico,
           datosRoles: cumplimientoPorRol,
           topIncumplidores: topIncumplidores,
-          totalNoCumplen: totalNoCumplen
+          totalNoCumplen: totalNoCumplen,
         })
 
         // Acumular estadísticas globales
         totalSolicitudesGlobal += solicitudesConSla.length
-        sumaPromedios += cumplimientoPorRol.reduce((sum, r) => sum + r.porcentaje, 0) / cumplimientoPorRol.length
+        sumaPromedios +=
+          cumplimientoPorRol.reduce((sum, r) => sum + r.porcentaje, 0) / cumplimientoPorRol.length
         totalRolesAnalizados += cumplimientoPorRol.length
       }
     }
 
     // Estadísticas globales
     estadisticas.value.totalSolicitudes = totalSolicitudesGlobal
-    estadisticas.value.promedioSla = graficos.value.length > 0
-      ? parseFloat((sumaPromedios / graficos.value.length).toFixed(1))
-      : 0
+    estadisticas.value.promedioSla =
+      graficos.value.length > 0 ? parseFloat((sumaPromedios / graficos.value.length).toFixed(1)) : 0
     estadisticas.value.rolesAnalizados = totalRolesAnalizados
 
     await nextTick()
@@ -1078,7 +1082,6 @@ const aplicarFiltros = async () => {
     // Crear gráficos de análisis adicionales
     crearGraficoDistribucionEstadosAnalytic()
     crearGraficoResumenIncumplimientosAnalytic()
-
   } catch (error) {
     console.error('Error al aplicar filtros:', error)
     $q.notify({
@@ -1095,7 +1098,7 @@ const aplicarFiltros = async () => {
 
 const crearGraficos = () => {
   // Destruir gráficos anteriores
-  chartInstances.value.forEach(chart => {
+  chartInstances.value.forEach((chart) => {
     if (chart) chart.destroy()
   })
   chartInstances.value = []
@@ -1151,7 +1154,7 @@ const crearGraficos = () => {
                   `Cumplimiento: ${rol.porcentaje}%`,
                   `✓ Cumple: ${rol.cumplidos}`,
                   `⏳ Proceso: ${rol.proceso || 0}`,
-                  `✗ No cumple: ${rol.noCumplen || 0}`
+                  `✗ No cumple: ${rol.noCumplen || 0}`,
                 ]
                 return lineas
               },
@@ -1184,7 +1187,10 @@ const crearGraficos = () => {
                   ticks: {
                     callback: function (value) {
                       // Si es doughnut/radar mostrar %, si no, cantidad
-                      if (tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar') {
+                      if (
+                        tipoGrafico.value.value === 'doughnut' ||
+                        tipoGrafico.value.value === 'radar'
+                      ) {
                         return value + '%'
                       }
                       return Math.floor(value)
@@ -1193,10 +1199,11 @@ const crearGraficos = () => {
                   },
                   title: {
                     display: true,
-                    text: tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar'
-                      ? 'Porcentaje de Cumplimiento'
-                      : 'Cantidad de Solicitudes'
-                  }
+                    text:
+                      tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar'
+                        ? 'Porcentaje de Cumplimiento'
+                        : 'Cantidad de Solicitudes',
+                  },
                 },
               }
             : {},
@@ -1223,32 +1230,32 @@ const crearGraficoUnificado = () => {
   if (tipoGrafico.value.value === 'line' || tipoGrafico.value.value === 'area') {
     // Obtener todos los roles únicos
     const todosLosRoles = new Set()
-    graficos.value.forEach(grafico => {
-      grafico.datosRoles.forEach(rol => todosLosRoles.add(rol.nombre))
+    graficos.value.forEach((grafico) => {
+      grafico.datosRoles.forEach((rol) => todosLosRoles.add(rol.nombre))
     })
     const rolesUnicos = Array.from(todosLosRoles)
 
     // Crear un dataset por cada tipo SLA
     const datasets = graficos.value.map((grafico, idx) => {
       const colores = [
-        'rgba(33, 150, 243, 0.8)',   // Azul
-        'rgba(156, 39, 176, 0.8)',   // Morado
-        'rgba(255, 87, 34, 0.8)',    // Naranja oscuro
-        'rgba(0, 150, 136, 0.8)',    // Verde azulado
-        'rgba(255, 193, 7, 0.8)',    // Amarillo
-        'rgba(121, 85, 72, 0.8)',    // Marrón
+        'rgba(33, 150, 243, 0.8)', // Azul
+        'rgba(156, 39, 176, 0.8)', // Morado
+        'rgba(255, 87, 34, 0.8)', // Naranja oscuro
+        'rgba(0, 150, 136, 0.8)', // Verde azulado
+        'rgba(255, 193, 7, 0.8)', // Amarillo
+        'rgba(121, 85, 72, 0.8)', // Marrón
       ]
       const color = colores[idx % colores.length]
 
       // Mapear datos para cada rol
-      const data = rolesUnicos.map(rolNombre => {
-        const rol = grafico.datosRoles.find(r => r.nombre === rolNombre)
+      const data = rolesUnicos.map((rolNombre) => {
+        const rol = grafico.datosRoles.find((r) => r.nombre === rolNombre)
         return rol ? rol.porcentaje : null
       })
 
       // Colores de puntos según nivel de cumplimiento
-      const pointColors = rolesUnicos.map(rolNombre => {
-        const rol = grafico.datosRoles.find(r => r.nombre === rolNombre)
+      const pointColors = rolesUnicos.map((rolNombre) => {
+        const rol = grafico.datosRoles.find((r) => r.nombre === rolNombre)
         if (!rol) return 'rgba(200, 200, 200, 0.5)'
         return getColorByPercentage(rol.porcentaje)
       })
@@ -1290,23 +1297,23 @@ const crearGraficoUnificado = () => {
             mode: 'index',
             intersect: false,
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 const dataset = context.dataset
                 const dataIndex = context.dataIndex
                 const rolNombre = rolesUnicos[dataIndex]
-                const rol = dataset.datosRoles.find(r => r.nombre === rolNombre)
+                const rol = dataset.datosRoles.find((r) => r.nombre === rolNombre)
 
                 if (!rol) return `${dataset.label}: Sin datos`
                 return `${dataset.label}: ${rol.porcentaje}% (${rol.cumplidos}/${rol.total} usuarios)`
               },
-              afterLabel: function(context) {
+              afterLabel: function (context) {
                 const porcentaje = context.parsed.y
                 if (porcentaje >= 90) return '✓ Cumple (≥90%)'
                 if (porcentaje >= 70) return '⚠ Proceso (≥70%)'
                 if (porcentaje > 0) return '✗ No cumple (<70%)'
                 return ''
-              }
-            }
+              },
+            },
           },
         },
         scales: {
@@ -1331,26 +1338,26 @@ const crearGraficoUnificado = () => {
   } else if (tipoGrafico.value.value === 'bar') {
     // Para barras: agrupar por roles con colores según nivel de cumplimiento
     const todosLosRoles = new Set()
-    graficos.value.forEach(grafico => {
-      grafico.datosRoles.forEach(rol => todosLosRoles.add(rol.nombre))
+    graficos.value.forEach((grafico) => {
+      grafico.datosRoles.forEach((rol) => todosLosRoles.add(rol.nombre))
     })
     const rolesUnicos = Array.from(todosLosRoles)
 
     const datasets = graficos.value.map((grafico) => {
-      const data = rolesUnicos.map(rolNombre => {
-        const rol = grafico.datosRoles.find(r => r.nombre === rolNombre)
+      const data = rolesUnicos.map((rolNombre) => {
+        const rol = grafico.datosRoles.find((r) => r.nombre === rolNombre)
         return rol ? rol.porcentaje : 0
       })
 
       // Asignar colores según el porcentaje de cada rol
-      const backgroundColors = rolesUnicos.map(rolNombre => {
-        const rol = grafico.datosRoles.find(r => r.nombre === rolNombre)
+      const backgroundColors = rolesUnicos.map((rolNombre) => {
+        const rol = grafico.datosRoles.find((r) => r.nombre === rolNombre)
         if (!rol || rol.porcentaje === 0) return 'rgba(200, 200, 200, 0.3)'
         return getColorByPercentage(rol.porcentaje)
       })
 
-      const borderColors = rolesUnicos.map(rolNombre => {
-        const rol = grafico.datosRoles.find(r => r.nombre === rolNombre)
+      const borderColors = rolesUnicos.map((rolNombre) => {
+        const rol = grafico.datosRoles.find((r) => r.nombre === rolNombre)
         if (!rol || rol.porcentaje === 0) return 'rgba(200, 200, 200, 0.5)'
         return getColorByPercentage(rol.porcentaje).replace('0.8', '1')
       })
@@ -1385,23 +1392,23 @@ const crearGraficoUnificado = () => {
             mode: 'index',
             intersect: false,
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 const dataset = context.dataset
                 const dataIndex = context.dataIndex
                 const rolNombre = rolesUnicos[dataIndex]
-                const rol = dataset.datosRoles.find(r => r.nombre === rolNombre)
+                const rol = dataset.datosRoles.find((r) => r.nombre === rolNombre)
 
                 if (!rol) return `${dataset.label}: Sin datos`
                 return `${dataset.label}: ${rol.porcentaje}% (${rol.cumplidos}/${rol.total} usuarios)`
               },
-              afterLabel: function(context) {
+              afterLabel: function (context) {
                 const porcentaje = context.parsed.y
                 if (porcentaje >= 90) return '✓ Cumple'
                 if (porcentaje >= 70) return '⚠ Proceso'
                 if (porcentaje > 0) return '✗ No cumple'
                 return ''
-              }
-            }
+              },
+            },
           },
         },
         scales: {
@@ -1425,37 +1432,39 @@ const crearGraficoUnificado = () => {
     })
   } else {
     // Para otros tipos (doughnut, radar): mostrar promedio por tipo SLA con colores según nivel
-    const labels = graficos.value.map(g => g.codigoSla)
-    const data = graficos.value.map(g => {
+    const labels = graficos.value.map((g) => g.codigoSla)
+    const data = graficos.value.map((g) => {
       const promedio = g.datosRoles.reduce((sum, r) => sum + r.porcentaje, 0) / g.datosRoles.length
       return parseFloat(promedio.toFixed(1))
     })
 
     // Calcular totales de usuarios por SLA
-    const usuariosTotales = graficos.value.map(g => {
+    const usuariosTotales = graficos.value.map((g) => {
       return g.datosRoles.reduce((sum, r) => sum + r.total, 0)
     })
 
-    const usuariosCumplidos = graficos.value.map(g => {
+    const usuariosCumplidos = graficos.value.map((g) => {
       return g.datosRoles.reduce((sum, r) => sum + r.cumplidos, 0)
     })
 
     // Colores según el promedio de cada SLA
-    const backgroundColors = data.map(promedio => getColorByPercentage(promedio))
+    const backgroundColors = data.map((promedio) => getColorByPercentage(promedio))
 
     chartUnificadoInstance = new Chart(ctx, {
       type: chartType,
       data: {
         labels: labels,
-        datasets: [{
-          label: 'Cumplimiento Promedio SLA (%)',
-          data: data,
-          usuariosTotales: usuariosTotales,
-          usuariosCumplidos: usuariosCumplidos,
-          backgroundColor: backgroundColors,
-          borderColor: backgroundColors.map(c => c.replace('0.8', '1')),
-          borderWidth: 2,
-        }],
+        datasets: [
+          {
+            label: 'Cumplimiento Promedio SLA (%)',
+            data: data,
+            usuariosTotales: usuariosTotales,
+            usuariosCumplidos: usuariosCumplidos,
+            backgroundColor: backgroundColors,
+            borderColor: backgroundColors.map((c) => c.replace('0.8', '1')),
+            borderWidth: 2,
+          },
+        ],
       },
       options: {
         responsive: true,
@@ -1468,7 +1477,7 @@ const crearGraficoUnificado = () => {
           },
           tooltip: {
             callbacks: {
-              label: function(context) {
+              label: function (context) {
                 const dataset = context.dataset
                 const index = context.dataIndex
                 const porcentaje = context.parsed.y || context.parsed
@@ -1476,26 +1485,29 @@ const crearGraficoUnificado = () => {
                 const cumplidos = dataset.usuariosCumplidos[index]
                 return `${context.label}: ${porcentaje}% (${cumplidos}/${total} usuarios)`
               },
-              afterLabel: function(context) {
+              afterLabel: function (context) {
                 const porcentaje = context.parsed.y || context.parsed
                 if (porcentaje >= 90) return 'Cumple (≥90%)'
                 if (porcentaje >= 70) return 'Proceso (≥70%)'
                 return 'No cumple (<70%)'
-              }
-            }
-          }
-        },
-        scales: chartType !== 'doughnut' ? {
-          r: {
-            beginAtZero: true,
-            max: 100,
-            ticks: {
-              callback: function (value) {
-                return value + '%'
               },
             },
           },
-        } : {},
+        },
+        scales:
+          chartType !== 'doughnut'
+            ? {
+                r: {
+                  beginAtZero: true,
+                  max: 100,
+                  ticks: {
+                    callback: function (value) {
+                      return value + '%'
+                    },
+                  },
+                },
+              }
+            : {},
       },
     })
   }
@@ -1514,7 +1526,7 @@ const restablecerFiltros = () => {
 
   // Limpiar gráficos
   graficos.value = []
-  chartInstances.value.forEach(chart => {
+  chartInstances.value.forEach((chart) => {
     if (chart) chart.destroy()
   })
   chartInstances.value = []
@@ -1633,15 +1645,8 @@ const exportarPDF = async () => {
     const addFooter = () => {
       pdf.setFontSize(8)
       pdf.setTextColor(128, 128, 128)
-      pdf.text(
-        `Página ${currentPage}`,
-        pageWidth / 2,
-        pageHeight - 10,
-        { align: 'center' }
-      )
+      pdf.text(`Página ${currentPage}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
     }
-
-
 
     // Variable para controlar si ya se agregó la primera página
     let primeraSeccionAgregada = false
@@ -1665,7 +1670,8 @@ const exportarPDF = async () => {
               porcentaje: `${rol.porcentaje}%`,
               cumplidos: rol.cumplidos,
               total: rol.total,
-              nivel: rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
+              nivel:
+                rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE',
             })
           })
         }
@@ -1678,7 +1684,7 @@ const exportarPDF = async () => {
         rol: 50,
         porcentaje: 25,
         usuarios: 30,
-        nivel: 35
+        nivel: 35,
       }
 
       // Header de tabla
@@ -1787,7 +1793,10 @@ const exportarPDF = async () => {
 
       // Tabla de KPIs con estilo similar
       const kpiData = [
-        { label: 'Total de Solicitudes', value: estadisticas.value.totalSolicitudes.toLocaleString() },
+        {
+          label: 'Total de Solicitudes',
+          value: estadisticas.value.totalSolicitudes.toLocaleString(),
+        },
         { label: 'Promedio SLA General', value: `${estadisticas.value.promedioSla}%` },
         { label: 'Roles Analizados', value: estadisticas.value.rolesAnalizados.toLocaleString() },
       ]
@@ -1837,7 +1846,7 @@ const exportarPDF = async () => {
           const colWidthsTop = {
             rank: 15,
             rol: 120,
-            incumplimientos: 50
+            incumplimientos: 50,
           }
 
           // Header
@@ -1867,7 +1876,8 @@ const exportarPDF = async () => {
             xPosTop = margin + 2
             pdf.text(String(index + 1), xPosTop, yPos + 4.5)
             xPosTop += colWidthsTop.rank
-            const rolText = rol.nombre.length > 45 ? rol.nombre.substring(0, 42) + '...' : rol.nombre
+            const rolText =
+              rol.nombre.length > 45 ? rol.nombre.substring(0, 42) + '...' : rol.nombre
             pdf.text(rolText, xPosTop, yPos + 4.5)
             xPosTop += colWidthsTop.rol
             pdf.text(String(rol.noCumplen), xPosTop, yPos + 4.5)
@@ -1917,7 +1927,7 @@ const exportarPDF = async () => {
             rol: 90,
             porcentaje: 35,
             usuarios: 40,
-            nivel: 40
+            nivel: 40,
           }
 
           // Header
@@ -1976,7 +1986,8 @@ const exportarPDF = async () => {
             pdf.setTextColor(0, 0, 0)
 
             xPosRol = margin + 2
-            const rolText = rol.nombre.length > 35 ? rol.nombre.substring(0, 32) + '...' : rol.nombre
+            const rolText =
+              rol.nombre.length > 35 ? rol.nombre.substring(0, 32) + '...' : rol.nombre
             pdf.text(rolText, xPosRol, yPos + 4.5)
             xPosRol += colWidthsRol.rol
             pdf.text(`${rol.porcentaje}%`, xPosRol, yPos + 4.5)
@@ -1984,7 +1995,8 @@ const exportarPDF = async () => {
             pdf.text(`${rol.cumplidos}/${rol.total}`, xPosRol, yPos + 4.5)
             xPosRol += colWidthsRol.usuarios
 
-            const nivel = rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
+            const nivel =
+              rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
             pdf.text(nivel, xPosRol, yPos + 4.5)
             yPos += 7
           })
@@ -2079,8 +2091,8 @@ const exportarPDF = async () => {
       let procesoTotal = 0
       let noCumpleTotal = 0
 
-      graficos.value.forEach(grafico => {
-        grafico.datosRoles.forEach(rol => {
+      graficos.value.forEach((grafico) => {
+        grafico.datosRoles.forEach((rol) => {
           cumpleTotal += rol.cumplidos || 0
           procesoTotal += rol.proceso || 0
           noCumpleTotal += rol.noCumplen || 0
@@ -2091,9 +2103,27 @@ const exportarPDF = async () => {
 
       // Tabla de distribución
       const distData = [
-        { estado: 'Cumple', cantidad: cumpleTotal, porcentaje: totalSolicitudes > 0 ? ((cumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [76, 175, 80] },
-        { estado: 'En Proceso', cantidad: procesoTotal, porcentaje: totalSolicitudes > 0 ? ((procesoTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [255, 152, 0] },
-        { estado: 'No Cumple', cantidad: noCumpleTotal, porcentaje: totalSolicitudes > 0 ? ((noCumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [244, 67, 54] }
+        {
+          estado: 'Cumple',
+          cantidad: cumpleTotal,
+          porcentaje:
+            totalSolicitudes > 0 ? ((cumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0',
+          color: [76, 175, 80],
+        },
+        {
+          estado: 'En Proceso',
+          cantidad: procesoTotal,
+          porcentaje:
+            totalSolicitudes > 0 ? ((procesoTotal / totalSolicitudes) * 100).toFixed(1) : '0',
+          color: [255, 152, 0],
+        },
+        {
+          estado: 'No Cumple',
+          cantidad: noCumpleTotal,
+          porcentaje:
+            totalSolicitudes > 0 ? ((noCumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0',
+          color: [244, 67, 54],
+        },
       ]
 
       // Header
@@ -2136,7 +2166,7 @@ const exportarPDF = async () => {
           const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
           const imgWidth = (pageWidth - 2 * margin) * 0.7
           const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
-          const xOffset = margin + ((pageWidth - 2 * margin - imgWidth) / 2)
+          const xOffset = margin + (pageWidth - 2 * margin - imgWidth) / 2
 
           if (yPos + imgHeight > pageHeight - 30) {
             addFooter()
@@ -2186,12 +2216,12 @@ const exportarPDF = async () => {
 
       // Preparar datos de resumen
       const resumenData = []
-      graficos.value.forEach(grafico => {
+      graficos.value.forEach((grafico) => {
         let cumpleTotal = 0
         let procesoTotal = 0
         let noCumpleTotal = 0
 
-        grafico.datosRoles.forEach(rol => {
+        grafico.datosRoles.forEach((rol) => {
           cumpleTotal += rol.cumplidos || 0
           procesoTotal += rol.proceso || 0
           noCumpleTotal += rol.noCumplen || 0
@@ -2202,7 +2232,7 @@ const exportarPDF = async () => {
           cumple: cumpleTotal,
           proceso: procesoTotal,
           noCumple: noCumpleTotal,
-          total: cumpleTotal + procesoTotal + noCumpleTotal
+          total: cumpleTotal + procesoTotal + noCumpleTotal,
         })
       })
 
@@ -2336,8 +2366,8 @@ const crearGraficoDistribucionEstadosAnalytic = () => {
   let procesoTotal = 0
   let noCumpleTotal = 0
 
-  graficos.value.forEach(grafico => {
-    grafico.datosRoles.forEach(rol => {
+  graficos.value.forEach((grafico) => {
+    grafico.datosRoles.forEach((rol) => {
       cumpleTotal += rol.cumplidos || 0
       procesoTotal += rol.proceso || 0
       noCumpleTotal += rol.noCumplen || 0
@@ -2348,12 +2378,18 @@ const crearGraficoDistribucionEstadosAnalytic = () => {
     type: 'doughnut',
     data: {
       labels: ['Cumple', 'Proceso', 'No cumple'],
-      datasets: [{
-        data: [cumpleTotal, procesoTotal, noCumpleTotal],
-        backgroundColor: ['#4CAF50', '#FF9800', '#F44336'],
-        borderColor: ['#ffffff', '#ffffff', '#ffffff'],
-        borderWidth: 2
-      }]
+      datasets: [
+        {
+          data: [cumpleTotal, procesoTotal, noCumpleTotal],
+          backgroundColor: [
+            getPorcentajeColorHex(100), // Verde - Cumple
+            getPorcentajeColorHex(80), // Naranja - Proceso
+            getPorcentajeColorHex(50), // Rojo - No cumple
+          ],
+          borderColor: ['#ffffff', '#ffffff', '#ffffff'],
+          borderWidth: 2,
+        },
+      ],
     },
     options: {
       responsive: true,
@@ -2363,22 +2399,22 @@ const crearGraficoDistribucionEstadosAnalytic = () => {
           position: 'bottom',
           labels: {
             padding: 15,
-            font: { size: 13 }
-          }
+            font: { size: 13 },
+          },
         },
         tooltip: {
           callbacks: {
-            label: function(context) {
+            label: function (context) {
               const label = context.label || ''
               const value = context.parsed || 0
               const total = context.dataset.data.reduce((a, b) => a + b, 0)
               const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : 0
               return `${label}: ${value} solicitudes (${percentage}%)`
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   })
 }
 
@@ -2393,14 +2429,14 @@ const crearGraficoResumenIncumplimientosAnalytic = () => {
   }
 
   // Agrupar datos por tipo de SLA
-  const labels = graficos.value.map(g => g.codigoSla)
-  const cumpleData = graficos.value.map(g => {
+  const labels = graficos.value.map((g) => g.codigoSla)
+  const cumpleData = graficos.value.map((g) => {
     return g.datosRoles.reduce((sum, r) => sum + (r.cumplidos || 0), 0)
   })
-  const procesoData = graficos.value.map(g => {
+  const procesoData = graficos.value.map((g) => {
     return g.datosRoles.reduce((sum, r) => sum + (r.proceso || 0), 0)
   })
-  const noCumpleData = graficos.value.map(g => {
+  const noCumpleData = graficos.value.map((g) => {
     return g.datosRoles.reduce((sum, r) => sum + (r.noCumplen || 0), 0)
   })
 
@@ -2412,53 +2448,53 @@ const crearGraficoResumenIncumplimientosAnalytic = () => {
         {
           label: 'Cumple',
           data: cumpleData,
-          backgroundColor: '#4CAF50',
-          borderColor: '#4CAF50',
-          borderWidth: 1
+          backgroundColor: getPorcentajeColorHex(100), // Verde
+          borderColor: getPorcentajeColorHex(100),
+          borderWidth: 1,
         },
         {
           label: 'Proceso',
           data: procesoData,
-          backgroundColor: '#FF9800',
-          borderColor: '#FF9800',
-          borderWidth: 1
+          backgroundColor: getPorcentajeColorHex(80), // Naranja
+          borderColor: getPorcentajeColorHex(80),
+          borderWidth: 1,
         },
         {
           label: 'No cumple',
           data: noCumpleData,
-          backgroundColor: '#F44336',
-          borderColor: '#F44336',
-          borderWidth: 1
-        }
-      ]
+          backgroundColor: getPorcentajeColorHex(50), // Rojo
+          borderColor: getPorcentajeColorHex(50),
+          borderWidth: 1,
+        },
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
       scales: {
         x: {
-          stacked: true
+          stacked: true,
         },
         y: {
           stacked: true,
           beginAtZero: true,
-          ticks: { precision: 0 }
-        }
+          ticks: { precision: 0 },
+        },
       },
       plugins: {
         legend: {
-          position: 'top'
+          position: 'top',
         },
         tooltip: {
           callbacks: {
-            footer: function(tooltipItems) {
+            footer: function (tooltipItems) {
               const total = tooltipItems.reduce((sum, item) => sum + item.parsed.y, 0)
               return `Total: ${total} solicitudes`
-            }
-          }
-        }
-      }
-    }
+            },
+          },
+        },
+      },
+    },
   })
 }
 
@@ -2475,7 +2511,7 @@ onMounted(async () => {
 })
 
 onBeforeUnmount(() => {
-  chartInstances.value.forEach(chart => {
+  chartInstances.value.forEach((chart) => {
     if (chart) chart.destroy()
   })
   chartInstances.value = []
@@ -2572,7 +2608,7 @@ onBeforeUnmount(() => {
 }
 
 .incumplidor-item:hover {
-  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   transform: translateX(4px);
 }
 
@@ -2699,7 +2735,7 @@ onBeforeUnmount(() => {
   }
 
   /* Filtros en columna completa para tablet portrait */
-  .filters-card .row > [class*="col-"] {
+  .filters-card .row > [class*='col-'] {
     width: 100% !important;
     margin-bottom: 8px;
   }
@@ -2767,7 +2803,7 @@ onBeforeUnmount(() => {
     gap: 8px;
   }
 
-  .filters-card .row > [class*="col-"] {
+  .filters-card .row > [class*='col-'] {
     width: 100% !important;
     margin-bottom: 6px;
   }
@@ -3005,7 +3041,7 @@ onBeforeUnmount(() => {
 
   .incumplidor-item:hover {
     transform: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 }
 

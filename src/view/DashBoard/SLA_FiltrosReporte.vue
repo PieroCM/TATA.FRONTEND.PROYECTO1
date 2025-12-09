@@ -126,10 +126,12 @@
               </div>
               <q-icon
                 :name="kpis.slaGlobal < 70 ? 'error' : 'check_circle'"
-                :color="kpis.slaGlobal >= 90 ? 'positive' : kpis.slaGlobal >= 70 ? 'warning' : 'negative'"
+                :color="
+                  kpis.slaGlobal >= 90 ? 'positive' : kpis.slaGlobal >= 70 ? 'warning' : 'negative'
+                "
                 size="32px"
                 class="absolute"
-                style="top: 16px; right: 16px;"
+                style="top: 16px; right: 16px"
               />
             </q-card-section>
           </q-card>
@@ -146,7 +148,10 @@
                   :color="kpis.variacion >= 0 ? 'positive' : 'negative'"
                   size="24px"
                 />
-                <div class="text-h4 text-weight-bold" :class="kpis.variacion >= 0 ? 'text-positive' : 'text-negative'">
+                <div
+                  class="text-h4 text-weight-bold"
+                  :class="kpis.variacion >= 0 ? 'text-positive' : 'text-negative'"
+                >
                   {{ kpis.variacion >= 0 ? '+' : '' }}{{ kpis.variacion }}%
                 </div>
               </div>
@@ -160,13 +165,15 @@
             <q-card-section class="q-pa-md">
               <div class="text-caption text-grey-7 q-mb-xs">Mejor Rol</div>
               <div class="text-weight-bold text-positive">{{ kpis.mejorRol.nombre }}</div>
-              <div class="text-h5 text-weight-bold text-positive">{{ kpis.mejorRol.porcentaje }}%</div>
+              <div class="text-h5 text-weight-bold text-positive">
+                {{ kpis.mejorRol.porcentaje }}%
+              </div>
               <q-icon
                 name="emoji_events"
                 color="positive"
                 size="32px"
                 class="absolute"
-                style="top: 16px; right: 16px;"
+                style="top: 16px; right: 16px"
               />
             </q-card-section>
           </q-card>
@@ -178,13 +185,15 @@
             <q-card-section class="q-pa-md">
               <div class="text-caption text-grey-7 q-mb-xs">Atención Requerida</div>
               <div class="text-weight-bold text-warning">{{ kpis.atencionRequerida.nombre }}</div>
-              <div class="text-h5 text-weight-bold text-warning">{{ kpis.atencionRequerida.porcentaje }}%</div>
+              <div class="text-h5 text-weight-bold text-warning">
+                {{ kpis.atencionRequerida.porcentaje }}%
+              </div>
               <q-icon
                 name="trending_down"
                 color="warning"
                 size="32px"
                 class="absolute"
-                style="top: 16px; right: 16px;"
+                style="top: 16px; right: 16px"
               />
             </q-card-section>
           </q-card>
@@ -243,8 +252,9 @@
                           :style="{ width: graficoGeneral[tipoSla].excelente + '%' }"
                         >
                           <span v-if="graficoGeneral[tipoSla].excelente > 8" class="segment-label">
-                            {{ graficoGeneral[tipoSla].excelente.toFixed(1) }}%
-                            ({{ graficoGeneral[tipoSla].usuariosExcelente }})
+                            {{ graficoGeneral[tipoSla].excelente.toFixed(1) }}% ({{
+                              graficoGeneral[tipoSla].usuariosExcelente
+                            }})
                           </span>
                         </div>
                         <div
@@ -253,8 +263,9 @@
                           :style="{ width: graficoGeneral[tipoSla].aceptable + '%' }"
                         >
                           <span v-if="graficoGeneral[tipoSla].aceptable > 8" class="segment-label">
-                            {{ graficoGeneral[tipoSla].aceptable.toFixed(1) }}%
-                            ({{ graficoGeneral[tipoSla].usuariosAceptable }})
+                            {{ graficoGeneral[tipoSla].aceptable.toFixed(1) }}% ({{
+                              graficoGeneral[tipoSla].usuariosAceptable
+                            }})
                           </span>
                         </div>
                         <div
@@ -263,8 +274,9 @@
                           :style="{ width: graficoGeneral[tipoSla].bajo + '%' }"
                         >
                           <span v-if="graficoGeneral[tipoSla].bajo > 8" class="segment-label">
-                            {{ graficoGeneral[tipoSla].bajo.toFixed(1) }}%
-                            ({{ graficoGeneral[tipoSla].usuariosBajo }})
+                            {{ graficoGeneral[tipoSla].bajo.toFixed(1) }}% ({{
+                              graficoGeneral[tipoSla].usuariosBajo
+                            }})
                           </span>
                         </div>
                       </div>
@@ -285,11 +297,7 @@
         </div>
 
         <!-- Gráficos por tipo SLA -->
-        <div
-          v-for="tipoSla in tiposSlaConDatos"
-          :key="tipoSla"
-          class="col-12 col-md-6"
-        >
+        <div v-for="tipoSla in tiposSlaConDatos" :key="tipoSla" class="col-12 col-md-6">
           <q-card flat bordered>
             <q-card-section>
               <div class="row items-center justify-between q-mb-md">
@@ -303,7 +311,8 @@
                 </q-chip>
               </div>
               <div class="text-caption text-grey-7 q-mb-sm">
-                Umbral: {{ datosPorTipo[tipoSla]?.dias || 0 }} días | Total: {{ datosPorTipo[tipoSla]?.total || 0 }} solicitudes
+                Umbral: {{ datosPorTipo[tipoSla]?.dias || 0 }} días | Total:
+                {{ datosPorTipo[tipoSla]?.total || 0 }} solicitudes
               </div>
 
               <!-- Barras horizontales -->
@@ -316,7 +325,9 @@
                   <div class="row items-center justify-between q-mb-xs">
                     <div>
                       <div class="text-body2 text-weight-medium">{{ rol.nombre }}</div>
-                      <div class="text-caption text-grey-7">Usuarios: {{ rol.cumplidos }}/{{ rol.total }}</div>
+                      <div class="text-caption text-grey-7">
+                        Usuarios: {{ rol.cumplidos }}/{{ rol.total }}
+                      </div>
                     </div>
                     <div class="text-body2 text-weight-bold">{{ rol.porcentaje }}%</div>
                   </div>
@@ -325,7 +336,7 @@
                       class="barra-fill"
                       :style="{
                         width: rol.porcentaje + '%',
-                        backgroundColor: getBarColor(rol.porcentaje)
+                        backgroundColor: getBarColor(rol.porcentaje),
                       }"
                     ></div>
                   </div>
@@ -334,7 +345,8 @@
             </q-card-section>
           </q-card>
         </div>
-      </div>      <!-- Sin datos -->
+      </div>
+      <!-- Sin datos -->
       <div v-if="!loading && !hayDatos" class="text-center q-pa-xl">
         <q-icon name="search_off" size="80px" color="grey-5" />
         <div class="text-h6 text-grey-7 q-mt-md">
@@ -353,6 +365,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { useAppStore } from 'stores/app-store'
 import { useSlaStore } from 'stores/useSlaStore'
+import { getPorcentajeColor, getPorcentajeColorHex } from 'src/utils/slaMappers'
 
 const $q = useQuasar()
 const appStore = useAppStore()
@@ -361,7 +374,6 @@ const slaStore = useSlaStore()
 // Estados
 const loading = ref(false)
 const initialLoading = computed(() => !appStore.hasInitiallyLoaded)
-
 
 const mesesDisponibles = [
   'Enero',
@@ -393,12 +405,12 @@ const kpis = ref({
   variacion: 0,
   mejorRol: {
     nombre: '-',
-    porcentaje: 0
+    porcentaje: 0,
   },
   atencionRequerida: {
     nombre: '-',
-    porcentaje: 0
-  }
+    porcentaje: 0,
+  },
 })
 
 const datosPorTipo = ref({})
@@ -406,12 +418,12 @@ const graficoGeneral = ref({})
 
 // Computed
 const hayDatos = computed(() => {
-  return Object.values(datosPorTipo.value).some(tipo => tipo?.total > 0)
+  return Object.values(datosPorTipo.value).some((tipo) => tipo?.total > 0)
 })
 
 const tiposSlaConDatos = computed(() => {
   return Object.keys(datosPorTipo.value)
-    .filter(tipo => datosPorTipo.value[tipo]?.total > 0)
+    .filter((tipo) => datosPorTipo.value[tipo]?.total > 0)
     .sort((a, b) => {
       // Extraer el número del código (ej: "SLA1" -> 1)
       const numA = parseInt(a.replace(/\D/g, ''), 10)
@@ -421,26 +433,32 @@ const tiposSlaConDatos = computed(() => {
 })
 
 const rolesNoSeleccionados = computed(() => {
-  return rolesDisponibles.value.filter(rol =>
-    !rolesSeleccionados.value.includes(rol)
-  )
+  return rolesDisponibles.value.filter((rol) => !rolesSeleccionados.value.includes(rol))
 })
 
+/**
+ * Mapea porcentaje de cumplimiento a clase de color de Quasar
+ * ✅ Usa mapper centralizado (getPorcentajeColor)
+ */
 const getSLAColorClass = (valor) => {
-  if (valor >= 90) return 'text-positive'
-  if (valor >= 70) return 'text-warning'
-  return 'text-negative'
-}// Métodos
-const getBarColor = (porcentaje) => {
-  if (porcentaje >= 90) return '#4CAF50' // Verde
-  if (porcentaje >= 70) return '#FF9800' // Naranja
-  return '#F44336' // Rojo
+  const colorQuasar = getPorcentajeColor(valor)
+  return `text-${colorQuasar}`
 }
 
+/**
+ * Mapea porcentaje a color hexadecimal para gráficos de barras
+ * ✅ Usa mapper centralizado (getPorcentajeColorHex)
+ */
+const getBarColor = (porcentaje) => {
+  return getPorcentajeColorHex(porcentaje)
+}
+
+/**
+ * Mapea porcentaje a color de Quasar para chips
+ * ✅ Usa mapper centralizado (getPorcentajeColor)
+ */
 const getChipColor = (porcentaje) => {
-  if (porcentaje >= 90) return 'positive'
-  if (porcentaje >= 70) return 'orange'
-  return 'negative'
+  return getPorcentajeColor(porcentaje)
 }
 
 const cargarConfiguracionesIniciales = async () => {
@@ -470,11 +488,9 @@ const cargarConfiguracionesIniciales = async () => {
 
     // Códigos SLA disponibles en la base de datos
     if (configSla) {
-      const codigosUnicos = [...new Set(
-        configSla
-          .filter(c => c.esActivo)
-          .map(c => c.codigoSla)
-      )].sort((a, b) => {
+      const codigosUnicos = [
+        ...new Set(configSla.filter((c) => c.esActivo).map((c) => c.codigoSla)),
+      ].sort((a, b) => {
         // Extraer el número del código (ej: "SLA1" -> 1)
         const numA = parseInt(a.replace(/\D/g, ''), 10)
         const numB = parseInt(b.replace(/\D/g, ''), 10)
@@ -515,28 +531,26 @@ const aplicarFiltros = async () => {
     })
 
     // Obtener todos los códigos SLA activos únicos
-    const codigosSlaActivos = [...new Map(
-      configsSla
-        .filter(c => c.esActivo)
-        .map(c => [c.codigoSla, c])
-    ).values()]
+    const codigosSlaActivos = [
+      ...new Map(configsSla.filter((c) => c.esActivo).map((c) => [c.codigoSla, c])).values(),
+    ]
 
     // Inicializar objeto para almacenar datos por código SLA
     const nuevosDatosPorTipo = {}
 
     // Procesar cada código SLA dinámicamente
-    codigosSlaActivos.forEach(configSla => {
+    codigosSlaActivos.forEach((configSla) => {
       const codigoSla = configSla.codigoSla
       const diasUmbral = configSla.diasUmbral || 0
 
-      const solicitudesTipo = solicitudes.filter(s => {
-        const config = configsSla.find(c => c.idSla === s.idSla)
+      const solicitudesTipo = solicitudes.filter((s) => {
+        const config = configsSla.find((c) => c.idSla === s.idSla)
         return config?.codigoSla === codigoSla
       })
 
       // Calcular cumplimiento
-      const solicitudesConSla = solicitudesTipo.map(s => {
-        const config = configsSla.find(c => c.idSla === s.idSla)
+      const solicitudesConSla = solicitudesTipo.map((s) => {
+        const config = configsSla.find((c) => c.idSla === s.idSla)
         const umbral = config?.diasUmbral || 0
 
         let cumpleSla = false
@@ -551,22 +565,25 @@ const aplicarFiltros = async () => {
       })
 
       // Calcular por rol
-      const rolesFiltrados = rolesSeleccionados.value.length > 0
-        ? todosRoles.filter(r => rolesSeleccionados.value.includes(r.nombreRol))
-        : todosRoles.filter(r => r.esActivo)
+      const rolesFiltrados =
+        rolesSeleccionados.value.length > 0
+          ? todosRoles.filter((r) => rolesSeleccionados.value.includes(r.nombreRol))
+          : todosRoles.filter((r) => r.esActivo)
 
       const cumplimientoPorRol = rolesFiltrados
-        .map(rol => {
-          const solicitudesRol = solicitudesConSla.filter(s => s.idRolRegistro === rol.idRolRegistro)
+        .map((rol) => {
+          const solicitudesRol = solicitudesConSla.filter(
+            (s) => s.idRolRegistro === rol.idRolRegistro,
+          )
           const totalRol = solicitudesRol.length
-          const cumplenRol = solicitudesRol.filter(s => s.cumpleSla).length
+          const cumplenRol = solicitudesRol.filter((s) => s.cumpleSla).length
           const porcentaje = totalRol > 0 ? Math.round((cumplenRol / totalRol) * 100) : 0
 
           return {
             nombre: rol.nombreRol,
             total: totalRol,
             cumplidos: cumplenRol,
-            porcentaje: porcentaje
+            porcentaje: porcentaje,
           }
         })
         // Mostrar siempre todos los roles, incluso con 0 solicitudes
@@ -574,16 +591,15 @@ const aplicarFiltros = async () => {
 
       // Calcular SLA global del tipo
       const totalSolicitudesTipo = solicitudesConSla.length
-      const totalCumplidasTipo = solicitudesConSla.filter(s => s.cumpleSla).length
-      const slaGlobalTipo = totalSolicitudesTipo > 0
-        ? Math.round((totalCumplidasTipo / totalSolicitudesTipo) * 100)
-        : 0
+      const totalCumplidasTipo = solicitudesConSla.filter((s) => s.cumpleSla).length
+      const slaGlobalTipo =
+        totalSolicitudesTipo > 0 ? Math.round((totalCumplidasTipo / totalSolicitudesTipo) * 100) : 0
 
       nuevosDatosPorTipo[codigoSla] = {
         umbral: slaGlobalTipo,
         dias: diasUmbral,
         total: totalSolicitudesTipo,
-        roles: cumplimientoPorRol
+        roles: cumplimientoPorRol,
       }
     })
 
@@ -591,7 +607,7 @@ const aplicarFiltros = async () => {
 
     // Calcular datos para el gráfico general apilado
     const nuevoGraficoGeneral = {}
-    Object.keys(nuevosDatosPorTipo).forEach(codigoSla => {
+    Object.keys(nuevosDatosPorTipo).forEach((codigoSla) => {
       const tipo = nuevosDatosPorTipo[codigoSla]
       const rolesData = tipo.roles || []
 
@@ -601,7 +617,7 @@ const aplicarFiltros = async () => {
       let usuariosBajo = 0
       let totalUsuarios = 0
 
-      rolesData.forEach(rol => {
+      rolesData.forEach((rol) => {
         totalUsuarios += rol.total
         if (rol.porcentaje >= 90) {
           usuariosExcelente += rol.total
@@ -624,7 +640,7 @@ const aplicarFiltros = async () => {
         usuariosExcelente: usuariosExcelente,
         usuariosAceptable: usuariosAceptable,
         usuariosBajo: usuariosBajo,
-        totalUsuarios: totalUsuarios
+        totalUsuarios: totalUsuarios,
       }
     })
 
@@ -632,8 +648,8 @@ const aplicarFiltros = async () => {
 
     // Calcular KPIs globales
     const totalSolicitudes = solicitudes.length
-    const totalCumplidas = solicitudes.filter(s => {
-      const config = configsSla.find(c => c.idSla === s.idSla)
+    const totalCumplidas = solicitudes.filter((s) => {
+      const config = configsSla.find((c) => c.idSla === s.idSla)
       const umbral = config?.diasUmbral || 0
       let cumple = false
       if (s.fechaSolicitud && s.fechaIngreso) {
@@ -645,31 +661,30 @@ const aplicarFiltros = async () => {
       return cumple
     }).length
 
-    kpis.value.slaGlobal = totalSolicitudes > 0
-      ? parseFloat(((totalCumplidas / totalSolicitudes) * 100).toFixed(1))
-      : 0
+    kpis.value.slaGlobal =
+      totalSolicitudes > 0 ? parseFloat(((totalCumplidas / totalSolicitudes) * 100).toFixed(1)) : 0
 
     // Mejor y peor rol (de todos los roles combinados)
     const todosLosCumplimientos = []
-    Object.values(nuevosDatosPorTipo).forEach(tipo => {
-      todosLosCumplimientos.push(...tipo.roles.filter(r => r.total > 0))
+    Object.values(nuevosDatosPorTipo).forEach((tipo) => {
+      todosLosCumplimientos.push(...tipo.roles.filter((r) => r.total > 0))
     })
 
     if (todosLosCumplimientos.length > 0) {
       const mejorRolData = todosLosCumplimientos.reduce((max, rol) =>
-        rol.porcentaje > max.porcentaje ? rol : max
+        rol.porcentaje > max.porcentaje ? rol : max,
       )
       kpis.value.mejorRol = {
         nombre: mejorRolData.nombre,
-        porcentaje: mejorRolData.porcentaje
+        porcentaje: mejorRolData.porcentaje,
       }
 
       const peorRolData = todosLosCumplimientos.reduce((min, rol) =>
-        rol.porcentaje < min.porcentaje ? rol : min
+        rol.porcentaje < min.porcentaje ? rol : min,
       )
       kpis.value.atencionRequerida = {
         nombre: peorRolData.nombre,
-        porcentaje: peorRolData.porcentaje
+        porcentaje: peorRolData.porcentaje,
       }
     } else {
       kpis.value.mejorRol = { nombre: '-', porcentaje: 0 }
@@ -694,19 +709,22 @@ const aplicarFiltros = async () => {
       })
 
       // Aplicar mismo filtro de roles si hay selección
-      const rolesFiltrados = rolesSeleccionados.value.length > 0
-        ? todosRoles.filter(r => rolesSeleccionados.value.includes(r.nombreRol)).map(r => r.idRolRegistro)
-        : todosRoles.filter(r => r.esActivo).map(r => r.idRolRegistro)
+      const rolesFiltrados =
+        rolesSeleccionados.value.length > 0
+          ? todosRoles
+              .filter((r) => rolesSeleccionados.value.includes(r.nombreRol))
+              .map((r) => r.idRolRegistro)
+          : todosRoles.filter((r) => r.esActivo).map((r) => r.idRolRegistro)
 
-      const solicitudesMesAnteriorFiltradas = solicitudesMesAnterior.filter(s =>
-        rolesFiltrados.includes(s.idRolRegistro)
+      const solicitudesMesAnteriorFiltradas = solicitudesMesAnterior.filter((s) =>
+        rolesFiltrados.includes(s.idRolRegistro),
       )
 
       // Calcular SLA del mes anterior
       const totalMesAnterior = solicitudesMesAnteriorFiltradas.length
       if (totalMesAnterior > 0) {
-        const cumplidasMesAnterior = solicitudesMesAnteriorFiltradas.filter(s => {
-          const config = configsSla.find(c => c.idSla === s.idSla)
+        const cumplidasMesAnterior = solicitudesMesAnteriorFiltradas.filter((s) => {
+          const config = configsSla.find((c) => c.idSla === s.idSla)
           const umbral = config?.diasUmbral || 0
           let cumple = false
           if (s.fechaSolicitud && s.fechaIngreso) {
@@ -728,7 +746,6 @@ const aplicarFiltros = async () => {
       // No hay datos del mes actual
       kpis.value.variacion = 0
     }
-
   } catch (error) {
     console.error('Error al aplicar filtros:', error)
     $q.notify({
@@ -797,11 +814,11 @@ onMounted(async () => {
 }
 
 .kpi-mejor {
-  border-left: 4px solid #4CAF50;
+  border-left: 4px solid #4caf50;
 }
 
 .kpi-atencion {
-  border-left: 4px solid #FF9800;
+  border-left: 4px solid #ff9800;
 }
 
 .barras-container {
@@ -861,15 +878,15 @@ onMounted(async () => {
 }
 
 .stacked-segment.excelente {
-  background-color: #4CAF50;
+  background-color: #4caf50;
 }
 
 .stacked-segment.aceptable {
-  background-color: #FF9800;
+  background-color: #ff9800;
 }
 
 .stacked-segment.bajo {
-  background-color: #F44336;
+  background-color: #f44336;
 }
 
 .segment-label {
@@ -1052,7 +1069,7 @@ onMounted(async () => {
     gap: 8px;
   }
 
-  .filters-card .row > [class*="col-"] {
+  .filters-card .row > [class*='col-'] {
     width: 100% !important;
     margin-bottom: 8px;
   }

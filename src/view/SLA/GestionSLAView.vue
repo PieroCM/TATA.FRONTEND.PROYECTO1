@@ -12,6 +12,23 @@
         <p class="gestion-sla-header__subtitle">Crear, editar y eliminar solicitudes manualmente</p>
       </div>
 
+      <!-- Banner informativo: Los días SLA se calculan en el backend -->
+      <q-banner
+        rounded
+        class="bg-info text-white q-mb-md"
+        style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%)"
+      >
+        <template v-slot:avatar>
+          <q-icon name="info" size="28px" />
+        </template>
+        <div class="text-body2">
+          <strong>Información importante:</strong> Los valores de <strong>"Días SLA"</strong>,
+          <strong>"Estado Solicitud"</strong> y <strong>"Cumplimiento SLA"</strong> se recalculan
+          automáticamente una vez al día en el servidor usando la hora oficial de Perú. Los datos
+          que ves aquí ya están actualizados.
+        </div>
+      </q-banner>
+
       <!-- Barra de filtros -->
       <div class="gestion-sla-filters q-mb-lg">
         <SlaFilterBar
@@ -52,6 +69,11 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
+import {
+  filtrarPorCumplimientoSla,
+  filtrarPorEstadoSolicitud,
+  filtrarPorRangoFecha,
+} from 'src/utils/slaMappers'
 import SlaFilterBar from 'src/components/GestionSLA/SlaFilterBar.vue'
 import SlaTable from 'src/components/GestionSLA/SlaTable.vue'
 import SlaCreateDialog from 'src/components/GestionSLA/SlaCreateDialog.vue'
@@ -101,8 +123,18 @@ onMounted(async () => {
   await loadSolicitudes()
 })
 
+/**
+ * Computed: Mapea las solicitudes del backend a formato de tabla
+ *
+ * IMPORTANTE: Los siguientes campos YA VIENEN CALCULADOS desde el backend (worker diario):
+ * - numDiasSla: Días consumidos del SLA (calculado con hora de Perú)
+ * - estadoSolicitud: ACTIVA, EN_PROCESO, VENCIDO, CERRADO
+ * - estadoCumplimientoSla: EN_PROCESO_SLA1, CUMPLE_SLA2, NO_CUMPLE_SLA3, etc.
+ *
+ * NO se deben recalcular estos valores en el frontend. Solo se mapean y muestran.
+ */
 const registrosTabla = computed(() => {
-  // Mapear y ordenar por fecha de creación (más reciente primero)
+  // Mapear y ordenar por fecha de actualización (más reciente primero)
   return solicitudes.value
     .map((solicitud) => ({
       id: solicitud.idSolicitud,
@@ -111,120 +143,78 @@ const registrosTabla = computed(() => {
       fechaIngreso: solicitud.fechaIngreso,
       codigoSla: solicitud.configSla?.codigoSla || '',
       tipo: solicitud.configSla?.tipoSolicitud || '',
-      dias: solicitud.numDiasSla,
-      estadoSolicitud: solicitud.estadoSolicitud,
-      cumplimientoSla: solicitud.estadoCumplimientoSla,
-      resumenSla: solicitud.resumenSla, // Incluir resumen para tooltips o futuras mejoras
-      creadoEn: solicitud.creadoEn, // Agregar para ordenar
+      creadoEn: solicitud.creadoEn,
+      actualizadoEn: solicitud.actualizadoEn,
+
+      // ✅ Campos calculados por el worker del backend (NO recalcular aquí)
+      dias: solicitud.numDiasSla, // Ya viene del backend
+      estadoSolicitud: solicitud.estadoSolicitud, // Ya viene del backend
+      cumplimientoSla: solicitud.estadoCumplimientoSla, // Ya viene del backend
     }))
     .sort((a, b) => {
-      // Ordenar por creadoEn descendente (más reciente primero)
-      const fechaA = new Date(a.creadoEn)
-      const fechaB = new Date(b.creadoEn)
-      return fechaB - fechaA // Descendente
+      // Ordenar por actualizadoEn descendente (más reciente primero)
+      // Si no existe actualizadoEn, usar creadoEn como fallback
+      const fechaA = new Date(a.actualizadoEn || a.creadoEn)
+      const fechaB = new Date(b.actualizadoEn || b.creadoEn)
+      return fechaB - fechaA // Descendente (más reciente primero)
     })
 })
 
+/**
+ * Computed: Aplica todos los filtros seleccionados por el usuario
+ *
+ * NOTA: Los filtros de fecha solo comparan valores, NO recalculan días SLA.
+ * Los valores de estadoSolicitud y cumplimientoSla ya vienen del backend.
+ */
 const registrosFiltrados = computed(() => {
-  return registrosTabla.value.filter((registro) => {
-    // 1. Filtro por texto de búsqueda
-    if (filtros.value.texto.trim()) {
-      const searchTerm = filtros.value.texto.toLowerCase()
-      const matchSearch =
+  let resultado = registrosTabla.value
+
+  // 1. Filtro por texto de búsqueda (rol, estados, código SLA, tipo, resumen)
+  if (filtros.value.texto.trim()) {
+    const searchTerm = filtros.value.texto.toLowerCase()
+    resultado = resultado.filter((registro) => {
+      return (
         registro.rol.toLowerCase().includes(searchTerm) ||
         (registro.estadoSolicitud || '').toLowerCase().includes(searchTerm) ||
         (registro.cumplimientoSla || '').toLowerCase().includes(searchTerm) ||
         (registro.codigoSla || '').toLowerCase().includes(searchTerm) ||
-        (registro.tipo || '').toLowerCase().includes(searchTerm) ||
-        (registro.resumenSla || '').toLowerCase().includes(searchTerm)
+        (registro.tipo || '').toLowerCase().includes(searchTerm)
+      )
+    })
+  }
 
-      if (!matchSearch) return false
-    }
+  // 2. Filtros de fecha de solicitud (usando helper centralizado)
+  resultado = filtrarPorRangoFecha(
+    resultado,
+    'fechaSolicitud',
+    filtros.value.fechaSolicitudDesde,
+    filtros.value.fechaSolicitudHasta,
+  )
 
-    // 2. Filtros de fecha de solicitud
-    if (filtros.value.fechaSolicitudDesde) {
-      const fechaSolicitud = registro.fechaSolicitud
-        ? new Date(registro.fechaSolicitud.split('T')[0] + 'T00:00:00')
-        : null
-      const filtroDesde = new Date(filtros.value.fechaSolicitudDesde + 'T00:00:00')
+  // 3. Filtros de fecha de ingreso (usando helper centralizado)
+  resultado = filtrarPorRangoFecha(
+    resultado,
+    'fechaIngreso',
+    filtros.value.fechaIngresoDesde,
+    filtros.value.fechaIngresoHasta,
+  )
 
-      if (!fechaSolicitud || fechaSolicitud < filtroDesde) {
-        return false
-      }
-    }
+  // 4. Filtro por estado de cumplimiento SLA (usando mapper centralizado)
+  // ✅ Filtra por el valor que YA viene del backend (estadoCumplimientoSla)
+  resultado = filtrarPorCumplimientoSla(resultado, filtros.value.estadoCumplimientoSla)
 
-    if (filtros.value.fechaSolicitudHasta) {
-      const fechaSolicitud = registro.fechaSolicitud
-        ? new Date(registro.fechaSolicitud.split('T')[0] + 'T00:00:00')
-        : null
-      const filtroHasta = new Date(filtros.value.fechaSolicitudHasta + 'T00:00:00')
+  // 5. Filtro por estado de la solicitud (usando mapper centralizado)
+  // ✅ Filtra por el valor que YA viene del backend (estadoSolicitud)
+  resultado = filtrarPorEstadoSolicitud(resultado, filtros.value.estadoSolicitud)
 
-      if (!fechaSolicitud || fechaSolicitud > filtroHasta) {
-        return false
-      }
-    }
+  // 6. Filtro por códigos SLA (array múltiple)
+  if (filtros.value.codigoSla && filtros.value.codigoSla.length > 0) {
+    resultado = resultado.filter((registro) => {
+      return filtros.value.codigoSla.includes(registro.codigoSla)
+    })
+  }
 
-    // 3. Filtros de fecha de ingreso
-    if (filtros.value.fechaIngresoDesde) {
-      const fechaIngreso = registro.fechaIngreso
-        ? new Date(registro.fechaIngreso.split('T')[0] + 'T00:00:00')
-        : null
-      const filtroDesde = new Date(filtros.value.fechaIngresoDesde + 'T00:00:00')
-
-      // Si no hay fechaIngreso y se está filtrando por ingreso, excluir
-      if (!fechaIngreso || fechaIngreso < filtroDesde) {
-        return false
-      }
-    }
-
-    if (filtros.value.fechaIngresoHasta) {
-      const fechaIngreso = registro.fechaIngreso
-        ? new Date(registro.fechaIngreso.split('T')[0] + 'T00:00:00')
-        : null
-      const filtroHasta = new Date(filtros.value.fechaIngresoHasta + 'T00:00:00')
-
-      // Si no hay fechaIngreso y se está filtrando por ingreso, excluir
-      if (!fechaIngreso || fechaIngreso > filtroHasta) {
-        return false
-      }
-    }
-
-    // 4. Filtro por estado de cumplimiento SLA
-    if (filtros.value.estadoCumplimientoSla && filtros.value.estadoCumplimientoSla !== 'TODOS') {
-      const cumplimiento = (registro.cumplimientoSla || '').toUpperCase()
-      const estadoFiltro = filtros.value.estadoCumplimientoSla.toUpperCase()
-
-      if (estadoFiltro === 'EN_PROCESO') {
-        if (!cumplimiento.startsWith('EN_PROCESO_')) {
-          return false
-        }
-      } else if (estadoFiltro === 'CUMPLE') {
-        if (!cumplimiento.startsWith('CUMPLE_')) {
-          return false
-        }
-      } else if (estadoFiltro === 'NO_CUMPLE') {
-        if (!cumplimiento.startsWith('NO_CUMPLE_')) {
-          return false
-        }
-      }
-    }
-
-    // 5. Filtro por estado de la solicitud
-    if (filtros.value.estadoSolicitud && filtros.value.estadoSolicitud !== 'TODOS') {
-      if (registro.estadoSolicitud !== filtros.value.estadoSolicitud) {
-        return false
-      }
-    }
-
-    // 6. Filtro por códigos SLA (array múltiple)
-    if (filtros.value.codigoSla && filtros.value.codigoSla.length > 0) {
-      if (!filtros.value.codigoSla.includes(registro.codigoSla)) {
-        return false
-      }
-    }
-
-    return true
-  })
+  return resultado
 })
 
 const handleNuevoRegistro = () => {
