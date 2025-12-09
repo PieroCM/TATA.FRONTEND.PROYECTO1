@@ -30,10 +30,11 @@
               v-model="formData.nombreRol"
               outlined
               dense
-              placeholder="Ej: Desarrollador Full Stack"
+              placeholder="Ej: Administrador de Infraestructura"
               class="form-input"
               :error="!!errors.nombreRol"
               :error-message="errors.nombreRol"
+              @input="validateField('nombreRol')"
               @blur="validateField('nombreRol')"
             />
           </div>
@@ -52,6 +53,7 @@
               class="form-input"
               :error="!!errors.bloqueTech"
               :error-message="errors.bloqueTech"
+              @update:model-value="validateField('bloqueTech')"
               @blur="validateField('bloqueTech')"
             >
               <template v-slot:selected-item="scope">
@@ -88,9 +90,10 @@
               dense
               type="textarea"
               rows="3"
-              placeholder="Descripción detallada del rol de registro..."
+              placeholder="Describe brevemente el rol de registro..."
               class="form-input"
               maxlength="500"
+              counter
             />
             <p class="helper-text">{{ formData.descripcion?.length || 0 }}/500 caracteres</p>
           </div>
@@ -137,6 +140,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 // Props
 const props = defineProps({
@@ -151,6 +157,10 @@ const props = defineProps({
   isCreate: {
     type: Boolean,
     default: false
+  },
+  namesInUse: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -215,17 +225,30 @@ const validateField = (field) => {
   if (field === 'nombreRol') {
     const nombre = formData.value.nombreRol?.trim()
     if (!nombre) {
-      errors.value.nombreRol = 'El nombre del rol es requerido'
+      errors.value.nombreRol = 'Este campo es obligatorio'
     } else if (nombre.length < 3) {
-      errors.value.nombreRol = 'El nombre debe tener al menos 3 caracteres'
+      errors.value.nombreRol = 'Debe tener al menos 3 caracteres'
     } else if (nombre.length > 150) {
-      errors.value.nombreRol = 'El nombre no puede exceder 150 caracteres'
+      errors.value.nombreRol = 'No puede exceder los 150 caracteres'
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/.test(nombre)) {
+      errors.value.nombreRol = 'Formato no válido'
+    } else {
+      // Validar duplicados
+      const isDuplicate = props.namesInUse.some(item => 
+        item.nombre.toLowerCase() === nombre.toLowerCase() && 
+        item.id !== formData.value.idRolRegistro
+      )
+      if (isDuplicate) {
+        errors.value.nombreRol = 'Este valor ya existe en el sistema'
+      }
     }
   }
 
   if (field === 'bloqueTech') {
     if (!formData.value.bloqueTech) {
-      errors.value.bloqueTech = 'El bloque tecnológico es requerido'
+      errors.value.bloqueTech = 'Este campo es obligatorio'
+    } else if (!bloquesOptions.includes(formData.value.bloqueTech)) {
+      errors.value.bloqueTech = 'Formato no válido'
     }
   }
 }
@@ -237,7 +260,15 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validateForm()) return
+  if (!validateForm()) {
+    $q.notify({
+      type: 'warning',
+      message: 'Corrige los errores antes de continuar',
+      position: 'top-right',
+      timeout: 2500
+    })
+    return
+  }
 
   saving.value = true
   try {
@@ -383,6 +414,11 @@ watch(() => props.modelValue, (isOpen) => {
     padding-top: 12px;
     resize: vertical;
     line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   :deep(input::placeholder),

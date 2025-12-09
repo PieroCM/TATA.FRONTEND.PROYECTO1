@@ -34,6 +34,7 @@
               class="form-input"
               :error="!!errors.codigo"
               :error-message="errors.codigo"
+              @input="formData.codigo = formData.codigo.toUpperCase(); validateField('codigo')"
               @blur="validateField('codigo')"
             />
           </div>
@@ -47,10 +48,11 @@
               v-model="formData.nombre"
               outlined
               dense
-              placeholder="Ej: Administrador"
+              placeholder="Ej: Administrador, Usuario, Visualizador"
               class="form-input"
               :error="!!errors.nombre"
               :error-message="errors.nombre"
+              @input="validateField('nombre')"
               @blur="validateField('nombre')"
             />
           </div>
@@ -115,6 +117,9 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { useQuasar } from 'quasar'
+
+const $q = useQuasar()
 
 // Props
 const props = defineProps({
@@ -129,6 +134,14 @@ const props = defineProps({
   isCreate: {
     type: Boolean,
     default: false
+  },
+  codesInUse: {
+    type: Array,
+    default: () => []
+  },
+  namesInUse: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -179,24 +192,44 @@ const validateField = (field) => {
   if (field === 'codigo') {
     const codigo = formData.value.codigo?.trim()
     if (!codigo) {
-      errors.value.codigo = 'El código es requerido'
-    } else if (codigo.length < 2) {
-      errors.value.codigo = 'El código debe tener al menos 2 caracteres'
+      errors.value.codigo = 'Este campo es obligatorio'
+    } else if (codigo.length < 3) {
+      errors.value.codigo = 'Debe tener al menos 3 caracteres'
     } else if (codigo.length > 50) {
-      errors.value.codigo = 'El código no puede exceder 50 caracteres'
-    } else if (!/^[A-Z0-9_-]+$/.test(codigo)) {
-      errors.value.codigo = 'Solo se permiten letras mayúsculas, números, guiones y guiones bajos'
+      errors.value.codigo = 'No puede exceder los 50 caracteres'
+    } else if (!/^[A-Z0-9_]+$/.test(codigo)) {
+      errors.value.codigo = 'Formato no válido'
+    } else {
+      // Validar duplicados
+      const isDuplicate = props.codesInUse.some(item => 
+        item.codigo.toUpperCase() === codigo.toUpperCase() && 
+        item.id !== formData.value.idRolSistema
+      )
+      if (isDuplicate) {
+        errors.value.codigo = 'Este valor ya existe en el sistema'
+      }
     }
   }
 
   if (field === 'nombre') {
     const nombre = formData.value.nombre?.trim()
     if (!nombre) {
-      errors.value.nombre = 'El nombre es requerido'
+      errors.value.nombre = 'Este campo es obligatorio'
     } else if (nombre.length < 3) {
-      errors.value.nombre = 'El nombre debe tener al menos 3 caracteres'
-    } else if (nombre.length > 100) {
-      errors.value.nombre = 'El nombre no puede exceder 100 caracteres'
+      errors.value.nombre = 'Debe tener al menos 3 caracteres'
+    } else if (nombre.length > 150) {
+      errors.value.nombre = 'No puede exceder los 150 caracteres'
+    } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ ]+$/.test(nombre)) {
+      errors.value.nombre = 'Formato no válido'
+    } else {
+      // Validar duplicados
+      const isDuplicate = props.namesInUse.some(item => 
+        item.nombre.toLowerCase() === nombre.toLowerCase() && 
+        item.id !== formData.value.idRolSistema
+      )
+      if (isDuplicate) {
+        errors.value.nombre = 'Este valor ya existe en el sistema'
+      }
     }
   }
 }
@@ -208,7 +241,15 @@ const validateForm = () => {
 }
 
 const handleSubmit = async () => {
-  if (!validateForm()) return
+  if (!validateForm()) {
+    $q.notify({
+      type: 'warning',
+      message: 'Corrige los errores antes de continuar',
+      position: 'top-right',
+      timeout: 2500
+    })
+    return
+  }
 
   saving.value = true
   try {
@@ -354,6 +395,11 @@ watch(() => props.modelValue, (isOpen) => {
     padding-top: 12px;
     resize: vertical;
     line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   :deep(input::placeholder),
