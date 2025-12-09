@@ -282,82 +282,155 @@ watch([searchQuery, selectedLevel, selectedRole], () => {
 onMounted(fetchLogs)
 
 /* ------EXPORTAR PDF-----------*/
-//const logoTata =
-//'PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAxMi4wLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDUxNDQ4KSAgLS0+DQo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiIFsNCgk8IUVOVElUWSBuc19zdmcgImh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCgk8IUVOVElUWSBuc194bGluayAiaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+DQpdPg0KPHN2ZyAgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9IiZuc19zdmc7IiB4bWxuczp4bGluaz0iJm5zX3hsaW5rOyIgd2lkdGg9IjQ1MS4zMTYiIGhlaWdodD0iNDE0LjQ3MyINCgkgdmlld0JveD0iMCAwIDQ1MS4zMTYgNDE0LjQ3MyIgb3ZlcmZsb3c9InZpc2libGUiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDQ1MS4zMTYgNDE0LjQ3MyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8Zz4NCgk8cG9seWdvbiBmaWxsPSIjNDg2QUFFIiBwb2ludHM9IjE0LjYxNiwyODYuNzMyIDExNi4yMywyODYuNzMyIDExNi4yMywzMTcuNjU0IDg3LjA3OSwzMTcuNjU0IDg3LjA3OSwzOTEuOTY5IDQ0LjczNywzOTEuOTY5IA0KCQk0NC43MzcsMzE3LjY1NCAxNC42MTYsMzE3LjY1NCAJIi8+DQoJPHBvbHlnb24gZmlsbD0iIzQ4NkFBRSIgcG9pbnRzPSIxNjcuNjkyLDMyOS4yNTIgMTQ2LjI5OCwzOTEuOTY5IDEwNS42MzUsMzkxLjk2OSAxNDUuNTE2LDI4Ni43MzIgMTg5LjY3NywyODYuNzMyIA0KCQkyMzAuNTE5LDM5MS45NjkgMTg5LjM1NiwzOTEuOTY5IAkiLz4NCgk8cG9seWdvbiBmaWxsPSIjNDg2QUFFIiBwb2ludHM9IjIyMC44MDUsMjg2LjczMiAzMjIuNDE1LDI4Ni43MzIgMzIyLjQxNSwzMTcuNjU0IDI5My4yNzMsMzE3LjY1NCAyOTMuMjczLDM5MS45NjkgDQoJCTI1MC45MzMsMzkxLjk2OSAyNTAuOTMzLDMxNy42NTQgMjIwLjgwNSwzMTcuNjU0IAkiLz4NCgk8cG9seWdvbiBmaWxsPSIjNDg2QUFFIiBwb2ludHM9IjM3My44OTUsMzI5LjI1MiAzNTIuNDkzLDM5MS45NjkgMzExLjgzLDM5MS45NjkgMzUxLjcyNCwyODYuNzMyIDM5NS44NzIsMjg2LjczMiA0MzYuNywzOTEuOTY5IA0KCQkzOTUuNTUyLDM5MS45NjkgCSIvPg0KCTxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBmaWxsPSIjNDg2QUFFIiBkPSJNMzc1LjM5NCw5My40MzJjLTMuNzk0LTcuNDYxLTguNzkxLTE0LjYxMi0xNS4wMDctMjEuMzE4DQoJCWMtMTMuOTY5LTE1LjA3Ny0zMy42NzgtMjcuNjIzLTU3LjAwMi0zNi4yNzZjLTIzLjUxNi04LjcyLTUwLjMzOC0xMy4zMzQtNzcuNTk1LTEzLjMzNHMtNTQuMDc5LDQuNjE0LTc3LjU4MywxMy4zMzQNCgkJYy0yMy4zMzYsOC42NTQtNDMuMDQ2LDIxLjItNTcuMDE1LDM2LjI3NkM4NC45OCw3OC44MTksNzkuOTY3LDg1Ljk4LDc2LjE3NCw5My40NDVjMzAuMzY1LTcuMzQzLDgyLjMwNi0xNy4wMzgsMTMwLjUzNC0xOC4wNjMNCgkJYzQuNjUyLTAuMSw3Ljg1NSwxLjM5LDkuOTY0LDQuMDYzYzIuNTY5LDMuMjU1LDIuMzc2LDE0Ljg1OCwyLjMxMywyMC4wNDlsLTEuMzcxLDEzNC4xN2MyLjcxNiwwLjA5LDUuNDQ1LDAuMTQ4LDguMTc2LDAuMTQ4DQoJCWMyLjc1NCwwLDUuNDk4LTAuMDQ1LDguMjE0LTAuMTM1bC0xLjM3MS0xMzQuMTg0Yy0wLjA3MS01LjE5LTAuMjctMTYuNzk0LDIuMzA4LTIwLjA0OWMyLjExNC0yLjY3Miw1LjMwNi00LjE2Miw5Ljk1Ny00LjA2Mw0KCQlDMjkzLjEwNiw3Ni4zOTgsMzQ1LjAzNSw4Ni4wOTUsMzc1LjM5NCw5My40MzIiLz4NCgk8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzQ4NkFBRSIgZD0iTTM4MS44NzcsMTEwLjg4Yy00NC40NDItMTAuMDQ3LTc0LjEyMS0xMS45MDUtMTAzLjQwNS0xMy41Mw0KCQljLTI1LjUyNi0xLjQxOS0yNS44NTksNy42OTYtMjMuMzExLDI1LjExNWMwLjE2NywxLjA2MywwLjM3MiwyLjQwMywwLjYxNSwzLjkzMWM4LjU2Miw1MC43MTIsMTkuMjI0LDk0LjM1MiwyMS4wNTYsMTAxLjc1OQ0KCQljNjIuMjMtMTQuMjI1LDEwNy4xMDktNTMuNjY0LDEwNy4xMDktOTkuOTk0QzM4My45NDEsMTIyLjMyNywzODMuMjM2LDExNi41NDcsMzgxLjg3NywxMTAuODgiLz4NCgk8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzQ4NkFBRSIgZD0iTTE5Ni40NDMsMTIyLjQ2NWMyLjU1MS0xNy40MTgsMi4yMjQtMjYuNTM0LTIzLjI5OS0yNS4xMTUNCgkJYy0yOS4yOTQsMS42MjUtNTguOTgsMy40ODItMTAzLjQzOSwxMy41MzZjLTEuMzU4LDUuNjY3LTIuMDcyLDExLjQ0LTIuMDcyLDE3LjI3NGMwLDIwLjAyNCw4LjE0NiwzOS40LDIzLjU2LDU2LjA0Nw0KCQljMTMuOTY5LDE1LjA3NywzMy42NzksMjcuNjIzLDU3LjAxNSwzNi4yODJjOC40NDYsMy4xMjcsMTcuMzU5LDUuNjksMjYuNTQsNy43NGMxLjcyMy02LjkzOSwxMi42My01MS40ODcsMjEuMjg1LTEwMy4xMDYNCgkJQzE5Ni4xOTMsMTI0LjEzNCwxOTYuMzQxLDEyMy4yMjEsMTk2LjQ0MywxMjIuNDY1Ii8+DQo8L2c+DQo8L3N2Zz4NCg=='
-
 const exportPDF = () => {
-  console.log('🔥 SI ENTRA A exportPDF()')
-
   if (filteredLogs.value.length === 0) {
     alert('No hay registros filtrados para exportar.')
     return
   }
 
-  const doc = new jsPDF()
+  // Crear PDF en orientación horizontal (landscape)
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  })
 
-  // LOGO
-  doc.addImage(tataLogo, 'PNG', 150, 10, 40, 25)
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
 
-  // TÍTULO
-  doc.setFontSize(18)
-  doc.text('Reporte de Logs del Sistema', 14, 15)
+  // ========== CABECERA PROFESIONAL ==========
+  
+  // Logo TATA (alineado a la derecha)
+  doc.addImage(tataLogo, 'PNG', pageWidth - 54, 14, 40, 25)
 
+  // Título principal
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(25, 118, 210) // #1976D2
+  doc.text('Reporte de Logs del Sistema', 14, 22)
+
+  // Subtítulo con fecha actual
+  const now = new Date()
+  const dateString = now.toLocaleDateString('es-ES', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
+  })
+  const timeString = now.toLocaleTimeString('es-ES', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
+  
   doc.setFontSize(12)
-  doc.text(`Registros exportados: ${filteredLogs.value.length}`, 14, 25)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(107, 114, 128) // #6B7280
+  doc.text(`Generado el: ${dateString} - ${timeString}`, 14, 30)
 
-  // TABLA
+  // Línea separadora
+  doc.setDrawColor(229, 231, 235) // #E5E7EB
+  doc.setLineWidth(0.5)
+  doc.line(14, 42, pageWidth - 14, 42)
+
+  // ========== TABLA PROFESIONAL ==========
+  
+  // Preparar datos de la tabla
   const rows = filteredLogs.value.map((l) => [
-    l.idLog,
-    l.fechaHora?.substring(0, 19).replace('T', ' '),
-    l.nivel,
-    l.mensaje,
-    l.detalles,
+    l.fechaHora?.substring(0, 19).replace('T', ' ') || '—',
+    l.nivel || '—',
+    l.mensaje || '—',
+    l.detalles || '—',
+    l.rolNombre || '—',
+    l.usuarioNombreCompleto || '—',
+    l.usuarioDocumento || '—'
   ])
 
   autoTable(doc, {
-    startY: 35,
-    head: [['ID', 'Fecha/Hora', 'Nivel', 'Mensaje', 'Detalles']],
+    startY: 48,
+    head: [['Fecha/Hora', 'Nivel', 'Mensaje', 'Detalles', 'Rol', 'Usuario', 'Documento']],
     body: rows,
-    styles: { fontSize: 9, cellPadding: 3 },
+    
+    // Estilos generales
+    styles: {
+      fontSize: 9,
+      cellPadding: 4,
+      lineColor: [209, 213, 219], // #D1D5DB
+      lineWidth: 0.1,
+      textColor: [17, 24, 39], // #111827
+      font: 'helvetica'
+    },
+    
+    // Estilo del encabezado
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: '#fff',
+      fillColor: [25, 118, 210], // #1976D2 (azul corporativo)
+      textColor: [255, 255, 255], // Blanco
       fontStyle: 'bold',
+      halign: 'left',
+      fontSize: 10,
+      cellPadding: 5
     },
+    
+    // Filas alternadas
+    alternateRowStyles: {
+      fillColor: [243, 244, 246] // #F3F4F6
+    },
+    
+    // Estilos de columnas específicas
     columnStyles: {
-      0: { cellWidth: 15 },
-      1: { cellWidth: 35 },
-      2: { cellWidth: 22 },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 60 },
+      0: { cellWidth: 32, halign: 'left' },   // Fecha/Hora
+      1: { cellWidth: 20, halign: 'center' }, // Nivel
+      2: { cellWidth: 45, halign: 'left' },   // Mensaje
+      3: { cellWidth: 50, halign: 'left' },   // Detalles
+      4: { cellWidth: 35, halign: 'left' },   // Rol
+      5: { cellWidth: 35, halign: 'left' },   // Usuario
+      6: { cellWidth: 25, halign: 'center' }  // Documento
     },
+    
+    // Márgenes
+    margin: { left: 14, right: 14, top: 20, bottom: 20 },
+    
+    // Callback para personalizar celdas
+    didParseCell: function(data) {
+      // Resaltar nivel según tipo
+      if (data.column.index === 1 && data.section === 'body') {
+        const nivel = data.cell.raw
+        if (nivel === 'ERROR') {
+          data.cell.styles.textColor = [153, 27, 27] // Rojo oscuro
+          data.cell.styles.fontStyle = 'bold'
+        } else if (nivel === 'WARN') {
+          data.cell.styles.textColor = [146, 64, 14] // Naranja oscuro
+          data.cell.styles.fontStyle = 'bold'
+        } else if (nivel === 'SUCCESS') {
+          data.cell.styles.textColor = [6, 95, 70] // Verde oscuro
+          data.cell.styles.fontStyle = 'bold'
+        } else if (nivel === 'INFO') {
+          data.cell.styles.textColor = [25, 118, 210] // Azul #1976D2
+          data.cell.styles.fontStyle = 'bold'
+        }
+      }
+    }
   })
 
-  // FOOTER EN CADA PÁGINA
-  const addFooter = () => {
-    const totalPages = doc.internal.getNumberOfPages()
+  // ========== FOOTER ELEGANTE EN CADA PÁGINA ==========
+  const totalPages = doc.internal.getNumberOfPages()
 
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i)
-
-      const footerText = `Página ${i} de ${totalPages} — Proyecto TATA · Sistema de Logs 2025`
-
-      doc.setFontSize(10)
-      doc.setTextColor('#6B7280')
-
-      doc.text(
-        footerText,
-        doc.internal.pageSize.width / 2,
-        doc.internal.pageSize.height - 10,
-        { align: 'center' }
-      )
-    }
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(107, 114, 128) // #6B7280
+    
+    const footerText = `Proyecto TATA – Sistema de Logs © 2025`
+    const pageText = `Página ${i} de ${totalPages}`
+    
+    // Footer centrado
+    doc.text(footerText, pageWidth / 2, pageHeight - 10, { align: 'center' })
+    doc.text(pageText, pageWidth / 2, pageHeight - 6, { align: 'center' })
   }
 
-  addFooter()
-
-  // DESCARGAR PDF
-  doc.save('logs_filtrados.pdf')
+  // ========== DESCARGAR PDF ==========
+  const fileName = `Logs_TATA_${dateString.replace(/\//g, '-')}_${timeString.replace(/:/g, '-')}.pdf`
+  doc.save(fileName)
 }
 </script>
 
