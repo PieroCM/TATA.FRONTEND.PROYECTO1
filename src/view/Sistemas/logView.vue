@@ -1,32 +1,28 @@
 <template>
   <div class="logs-container">
     <!-- CABECERA -->
-    <div class="header-row">
-      <div>
-        <h2 class="title">Logs del Sistema</h2>
-        <p class="subtitle">Registro de eventos y errores de la aplicación</p>
+    <div class="header-section">
+      <div class="header-content">
+        <h1 class="page-title">Logs del Sistema</h1>
+        <p class="page-subtitle">Registro de eventos y errores de la aplicación</p>
       </div>
 
-      <!--<q-btn color="white" flat class="export-btn" no-caps>
-        <q-icon name="download" color="primary" size="20px" />
-        <span class="export-text">Exportar Logs</span>
-      </q-btn>-->
-
-      <!-- 🔽 EXPORTAR LOGS (MENÚ DESPLEGABLE) -->
       <q-btn-dropdown
-        flat
+        unelevated
         class="export-btn"
         no-caps
-        dropdown-icon="expand_more"
         label="Exportar Logs"
+        icon="download"
+        dropdown-icon="expand_more"
       >
-        <q-list bordered padding>
-          <q-item clickable v-ripple @click="exportPDF" v-close-popup>
+        <q-list>
+          <q-item clickable v-close-popup @click="exportPDF">
             <q-item-section avatar>
               <q-icon name="picture_as_pdf" color="red" />
             </q-item-section>
-
-            <q-item-section>Exportar PDF</q-item-section>
+            <q-item-section>
+              <q-item-label>Exportar como PDF</q-item-label>
+            </q-item-section>
           </q-item>
         </q-list>
       </q-btn-dropdown>
@@ -35,56 +31,76 @@
     <!-- RESUMEN -->
     <div class="summary-row">
       <SummaryCard type="info" :count="counts.info" />
-      <SummaryCard type="success" :count="counts.success" />
+      <!--<SummaryCard type="success" :count="counts.success" />-->
       <SummaryCard type="warning" :count="counts.warning" />
-      <SummaryCard type="error" :count="counts.error" />
+     <!-- <SummaryCard type="error" :count="counts.error" />-->
     </div>
 
     <!-- FILTROS -->
-    <div class="filter-panel">
+    <div class="filter-bar">
       <q-input
-        v-model="search"
-        dense
-        rounded
+        v-model="searchQuery"
         outlined
-        placeholder="Buscar en mensajes..."
-        class="filter-input"
+        dense
+        placeholder="Buscar en mensajes o detalles..."
+        class="search-input"
       >
-        <template #prepend>
-          <q-icon name="filter_alt" />
+        <template v-slot:prepend>
+          <q-icon name="search" color="grey-6" />
         </template>
       </q-input>
 
       <q-select
         v-model="selectedLevel"
+        outlined
+        dense
         :options="levelOptions"
-        dense
-        outlined
-        rounded
         class="filter-select"
-      />
-      <!--
-       <q-select
-        v-model="selectedService"
-        :options="serviceOptions"
-        dense
+      >
+        <template v-slot:prepend>
+          <q-icon name="filter_list" color="grey-6" />
+        </template>
+      </q-select>
+
+      <q-select
+        v-model="selectedRole"
+        :options="rolesOptions"
         outlined
-        rounded
-        class="filter-select"
-      /> -->
+        dense
+        label="Filtrar por rol"
+        clearable
+        class="role-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="badge" color="grey-6" />
+        </template>
+      </q-select>
     </div>
 
-    <!-- LISTA DE LOGS -->
-    <div v-if="filteredLogs.length === 0" class="no-results">No se encontraron registros...</div>
+    <!-- TABLA DE LOGS -->
+    <LogItem :logs="paginatedLogs" :loading="loading" />
 
-    <div v-else class="log-list">
-      <LogItem v-for="(l, idx) in filteredLogs" :key="idx" :log="l" />
+    <!-- PAGINACIÓN -->
+    <div v-if="filteredLogs.length > 0" class="pagination-container">
+      <q-pagination
+        v-model="currentPage"
+        :max="totalPages"
+        :max-pages="7"
+        boundary-numbers
+        direction-links
+        color="primary"
+        active-design="unelevated"
+        active-color="primary"
+        active-text-color="white"
+      />
+      <p class="pagination-info">
+        Mostrando {{ startRecord }} - {{ endRecord }} de {{ filteredLogs.length }} registros
+      </p>
     </div>
   </div>
 </template>
 <script setup>
-import { QIcon, QInput, QSelect, QBtnDropdown } from 'quasar'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import SummaryCard from '../../components/compLogView/SummaryCard.vue'
 import LogItem from '../../components/compLogView/LogItem.vue'
 import jsPDF from 'jspdf'
@@ -96,6 +112,14 @@ import { api } from 'src/boot/axios'
     VARIABLES REACTIVAS
 --------------------------------*/
 const logs = ref([])
+const enrichedLogs = ref([])
+const loading = ref(false)
+
+// Datos para enriquecimiento
+const usuarios = ref([])
+const personales = ref([])
+const rolesSistema = ref([])
+const rolesOptions = ref([])
 
 const counts = ref({
   info: 0,
@@ -105,11 +129,15 @@ const counts = ref({
 })
 
 /* FILTROS */
-const search = ref('')
+const searchQuery = ref('')
 const selectedLevel = ref('Todos los niveles')
-/*const selectedService = ref('Todos los servicios')*/
+const selectedRole = ref(null)
 
 const levelOptions = ['Todos los niveles', 'INFO', 'SUCCESS', 'WARN', 'ERROR']
+
+/* PAGINACIÓN */
+const currentPage = ref(1)
+const itemsPerPage = 10
 
 /* const serviceOptions = [
   'Todos los servicios',
@@ -144,42 +172,114 @@ const updateCounts = () => {
      CARGAR API
 --------------------------------*/
 const fetchLogs = async () => {
+  loading.value = true
   try {
-    const res = await api.get('/api/logsistema')
-    logs.value = res.data
-    // Normalizamos los niveles para que siempre sean MAYÚSCULAS
-    logs.value = logs.value.map((l) => ({
+    // Cargar logs
+    const resLogs = await api.get('/api/logsistema')
+    logs.value = resLogs.data.map((l) => ({
       ...l,
       nivel: l.nivel.toUpperCase(),
     }))
+
+    // Cargar datos relacionados
+    const [resUsuarios, resPersonales, resRoles] = await Promise.all([
+      api.get('/api/usuario'),
+      api.get('/api/personal'),
+      api.get('/api/RolesSistema')
+    ])
+
+    usuarios.value = resUsuarios.data
+    personales.value = resPersonales.data
+    rolesSistema.value = resRoles.data
+
+    // Cargar opciones del select de roles
+    rolesOptions.value = resRoles.data.map(rol => ({
+      label: rol.nombre,
+      value: rol.idRolSistema
+    }))
+
+    // Enriquecer logs con información de usuario
+    enrichedLogs.value = logs.value.map(log => {
+      const usuario = usuarios.value.find(u => u.idUsuario === log.idUsuario)
+      
+      if (usuario) {
+        const personal = personales.value.find(p => p.idPersonal === usuario.idPersonal)
+        const rol = rolesSistema.value.find(r => r.idRolSistema === usuario.idRolSistema)
+
+        return {
+          ...log,
+          rolNombre: rol?.nombre || '—',
+          usuarioNombreCompleto: personal 
+            ? `${personal.nombres} ${personal.apellidos}`.trim() 
+            : '—',
+          usuarioDocumento: personal?.documento || '—'
+        }
+      }
+
+      return {
+        ...log,
+        rolNombre: '—',
+        usuarioNombreCompleto: '—',
+        usuarioDocumento: '—'
+      }
+    })
   } catch (e) {
     console.error('Error cargando logs:', e)
     logs.value = []
+    enrichedLogs.value = []
+  } finally {
+    loading.value = false
   }
 
   updateCounts()
 }
-
-onMounted(fetchLogs)
-
 /* ------------------------------
      FILTROS DINÁMICOS
 --------------------------------*/
 const filteredLogs = computed(() => {
-  return logs.value.filter((l) => {
+  return enrichedLogs.value.filter((l) => {
     const matchSearch =
-      l.mensaje.toLowerCase().includes(search.value.toLowerCase()) ||
-      l.detalles.toLowerCase().includes(search.value.toLowerCase())
+      searchQuery.value === '' ||
+      l.mensaje?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      l.detalles?.toLowerCase().includes(searchQuery.value.toLowerCase())
 
     const matchLevel =
       selectedLevel.value === 'Todos los niveles' || l.nivel === selectedLevel.value
 
-    /* const matchService =
-      selectedService.value === 'Todos los servicios' || l.servicio === selectedService.value */
+    const matchRole =
+      !selectedRole.value ||
+      (usuarios.value.find(u => u.idUsuario === l.idUsuario)?.idRolSistema === selectedRole.value.value)
 
-    return matchSearch && matchLevel /* && matchService*/
+    return matchSearch && matchLevel && matchRole
   })
 })
+
+/* ------------------------------
+     PAGINACIÓN
+--------------------------------*/
+const totalPages = computed(() => Math.ceil(filteredLogs.value.length / itemsPerPage))
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredLogs.value.slice(start, end)
+})
+
+const startRecord = computed(() => {
+  return filteredLogs.value.length === 0 ? 0 : (currentPage.value - 1) * itemsPerPage + 1
+})
+
+const endRecord = computed(() => {
+  const end = currentPage.value * itemsPerPage
+  return end > filteredLogs.value.length ? filteredLogs.value.length : end
+})
+
+// Resetear a página 1 cuando cambian los filtros
+watch([searchQuery, selectedLevel, selectedRole], () => {
+  currentPage.value = 1
+})
+
+onMounted(fetchLogs)
 
 /* ------EXPORTAR PDF-----------*/
 //const logoTata =
@@ -247,9 +347,9 @@ const exportPDF = () => {
 
       doc.text(
         footerText,
-        doc.internal.pageSize.getWidth() / 2,
-        doc.internal.pageSize.getHeight() - 12,
-        { align: 'center' },
+        doc.internal.pageSize.width / 2,
+        doc.internal.pageSize.height - 10,
+        { align: 'center' }
       )
     }
   }
@@ -261,108 +361,211 @@ const exportPDF = () => {
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .logs-container {
-  padding: 20px 30px;
-  font-family: 'Segoe UI', sans-serif;
-  color: #333;
+  padding: 24px 32px;
+  background: #FFFFFF;
+  min-height: 100vh;
 }
 
-/* Header */
-.header-row {
+/* ========== HEADER ========== */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 24px;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.page-title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  margin: 8px 0 0 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 1.6;
+}
+
+.export-btn {
+  height: 44px;
+  padding: 0 24px;
+  background: #2563EB;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-transform: none;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #1E40AF;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  :deep(.q-icon) {
+    font-size: 20px;
+    margin-right: 6px;
+  }
+}
+
+/* ========== SUMMARY CARDS ========== */
+.summary-row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+  margin-bottom: 32px;
+  max-width: 1000px;
+}
+
+/* ========== FILTROS ========== */
+.filter-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 2;
+  min-width: 280px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  :deep(input::placeholder) {
+    color: #9CA3AF;
+  }
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 200px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+}
+
+.role-input {
+  flex: 1;
+  min-width: 200px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  :deep(input::placeholder) {
+    color: #9CA3AF;
+  }
+}
+
+/* ========== PAGINACIÓN ========== */
+.pagination-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 24px;
+  padding: 20px 0;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.title {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.subtitle {
-  margin-top: -5px;
+.pagination-info {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
-  color: #6b7280;
+  color: #6B7280;
+  font-weight: 500;
 }
 
-.export-btn {
-  border: 1px solid #d0d7e3;
-  border-radius: 10px;
-  padding: 6px 14px;
-  background: white;
-}
-
-.export-text {
-  font-size: 14px;
-  color: #2f80ed;
-  font-weight: 600;
-  margin-left: 5px;
-}
-
-/* Summary cards */
-.summary-row {
-  display: flex;
-  gap: 20px;
-  margin-top: 30px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* Filter panel */
-.filter-panel {
-  margin-top: 25px;
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.filter-input {
-  width: 350px;
-  max-width: 100%;
-  flex: 1;
-  min-width: 200px;
-}
-
-.filter-select {
-  width: 190px;
-  max-width: 100%;
-  min-width: 150px;
-}
-
-/* Log list */
-.log-list {
-  margin-top: 30px;
-}
-
-/* No results */
-.no-results {
-  margin-top: 50px;
-  text-align: center;
-  color: #777;
-}
-
-/* 📱 RESPONSIVE */
-@media (max-width: 599px) {
+/* ========== RESPONSIVE ========== */
+@media (max-width: 767px) {
   .logs-container {
     padding: 16px;
   }
 
-  .header-row {
+  .header-section {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    margin-bottom: 24px;
   }
 
-  .title {
-    font-size: 22px;
+  .page-title {
+    font-size: 24px;
   }
 
-  .subtitle {
-    font-size: 13px;
+  .page-subtitle {
+    font-size: 14px;
   }
 
   .export-btn {
@@ -370,79 +573,42 @@ const exportPDF = () => {
     justify-content: center;
   }
 
-  /* 2 arriba + 2 abajo, centrados */
   .summary-row {
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    margin-top: 20px;
-    max-width: 460px;
-    margin-left: auto;
-    margin-right: auto;
   }
 
-  .filter-panel {
+  .filter-bar {
     flex-direction: column;
     gap: 12px;
-    margin-top: 20px;
   }
 
-  .filter-input,
-  .filter-select {
+  .search-input,
+  .filter-select,
+  .role-input {
     width: 100%;
+    min-width: 100%;
   }
 
-  .log-list {
-    margin-top: 20px;
+  .pagination-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .pagination-info {
+    order: -1;
+    margin-bottom: 12px;
   }
 }
 
-/* 600px → 1055px: 2 arriba + 2 abajo centrados */
-@media (min-width: 600px) and (max-width: 1055px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .logs-container {
-    padding: 18px 24px;
+    padding: 20px 24px;
   }
 
-  .title {
-    font-size: 24px;
-  }
-
-  /* Forzar 2 columnas máximo */
   .summary-row {
-    gap: 16px;
-    max-width: 480px;
-    margin-left: auto;
-    margin-right: auto;
+    grid-template-columns: repeat(2, 1fr);
   }
-
-  .filter-panel {
-    gap: 12px;
-  }
-
-  .filter-input {
-    flex: 2;
-  }
-
-  .filter-select {
-    flex: 1;
-  }
-}
-
-/* 1056px en adelante: 4 cuadros en fila horizontal centrados */
-@media (min-width: 1056px) {
-  .summary-row {
-    flex-wrap: nowrap;
-    justify-content: center;
-    gap: 20px;
-    max-width: 960px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-.export-btn {
-  border: 1px solid #d0d7e3;
-  border-radius: 10px;
-  background: white;
-  padding: 6px 14px;
-  font-weight: 600;
 }
 </style>

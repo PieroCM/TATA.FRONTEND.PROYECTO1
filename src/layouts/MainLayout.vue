@@ -204,21 +204,7 @@
 
                 <q-separator />
 
-                <!-- Preferencias -->
-                <q-item clickable v-ripple class="user-option">
-                  <q-item-section avatar>
-                    <q-icon name="settings" color="grey-7" />
-                  </q-item-section>
-                  <q-item-section>Preferencias</q-item-section>
-                </q-item>
-
-                <!-- Seguridad -->
-                <q-item clickable v-ripple class="user-option">
-                  <q-item-section avatar>
-                    <q-icon name="security" color="grey-7" />
-                  </q-item-section>
-                  <q-item-section>Seguridad</q-item-section>
-                </q-item>
+                
                 <!-- Usuario -->
                 <q-item clickable v-ripple class="user-option" @click="irAPerfil" v-close-popup>
                   <q-item-section avatar>
