@@ -225,8 +225,21 @@
               <div class="q-mt-xl">
                 <div class="text-subtitle1 text-weight-medium q-mb-md">Gráfico de SLA por Rol</div>
 
-                <!-- Leyenda del gráfico -->
-                <div class="legend-container q-mb-md">
+                <div
+                  class="text-caption text-grey-7 q-mb-sm"
+                  style="text-align: center; font-size: 14px"
+                >
+                  Etiqueta superior: SLA del rol (%).
+                </div>
+
+                <div class="chart-scroll">
+                  <div class="chart-wrapper">
+                    <canvas ref="chartCanvasRef" data-chart="sla" class="chart-canvas"></canvas>
+                  </div>
+                </div>
+
+                <!-- Leyenda del gráfico (vertical, izquierda, con borde fino) debajo del gráfico -->
+                <div class="legend-box q-mt-md">
                   <div class="legend-item">
                     <div class="legend-color" style="background-color: #1f60aa"></div>
                     <span>Cumplen (solicitudes)</span>
@@ -238,18 +251,6 @@
                   <div class="legend-item">
                     <div class="legend-color" style="background-color: #9e9e9e"></div>
                     <span>Sin recursos (NA)</span>
-                  </div>
-                </div>
-                <div
-                  class="text-caption text-grey-7 q-mb-sm"
-                  style="text-align: center; font-size: 14px"
-                >
-                  Etiqueta superior: SLA del rol (%).
-                </div>
-
-                <div class="chart-scroll">
-                  <div class="chart-wrapper">
-                    <canvas ref="chartCanvasRef" data-chart="sla" class="chart-canvas"></canvas>
                   </div>
                 </div>
 
@@ -422,9 +423,10 @@ import { api } from 'boot/axios'
 import { Chart, registerables } from 'chart.js'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+// import html2canvas from 'html2canvas'
 // Para Excel con estilos y gráficos embebidos
 import ExcelJS from 'exceljs'
+import autoTable from 'jspdf-autotable'
 import { useAppStore } from 'stores/app-store'
 import EnviarReporteDialog from 'components/Reportes/EnviarReporteDialog.vue'
 import LogoPng from 'src/assets/Tata_logo.png'
@@ -1262,10 +1264,21 @@ const exportarExcel = async () => {
       console.log('Reporte EXCEL registrado en backend:', res.data)
     } catch (apiError) {
       console.error('Error registrando reporte EXCEL en API:', apiError)
-      if (apiError.response?.status === 401) {
-        throw new Error('Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
+      // Si falla el registro (incluido 401), continuamos con la descarga local para no bloquear al usuario
+      const status = apiError.response?.status
+      if (status === 401) {
+        $q.notify({
+          type: 'warning',
+          message: 'No autorizado para registrar en backend. Se generará el Excel localmente.',
+          position: 'top-right',
+        })
+      } else {
+        $q.notify({
+          type: 'warning',
+          message: 'No se pudo registrar el reporte en backend. Se generará el Excel localmente.',
+          position: 'top-right',
+        })
       }
-      // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
     }
 
     // Construir Excel estilizado (solo Resultados del Reporte)
@@ -1352,11 +1365,26 @@ const exportarExcel = async () => {
     }
     ws.views = [{ state: 'frozen', ySplit: 3 }]
 
-    // Embeber gráfico como imagen (si existe instancia)
+    // Embeber gráfico como imagen (si existe instancia) optimizando tamaño
     try {
       if (chartInstance) {
-        const chartImg = chartInstance.toBase64Image('image/png', 1)
-        const imageId = wb.addImage({ base64: chartImg, extension: 'png' })
+        const chartPng = chartInstance.toBase64Image('image/png', 1)
+        const tmpImg = new Image()
+        await new Promise((resolve) => {
+          tmpImg.onload = resolve
+          tmpImg.src = chartPng
+        })
+        const c = document.createElement('canvas')
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        const targetW = 1000
+        const ratio = (tmpImg.naturalWidth || 1000) / (tmpImg.naturalHeight || 600)
+        c.width = targetW
+        c.height = Math.round(targetW / ratio)
+        ctx.fillStyle = '#fff'
+        ctx.fillRect(0, 0, c.width, c.height)
+        ctx.drawImage(tmpImg, 0, 0, c.width, c.height)
+        const chartJpeg = c.toDataURL('image/jpeg', 0.7)
+        const imageId = wb.addImage({ base64: chartJpeg, extension: 'jpeg' })
         // Posicionar imagen bajo la tabla
         const startRow = ws.rowCount + 2
         ws.addImage(imageId, {
@@ -1441,12 +1469,22 @@ const exportarPdf = async () => {
       })
     } catch (apiError) {
       console.error('Error en API:', apiError)
-      // El interceptor maneja 401 y redirige automáticamente
-      if (apiError.response?.status === 401) {
-        throw new Error('Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
-      } else if (apiError.response?.status !== 401) {
-        // Solo lanzar si no es 401 (que será manejado por interceptor)
-        throw apiError
+      // Si falla el registro (incluido 401), continuar con generación local del PDF para no bloquear al usuario
+      const status = apiError.response?.status
+      if (status === 401) {
+        $q.notify({
+          type: 'warning',
+          message: 'No autorizado para registrar en backend. Se generará el PDF localmente.',
+          position: 'top-right',
+          timeout: 2500,
+        })
+      } else {
+        $q.notify({
+          type: 'warning',
+          message: 'No se pudo registrar el reporte en backend. Se generará el PDF localmente.',
+          position: 'top-right',
+          timeout: 2500,
+        })
       }
     }
     // Generar PDF optimizado y descargar
@@ -1615,45 +1653,140 @@ const generarPdfBase64 = async () => {
   pdf.text(`Código SLA: ${filtros.value.codigoSla || 'N/A'}`, 10, y)
   y += 7
 
-  // Tabla (usar html2canvas solo sobre la tabla para minimizar costo)
-  const tableElement = reporteRef.value.querySelector('table')
-  if (tableElement) {
-    const tableCanvas = await html2canvas(tableElement, { scale: 1 })
-    const imgData = tableCanvas.toDataURL('image/png')
-    const imgW = pageWidth - 20
-    const imgH = (tableCanvas.height * imgW) / tableCanvas.width
-    const maxH = 60
-    const adjH = Math.min(imgH, maxH)
-    pdf.addImage(imgData, 'PNG', 10, y, imgW, adjH)
-    y += adjH + 5
-  }
+  // Tabla: construir como texto con jsPDF-AutoTable (más liviano y nítido)
+  const headers = ['ROL', 'NUM_RECURSOS', 'SLA (%)', 'INDICADOR']
+  const rows = filasTabla.value.map((f) => [
+    f.rol,
+    f.numRecursos,
+    f.sla === 'NA' ? 'NA' : `${f.sla}%`,
+    '', // sin texto: dibujamos el círculo en didDrawCell
+  ])
 
-  // Leyenda compacta
+  autoTable(pdf, {
+    startY: y,
+    head: [headers],
+    body: rows,
+    headStyles: { fillColor: [25, 118, 210], textColor: [255, 255, 255], halign: 'center' },
+    styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.1 },
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' } },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    didDrawCell: (data) => {
+      // Dibujar indicador como círculo de color en la columna INDICADOR (index 3)
+      if (data.section === 'body' && data.column.index === 3) {
+        const rowIndex = data.row.index
+        const fila = filasTabla.value[rowIndex]
+        // Colores: verde si 100, rojo si <100, gris si NA
+        let color = [246, 0, 8] // rojo
+        if (fila?.sla === 'NA') {
+          color = [158, 158, 158]
+        } else if (fila?.sla === 100) {
+          color = [33, 186, 69]
+        }
+
+        const { x, y, width, height } = data.cell
+        const cx = x + width / 2
+        const cy = y + height / 2
+        const r = Math.min(width, height) / 5 // radio proporcional
+
+        pdf.setFillColor(color[0], color[1], color[2])
+        // jsPDF circle dibuja borde; usamos un pequeño círculo relleno
+        pdf.circle(cx, cy, r, 'F')
+      }
+    },
+  })
+  y = pdf.lastAutoTable.finalY + 8
+
+  // Título del gráfico
   y += 10
   pdf.setFontSize(11)
   pdf.text('Gráfico de SLA por Rol', 10, y)
   y += 6
-  pdf.setFontSize(9)
-  // Cumplen (azul oscuro)
-  pdf.setFillColor(31, 96, 170)
-  pdf.rect(10, y, 3, 3, 'F')
-  pdf.text('Cumplen (solicitudes)', 15, y + 2)
-  // No cumplen (azul claro)
-  pdf.setFillColor(75, 167, 220)
-  pdf.rect(85, y, 3, 3, 'F')
-  pdf.text('No cumplen (solicitudes)', 90, y + 2)
-  pdf.setFillColor(158, 158, 158)
-  pdf.rect(165, y, 3, 3, 'F')
-  pdf.text('Sin recursos (NA)', 170, y + 2)
-  y += 8
 
   // Gráfico principal (usar API ChartJS en lugar de html2canvas para performance)
   if (chartInstance) {
-    const chartImg = chartInstance.toBase64Image('image/png', 1)
+    // Ocultar tooltip/hover temporalmente para evitar el recuadro negro en la captura
+    const originalTooltip = chartInstance.options?.plugins?.tooltip?.enabled
+    const originalEvents = chartInstance.options?.events
+    if (!chartInstance.options.plugins) chartInstance.options.plugins = {}
+    if (!chartInstance.options.plugins.tooltip) chartInstance.options.plugins.tooltip = {}
+    chartInstance.options.plugins.tooltip.enabled = false
+    // Desactivar eventos para evitar hover durante la captura
+    chartInstance.options.events = []
+    // Limpiar elementos activos del tooltip
+    try {
+      chartInstance.tooltip?.setActiveElements([], { x: 0, y: 0 })
+    } catch (e) {
+      console.warn('No se pudo limpiar tooltip activo:', e)
+    }
+    // Actualizar silenciosamente
+    try {
+      chartInstance.update('none')
+    } catch (e) {
+      console.warn('No se pudo actualizar gráfico (ocultar tooltip):', e)
+    }
+
+    const chartPng = chartInstance.toBase64Image('image/png', 1)
+
+    // Restaurar estado del tooltip
+    chartInstance.options.plugins.tooltip.enabled = originalTooltip ?? true
+    chartInstance.options.events = originalEvents ?? [
+      'mousemove',
+      'mouseout',
+      'click',
+      'touchstart',
+      'touchmove',
+    ]
+    try {
+      chartInstance.update('none')
+    } catch (e) {
+      console.warn('No se pudo actualizar gráfico (restaurar tooltip):', e)
+    }
+    // Convertir PNG a JPEG optimizado para reducir peso en PDF
+    const tmp = new Image()
+    await new Promise((resolve) => {
+      tmp.onload = resolve
+      tmp.src = chartPng
+    })
+    const cnv = document.createElement('canvas')
+    const cctx = cnv.getContext('2d', { willReadFrequently: true })
+    // Aumentar resolución y calidad para mejor nitidez en PDF
+    const targetW = 1400
+    const ratio = (tmp.naturalWidth || 1400) / (tmp.naturalHeight || 700)
+    cnv.width = targetW
+    cnv.height = Math.round(targetW / ratio)
+    cctx.fillStyle = '#fff'
+    cctx.fillRect(0, 0, cnv.width, cnv.height)
+    cctx.drawImage(tmp, 0, 0, cnv.width, cnv.height)
+    const chartJpeg = cnv.toDataURL('image/jpeg', 0.85)
+
     const chartW = pageWidth - 20
     const chartH = chartW * 0.45
-    pdf.addImage(chartImg, 'PNG', 10, y, chartW, chartH)
+    pdf.addImage(chartJpeg, 'JPEG', 10, y, chartW, chartH)
     y += chartH + 6
+  }
+
+  // Leyenda debajo del gráfico (vertical, izquierda, sin borde)
+  pdf.setFontSize(9)
+  {
+    const boxX = 10
+    const boxY = y
+    const boxH = 36
+    let ly = boxY + 8
+    // Cumplen (azul oscuro)
+    pdf.setFillColor(31, 96, 170)
+    pdf.rect(boxX + 6, ly - 3, 4, 4, 'F')
+    pdf.text('Cumplen (solicitudes)', boxX + 12, ly)
+    ly += 12
+    // No cumplen (azul claro)
+    pdf.setFillColor(53, 189, 236)
+    pdf.rect(boxX + 6, ly - 3, 4, 4, 'F')
+    pdf.text('No cumplen (solicitudes)', boxX + 12, ly)
+    ly += 12
+    // Sin recursos (gris)
+    pdf.setFillColor(158, 158, 158)
+    pdf.rect(boxX + 6, ly - 3, 4, 4, 'F')
+    pdf.text('Sin recursos (NA)', boxX + 12, ly)
+    y = boxY + boxH + 6
   }
 
   // Donut resumen (si existe)
@@ -1748,11 +1881,16 @@ const generarPdfBase64 = async () => {
   align-items: center;
 }
 
-.legend-container {
+.legend-box {
   display: flex;
-  gap: 24px;
-  align-items: center;
-  justify-content: center;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 14px 16px;
+  width: max-content;
 }
 
 .legend-item {

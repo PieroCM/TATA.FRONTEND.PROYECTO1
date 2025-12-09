@@ -6,8 +6,8 @@ const api = axios.create({ baseURL: 'http://localhost:5260' })
 // Agregar interceptor para incluir token de autenticación
 api.interceptors.request.use(
   (config) => {
-    // Obtener el token desde localStorage usando la clave 'authToken'
-    const token = localStorage.getItem('authToken')
+    // Obtener el token desde localStorage (fall back: 'token')
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token')
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
