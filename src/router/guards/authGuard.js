@@ -2,11 +2,13 @@
  * Guard de Autenticación
  *
  * Responsabilidades:
- * - Restaurar sesión desde localStorage si es necesario
  * - Validar si el usuario está autenticado (tiene token)
  * - Permitir acceso a rutas públicas
  * - Bloquear rutas privadas sin autenticación
  * - Redirigir usuarios autenticados desde login a su primera ruta accesible
+ *
+ * NOTA: La restauración de sesión desde localStorage ya se hizo en boot/auth.js
+ *       Este guard solo valida el estado actual del authStore
  */
 
 import { isPublicRoute } from '../utils/navigationUtils'
@@ -21,18 +23,13 @@ import { findFirstAccessibleRoute } from '../utils/permissionUtils'
  * @returns {void}
  */
 export async function authGuard(to, from, next, authStore) {
-  // Restaurar sesión desde localStorage si no está cargada en memoria
-  if (!authStore.token) {
-    authStore.hydrateFromLocalStorage()
-  }
-
-  const token = authStore.token
+  const isAuthenticated = authStore.isAuthenticated
   const isPublic = isPublicRoute(to)
 
   // ✅ Rutas públicas: login, forgot-password, activacion-cuenta
   if (isPublic) {
     // Si ya está autenticado y va a login o raíz, redirigir a su primera ruta accesible
-    if (token && (to.path === '/' || to.path === '/login')) {
+    if (isAuthenticated && (to.path === '/' || to.path === '/login')) {
       const firstRoute = findFirstAccessibleRoute(authStore.permisos)
 
       if (firstRoute) {
@@ -53,8 +50,9 @@ export async function authGuard(to, from, next, authStore) {
   }
 
   // 🔒 Rutas privadas: requieren autenticación
-  if (!token) {
+  if (!isAuthenticated) {
     console.warn('🔒 Acceso denegado: No hay sesión activa. Redirigiendo a /login')
+    console.warn('📍 Ruta bloqueada:', to.fullPath)
     next('/login')
     return
   }

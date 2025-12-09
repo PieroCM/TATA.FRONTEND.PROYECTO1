@@ -314,10 +314,8 @@ export default {
   },
 
   mounted() {
-    // Asegurar que los permisos estén cargados desde localStorage
-    if (!this.authStore.token) {
-      this.authStore.hydrateFromLocalStorage()
-    }
+    // La sesión ya fue restaurada en boot/auth.js
+    // No es necesario volver a hidratar aquí
   },
 
   methods: {
@@ -343,7 +341,7 @@ export default {
       this.$router.push('/sistema/usuario')
     },
     cerrarSesion() {
-      // Limpiar sesión
+      // Limpiar sesión completa
       this.authStore.clearAuth()
 
       // Notificar al usuario
@@ -354,8 +352,9 @@ export default {
         timeout: 1500,
       })
 
-      // Redirigir al login
-      this.$router.push('/')
+      // Redirigir al login usando REPLACE (no queda en historial)
+      // Esto evita que el botón "Atrás" permita volver a rutas protegidas
+      this.$router.replace('/')
     },
   },
 }

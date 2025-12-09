@@ -11,7 +11,11 @@ export default defineConfig((/* ctx */) => {
     // app boot file (/src/boot)
     // --> boot files are part of "main.js"
     // https://v2.quasar.dev/quasar-cli-vite/boot-files
-    boot: ['clearAuthOnDev', 'axios'],
+    // Orden importante:
+    // 1. clearAuthOnDev (limpia en DEV)
+    // 2. auth (restaura sesión)
+    // 3. axios (usa token ya cargado)
+    boot: ['clearAuthOnDev', 'auth', 'axios'],
 
     // https://v2.quasar.dev/quasar-cli-vite/quasar-config-file#css
     css: ['app.scss'],

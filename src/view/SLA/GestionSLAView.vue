@@ -62,6 +62,13 @@
       :registro-id="selectedRegistroId"
       @registro-actualizado="loadSolicitudes"
     />
+
+    <!-- Diálogo para exportar solicitudes -->
+    <SlaExportDialog
+      v-model="showExportDialog"
+      :registros="registrosTabla"
+      @exportar="handleExportarPDF"
+    />
   </q-page>
 </template>
 
@@ -69,6 +76,9 @@
 import { ref, computed, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
+import tataLogo from 'src/assets/Tata_logo.png?base64'
 import {
   filtrarPorCumplimientoSla,
   filtrarPorEstadoSolicitud,
@@ -78,6 +88,7 @@ import SlaFilterBar from 'src/components/GestionSLA/SlaFilterBar.vue'
 import SlaTable from 'src/components/GestionSLA/SlaTable.vue'
 import SlaCreateDialog from 'src/components/GestionSLA/SlaCreateDialog.vue'
 import SlaEditDialog from 'src/components/GestionSLA/SlaEditDialog.vue'
+import SlaExportDialog from 'src/components/GestionSLA/SlaExportDialog.vue'
 
 const $q = useQuasar()
 const solicitudes = ref([])
@@ -85,6 +96,7 @@ const loading = ref(false)
 const error = ref(null)
 const showCreateDialog = ref(false)
 const showEditDialog = ref(false)
+const showExportDialog = ref(false)
 const selectedRegistroId = ref(null)
 const filtros = ref({
   texto: '',
@@ -226,7 +238,201 @@ const handleFiltrar = (nuevosFiltros) => {
 }
 
 const handleExportar = () => {
-  console.log('Exportar (pendiente)')
+  showExportDialog.value = true
+}
+
+const handleExportarPDF = ({ registros }) => {
+  if (registros.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No hay registros para exportar',
+      position: 'top-right',
+    })
+    return
+  }
+
+  try {
+    // Crear PDF en orientación horizontal (landscape)
+    const doc = new jsPDF({
+      orientation: 'landscape',
+      unit: 'mm',
+      format: 'a4',
+    })
+
+    const pageWidth = doc.internal.pageSize.getWidth()
+    const pageHeight = doc.internal.pageSize.getHeight()
+
+    // ========== CABECERA PROFESIONAL ==========
+
+    // Logo TATA (alineado a la derecha)
+    doc.addImage(tataLogo, 'PNG', pageWidth - 54, 14, 40, 25)
+
+    // Título principal
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.setTextColor(25, 118, 210) // #1976D2
+    doc.text('Reporte de Solicitudes SLA', 14, 22)
+
+    // Subtítulo con fecha actual
+    const now = new Date()
+    const dateString = now.toLocaleDateString('es-ES', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    const timeString = now.toLocaleTimeString('es-ES', {
+      hour: '2-digit',
+      minute: '2-digit',
+    })
+
+    doc.setFontSize(12)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(107, 114, 128) // #6B7280
+    doc.text(`Generado el: ${dateString} - ${timeString}`, 14, 30)
+
+    // Línea separadora
+    doc.setDrawColor(229, 231, 235) // #E5E7EB
+    doc.setLineWidth(0.5)
+    doc.line(14, 42, pageWidth - 14, 42)
+
+    // ========== TABLA PROFESIONAL ==========
+
+    // Preparar datos de la tabla
+    const rows = registros.map((r) => [
+      r.rol || '—',
+      r.fechaSolicitud?.substring(0, 10) || '—',
+      r.fechaIngreso?.substring(0, 10) || '—',
+      r.codigoSla || '—',
+      r.tipo || '—',
+      r.dias?.toString() || '—',
+      r.estadoSolicitud || '—',
+      r.cumplimientoSla || '—',
+    ])
+
+    autoTable(doc, {
+      startY: 48,
+      head: [
+        [
+          'Rol',
+          'Fecha Solicitud',
+          'Fecha Ingreso',
+          'Código SLA',
+          'Tipo',
+          'Días SLA',
+          'Estado Solicitud',
+          'Cumplimiento SLA',
+        ],
+      ],
+      body: rows,
+
+      // Estilos generales
+      styles: {
+        fontSize: 8,
+        cellPadding: 3,
+        lineColor: [209, 213, 219], // #D1D5DB
+        lineWidth: 0.1,
+        textColor: [17, 24, 39], // #111827
+        font: 'helvetica',
+      },
+
+      // Estilo del encabezado
+      headStyles: {
+        fillColor: [25, 118, 210], // #1976D2 (azul corporativo)
+        textColor: [255, 255, 255], // Blanco
+        fontStyle: 'bold',
+        halign: 'left',
+        fontSize: 9,
+        cellPadding: 4,
+      },
+
+      // Filas alternadas
+      alternateRowStyles: {
+        fillColor: [243, 244, 246], // #F3F4F6
+      },
+
+      // Estilos de columnas específicas
+      columnStyles: {
+        0: { cellWidth: 35, halign: 'left' }, // Rol
+        1: { cellWidth: 25, halign: 'center' }, // Fecha Solicitud
+        2: { cellWidth: 25, halign: 'center' }, // Fecha Ingreso
+        3: { cellWidth: 25, halign: 'center' }, // Código SLA
+        4: { cellWidth: 40, halign: 'left' }, // Tipo
+        5: { cellWidth: 18, halign: 'center' }, // Días SLA
+        6: { cellWidth: 30, halign: 'center' }, // Estado Solicitud
+        7: { cellWidth: 35, halign: 'center' }, // Cumplimiento SLA
+      },
+
+      // Márgenes
+      margin: { left: 14, right: 14, top: 20, bottom: 20 },
+
+      // Callback para personalizar celdas
+      didParseCell: function (data) {
+        // Resaltar cumplimiento SLA según tipo
+        if (data.column.index === 7 && data.section === 'body') {
+          const cumplimiento = data.cell.raw
+          if (cumplimiento && cumplimiento.includes('NO_CUMPLE')) {
+            data.cell.styles.textColor = [153, 27, 27] // Rojo oscuro
+            data.cell.styles.fontStyle = 'bold'
+          } else if (cumplimiento && cumplimiento.includes('CUMPLE')) {
+            data.cell.styles.textColor = [6, 95, 70] // Verde oscuro
+            data.cell.styles.fontStyle = 'bold'
+          } else if (cumplimiento && cumplimiento.includes('EN_PROCESO')) {
+            data.cell.styles.textColor = [146, 64, 14] // Naranja oscuro
+            data.cell.styles.fontStyle = 'bold'
+          }
+        }
+
+        // Resaltar estado de solicitud
+        if (data.column.index === 6 && data.section === 'body') {
+          const estado = data.cell.raw
+          if (estado === 'VENCIDA') {
+            data.cell.styles.textColor = [153, 27, 27] // Rojo oscuro
+            data.cell.styles.fontStyle = 'bold'
+          } else if (estado === 'ACTIVA') {
+            data.cell.styles.textColor = [6, 95, 70] // Verde oscuro
+            data.cell.styles.fontStyle = 'bold'
+          }
+        }
+      },
+    })
+
+    // ========== FOOTER ELEGANTE EN CADA PÁGINA ==========
+    const totalPages = doc.internal.getNumberOfPages()
+
+    for (let i = 1; i <= totalPages; i++) {
+      doc.setPage(i)
+
+      doc.setFontSize(10)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(107, 114, 128) // #6B7280
+
+      const footerText = `Proyecto TATA – Sistema de Gestión SLA © 2025`
+      const pageText = `Página ${i} de ${totalPages}`
+
+      // Footer centrado
+      doc.text(footerText, pageWidth / 2, pageHeight - 10, { align: 'center' })
+      doc.text(pageText, pageWidth / 2, pageHeight - 6, { align: 'center' })
+    }
+
+    // ========== DESCARGAR PDF ==========
+    const fileName = `Solicitudes_SLA_${dateString.replace(/\//g, '-')}_${timeString.replace(/:/g, '-')}.pdf`
+    doc.save(fileName)
+
+    $q.notify({
+      type: 'positive',
+      message: 'PDF generado correctamente',
+      caption: `Se exportaron ${registros.length} registros`,
+      position: 'top-right',
+    })
+  } catch (err) {
+    console.error('Error al generar PDF:', err)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al generar el PDF',
+      caption: err.message || 'Error desconocido',
+      position: 'top-right',
+    })
+  }
 }
 
 const handleEditar = (registro) => {
