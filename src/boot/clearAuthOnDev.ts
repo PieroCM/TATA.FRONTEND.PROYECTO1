@@ -1,36 +1,45 @@
 /**
  * Boot file para limpiar autenticación en modo desarrollo
  *
- * Propósito:
- * - [DESHABILITADO] Anteriormente limpiaba localStorage en cada recarga
- * - PROBLEMA: Impedía mantener sesión al presionar F5
- * - SOLUCIÓN: Comentado para permitir persistencia de sesión
+ * Comportamiento INTELIGENTE:
+ * - LIMPIA localStorage SOLO al iniciar el servidor (primera carga)
+ * - PRESERVA sesión en recargas normales (F5, navegación)
+ * - Usa sessionStorage como flag temporal (se borra al cerrar pestaña)
  *
- * Para limpiar manualmente la sesión en desarrollo:
- * - Opción 1: Usar DevTools → Application → Local Storage → Clear All
- * - Opción 2: Hacer logout desde la aplicación
- * - Opción 3: Descomentar temporalmente el código de limpieza
+ * ¿Cómo funciona?
+ * 1. Al iniciar el servidor → sessionStorage vacío → LIMPIA localStorage
+ * 2. Marca sessionStorage.devServerStarted = 'true'
+ * 3. En recargas (F5) → sessionStorage existe → NO limpia nada
+ * 4. Al cerrar pestaña → sessionStorage se borra → próximo inicio limpia
  *
- * Comportamiento actual:
- * - NO limpia localStorage automáticamente
- * - Permite mantener sesión entre recargas (F5)
- * - boot/auth.js restaurará la sesión si existe
+ * Ventajas:
+ * ✅ Desarrollo limpio al levantar el servidor
+ * ✅ Sesión persiste al presionar F5
+ * ✅ No necesitas logout manual cada vez
  */
 
-export default ({ app }) => {
-  // DESHABILITADO: No limpiar en cada recarga para permitir persistencia
-  // if (process.env.DEV) {
-  //   console.log('🧹 [DEV MODE] Limpiando tokens de autenticación previos...')
-  //
-  //   localStorage.removeItem('authToken')
-  //   localStorage.removeItem('authUser')
-  //   localStorage.removeItem('authPerms')
-  //
-  //   console.log('✅ [DEV MODE] localStorage limpiado. Ir a /login para iniciar sesión.')
-  // }
-
-  // Si necesitas limpiar la sesión, haz logout manualmente o usa DevTools
+export default () => {
   if (process.env.DEV) {
-    console.log('ℹ️ [DEV MODE] clearAuthOnDev deshabilitado - sesión persiste entre recargas')
+    const DEV_SESSION_KEY = 'devServerStarted'
+
+    // Verificar si es la PRIMERA CARGA del servidor
+    const isPrimeraVez = !sessionStorage.getItem(DEV_SESSION_KEY)
+
+    if (isPrimeraVez) {
+      // SOLO limpia en la primera carga (al iniciar el servidor)
+      console.log('🧹 [DEV MODE] Primera carga detectada → Limpiando autenticación...')
+
+      localStorage.removeItem('authToken')
+      localStorage.removeItem('authUser')
+      localStorage.removeItem('authPerms')
+
+      // Marcar que el servidor ya se inició (persiste durante la sesión de navegador)
+      sessionStorage.setItem(DEV_SESSION_KEY, 'true')
+
+      console.log('✅ [DEV MODE] localStorage limpiado. Puedes hacer login.')
+    } else {
+      // F5 o recarga normal → NO hacer nada
+      console.log('🔄 [DEV MODE] Recarga detectada → Sesión preservada (F5 permitido)')
+    }
   }
 }
