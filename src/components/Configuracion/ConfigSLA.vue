@@ -102,6 +102,7 @@
       v-model="showEditModal"
       :config="selectedConfig"
       :is-create="isCreateMode"
+      :codes-in-use="configs.map(x => ({ codigo: x.codigoSla, id: x.idSla }))"
       @save="handleSave"
       @close="closeEditModal"
     />
@@ -196,6 +197,22 @@ const closeEditModal = () => {
 }
 
 const handleSave = async (data) => {
+  // Validación final: verificar si el código ya existe
+  const exists = configs.value.some(x =>
+    x.codigoSla.toLowerCase() === data.codigoSla.toLowerCase() &&
+    x.idSla !== data.idSla
+  )
+
+  if (exists) {
+    $q.notify({
+      type: 'warning',
+      message: 'El código SLA ya existe. Debes ingresar uno diferente.',
+      position: 'top-right',
+      timeout: 2500
+    })
+    return
+  }
+
   try {
     if (isCreateMode.value) {
       await api.post('/api/ConfigSla', data)

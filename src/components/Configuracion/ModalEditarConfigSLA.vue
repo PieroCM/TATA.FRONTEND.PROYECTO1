@@ -35,6 +35,7 @@
               :error="!!errors.codigoSla"
               :error-message="errors.codigoSla"
               @blur="validateField('codigoSla')"
+              @input="validateField('codigoSla')"
             />
           </div>
 
@@ -171,6 +172,10 @@ const props = defineProps({
   isCreate: {
     type: Boolean,
     default: false
+  },
+  codesInUse: {
+    type: Array,
+    default: () => []
   }
 })
 
@@ -245,6 +250,15 @@ const validateField = (field) => {
       errors.value.codigoSla = 'El código no puede exceder 50 caracteres'
     } else if (!/^[A-Z0-9_-]+$/i.test(codigo)) {
       errors.value.codigoSla = 'Solo se permiten letras, números, guiones y guiones bajos'
+    } else {
+      // Validar si el código ya existe
+      const isDuplicate = props.codesInUse.some(item => 
+        item.codigo.toLowerCase() === codigo.toLowerCase() && 
+        item.id !== formData.value.idSla
+      )
+      if (isDuplicate) {
+        errors.value.codigoSla = 'Este código SLA ya está en uso'
+      }
     }
   }
 
