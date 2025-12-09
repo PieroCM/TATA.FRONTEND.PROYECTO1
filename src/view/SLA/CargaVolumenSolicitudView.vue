@@ -245,7 +245,7 @@ import { ref } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import * as XLSX from 'xlsx'
-import { getUserIdFromToken } from 'src/utils/jwt'
+import { getUserId } from 'src/utils/jwt' // ⭐ Cambiado de getUserIdFromToken a getUserId
 
 const $q = useQuasar()
 
@@ -433,9 +433,11 @@ const procesarArchivo = async () => {
     return
   }
 
-  // Obtener ID del usuario logueado
-  const idUsuario = getUserIdFromToken()
+  // Obtener ID del usuario desde localStorage (método simplificado y confiable)
+  const idUsuario = getUserId()
+
   if (!idUsuario) {
+    console.error('❌ No se pudo obtener el ID del usuario')
     $q.notify({
       type: 'negative',
       message: 'Error de autenticación',

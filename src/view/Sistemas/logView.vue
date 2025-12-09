@@ -1,32 +1,28 @@
 <template>
   <div class="logs-container">
     <!-- CABECERA -->
-    <div class="header-row">
-      <div>
-        <h2 class="title">Logs del Sistema</h2>
-        <p class="subtitle">Registro de eventos y errores de la aplicación</p>
+    <div class="header-section">
+      <div class="header-content">
+        <h1 class="page-title">Logs del Sistema</h1>
+        <p class="page-subtitle">Registro de eventos y errores de la aplicación</p>
       </div>
 
-      <!--<q-btn color="white" flat class="export-btn" no-caps>
-        <q-icon name="download" color="primary" size="20px" />
-        <span class="export-text">Exportar Logs</span>
-      </q-btn>-->
-
-      <!-- 🔽 EXPORTAR LOGS (MENÚ DESPLEGABLE) -->
       <q-btn-dropdown
-        flat
+        unelevated
         class="export-btn"
         no-caps
-        dropdown-icon="expand_more"
         label="Exportar Logs"
+        icon="download"
+        dropdown-icon="expand_more"
       >
-        <q-list bordered padding>
-          <q-item clickable v-ripple @click="exportPDF" v-close-popup>
+        <q-list>
+          <q-item clickable v-close-popup @click="exportPDF">
             <q-item-section avatar>
               <q-icon name="picture_as_pdf" color="red" />
             </q-item-section>
-
-            <q-item-section>Exportar PDF</q-item-section>
+            <q-item-section>
+              <q-item-label>Exportar como PDF</q-item-label>
+            </q-item-section>
           </q-item>
         </q-list>
       </q-btn-dropdown>
@@ -35,56 +31,104 @@
     <!-- RESUMEN -->
     <div class="summary-row">
       <SummaryCard type="info" :count="counts.info" />
-      <SummaryCard type="success" :count="counts.success" />
+      <!--<SummaryCard type="success" :count="counts.success" />-->
       <SummaryCard type="warning" :count="counts.warning" />
-      <SummaryCard type="error" :count="counts.error" />
+     <!-- <SummaryCard type="error" :count="counts.error" />-->
     </div>
 
     <!-- FILTROS -->
-    <div class="filter-panel">
+    <div class="filter-bar">
       <q-input
-        v-model="search"
-        dense
-        rounded
+        v-model="searchQuery"
         outlined
-        placeholder="Buscar en mensajes..."
-        class="filter-input"
+        dense
+        placeholder="Buscar en mensajes o detalles..."
+        class="search-input"
       >
-        <template #prepend>
-          <q-icon name="filter_alt" />
+        <template v-slot:prepend>
+          <q-icon name="search" color="grey-6" />
         </template>
       </q-input>
 
       <q-select
         v-model="selectedLevel"
+        outlined
+        dense
         :options="levelOptions"
-        dense
-        outlined
-        rounded
         class="filter-select"
-      />
-      <!--
-       <q-select
-        v-model="selectedService"
-        :options="serviceOptions"
-        dense
+      >
+        <template v-slot:prepend>
+          <q-icon name="filter_list" color="grey-6" />
+        </template>
+      </q-select>
+
+      <q-select
+        v-model="selectedRole"
+        :options="rolesOptions"
         outlined
-        rounded
-        class="filter-select"
-      /> -->
+        dense
+        label="Filtrar por rol"
+        clearable
+        class="role-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="badge" color="grey-6" />
+        </template>
+      </q-select>
+
+      <q-input
+        v-model="fechaInicio"
+        outlined
+        dense
+        type="date"
+        label="Desde"
+        clearable
+        class="date-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="event" color="grey-6" />
+        </template>
+      </q-input>
+
+      <q-input
+        v-model="fechaFin"
+        outlined
+        dense
+        type="date"
+        label="Hasta"
+        clearable
+        class="date-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="event" color="grey-6" />
+        </template>
+      </q-input>
     </div>
 
-    <!-- LISTA DE LOGS -->
-    <div v-if="filteredLogs.length === 0" class="no-results">No se encontraron registros...</div>
+    <!-- TABLA DE LOGS -->
+    <LogItem :logs="paginatedLogs" :loading="loading" />
 
-    <div v-else class="log-list">
-      <LogItem v-for="(l, idx) in filteredLogs" :key="idx" :log="l" />
+    <!-- PAGINACIÓN -->
+    <div v-if="filteredLogs.length > 0" class="pagination-container">
+      <q-pagination
+        v-model="currentPage"
+        :max="totalPages"
+        :max-pages="7"
+        boundary-numbers
+        direction-links
+        color="primary"
+        active-design="unelevated"
+        active-color="primary"
+        active-text-color="white"
+      />
+      <p class="pagination-info">
+        Mostrando {{ startRecord }} - {{ endRecord }} de {{ filteredLogs.length }} registros
+      </p>
     </div>
   </div>
 </template>
 <script setup>
-import { QIcon, QInput, QSelect, QBtnDropdown } from 'quasar'
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import SummaryCard from '../../components/compLogView/SummaryCard.vue'
 import LogItem from '../../components/compLogView/LogItem.vue'
 import jsPDF from 'jspdf'
@@ -96,6 +140,14 @@ import { api } from 'src/boot/axios'
     VARIABLES REACTIVAS
 --------------------------------*/
 const logs = ref([])
+const enrichedLogs = ref([])
+const loading = ref(false)
+
+// Datos para enriquecimiento
+const usuarios = ref([])
+const personales = ref([])
+const rolesSistema = ref([])
+const rolesOptions = ref([])
 
 const counts = ref({
   info: 0,
@@ -105,11 +157,17 @@ const counts = ref({
 })
 
 /* FILTROS */
-const search = ref('')
+const searchQuery = ref('')
 const selectedLevel = ref('Todos los niveles')
-/*const selectedService = ref('Todos los servicios')*/
+const selectedRole = ref(null)
+const fechaInicio = ref('')
+const fechaFin = ref('')
 
 const levelOptions = ['Todos los niveles', 'INFO', 'SUCCESS', 'WARN', 'ERROR']
+
+/* PAGINACIÓN */
+const currentPage = ref(1)
+const itemsPerPage = 10
 
 /* const serviceOptions = [
   'Todos los servicios',
@@ -144,225 +202,509 @@ const updateCounts = () => {
      CARGAR API
 --------------------------------*/
 const fetchLogs = async () => {
+  loading.value = true
   try {
-    const res = await api.get('/api/logsistema')
-    logs.value = res.data
-    // Normalizamos los niveles para que siempre sean MAYÚSCULAS
-    logs.value = logs.value.map((l) => ({
+    // Cargar logs
+    const resLogs = await api.get('/api/logsistema')
+    logs.value = resLogs.data.map((l) => ({
       ...l,
       nivel: l.nivel.toUpperCase(),
     }))
+
+    // Cargar datos relacionados
+    const [resUsuarios, resPersonales, resRoles] = await Promise.all([
+      api.get('/api/usuario'),
+      api.get('/api/personal'),
+      api.get('/api/RolesSistema')
+    ])
+
+    usuarios.value = resUsuarios.data
+    personales.value = resPersonales.data
+    rolesSistema.value = resRoles.data
+
+    // Cargar opciones del select de roles
+    rolesOptions.value = resRoles.data.map(rol => ({
+      label: rol.nombre,
+      value: rol.idRolSistema
+    }))
+
+    // Enriquecer logs con información de usuario
+    enrichedLogs.value = logs.value.map(log => {
+      const usuario = usuarios.value.find(u => u.idUsuario === log.idUsuario)
+      
+      if (usuario) {
+        const personal = personales.value.find(p => p.idPersonal === usuario.idPersonal)
+        const rol = rolesSistema.value.find(r => r.idRolSistema === usuario.idRolSistema)
+
+        return {
+          ...log,
+          rolNombre: rol?.nombre || '—',
+          usuarioNombreCompleto: personal 
+            ? `${personal.nombres} ${personal.apellidos}`.trim() 
+            : '—',
+          usuarioDocumento: personal?.documento || '—'
+        }
+      }
+
+      return {
+        ...log,
+        rolNombre: '—',
+        usuarioNombreCompleto: '—',
+        usuarioDocumento: '—'
+      }
+    })
   } catch (e) {
     console.error('Error cargando logs:', e)
     logs.value = []
+    enrichedLogs.value = []
+  } finally {
+    loading.value = false
   }
 
   updateCounts()
 }
-
-onMounted(fetchLogs)
-
 /* ------------------------------
      FILTROS DINÁMICOS
 --------------------------------*/
 const filteredLogs = computed(() => {
-  return logs.value.filter((l) => {
+  return enrichedLogs.value.filter((l) => {
     const matchSearch =
-      l.mensaje.toLowerCase().includes(search.value.toLowerCase()) ||
-      l.detalles.toLowerCase().includes(search.value.toLowerCase())
+      searchQuery.value === '' ||
+      l.mensaje?.toLowerCase().includes(searchQuery.value.toLowerCase()) ||
+      l.detalles?.toLowerCase().includes(searchQuery.value.toLowerCase())
 
     const matchLevel =
       selectedLevel.value === 'Todos los niveles' || l.nivel === selectedLevel.value
 
-    /* const matchService =
-      selectedService.value === 'Todos los servicios' || l.servicio === selectedService.value */
+    const matchRole =
+      !selectedRole.value ||
+      (usuarios.value.find(u => u.idUsuario === l.idUsuario)?.idRolSistema === selectedRole.value.value)
 
-    return matchSearch && matchLevel /* && matchService*/
+    const matchFecha =
+      (!fechaInicio.value || new Date(l.fechaHora) >= new Date(fechaInicio.value)) &&
+      (!fechaFin.value || new Date(l.fechaHora) <= new Date(fechaFin.value + 'T23:59:59'))
+
+    return matchSearch && matchLevel && matchRole && matchFecha
   })
 })
 
+/* ------------------------------
+     PAGINACIÓN
+--------------------------------*/
+const totalPages = computed(() => Math.ceil(filteredLogs.value.length / itemsPerPage))
+
+const paginatedLogs = computed(() => {
+  const start = (currentPage.value - 1) * itemsPerPage
+  const end = start + itemsPerPage
+  return filteredLogs.value.slice(start, end)
+})
+
+const startRecord = computed(() => {
+  return filteredLogs.value.length === 0 ? 0 : (currentPage.value - 1) * itemsPerPage + 1
+})
+
+const endRecord = computed(() => {
+  const end = currentPage.value * itemsPerPage
+  return end > filteredLogs.value.length ? filteredLogs.value.length : end
+})
+
+// Resetear a página 1 cuando cambian los filtros
+watch([searchQuery, selectedLevel, selectedRole, fechaInicio, fechaFin], () => {
+  currentPage.value = 1
+})
+
+onMounted(fetchLogs)
+
 /* ------EXPORTAR PDF-----------*/
-//const logoTata =
-//'PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz4NCjwhLS0gR2VuZXJhdG9yOiBBZG9iZSBJbGx1c3RyYXRvciAxMi4wLjAsIFNWRyBFeHBvcnQgUGx1Zy1JbiAuIFNWRyBWZXJzaW9uOiA2LjAwIEJ1aWxkIDUxNDQ4KSAgLS0+DQo8IURPQ1RZUEUgc3ZnIFBVQkxJQyAiLS8vVzNDLy9EVEQgU1ZHIDEuMS8vRU4iICJodHRwOi8vd3d3LnczLm9yZy9HcmFwaGljcy9TVkcvMS4xL0RURC9zdmcxMS5kdGQiIFsNCgk8IUVOVElUWSBuc19zdmcgImh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4NCgk8IUVOVElUWSBuc194bGluayAiaHR0cDovL3d3dy53My5vcmcvMTk5OS94bGluayI+DQpdPg0KPHN2ZyAgdmVyc2lvbj0iMS4xIiBpZD0iTGF5ZXJfMSIgeG1sbnM9IiZuc19zdmc7IiB4bWxuczp4bGluaz0iJm5zX3hsaW5rOyIgd2lkdGg9IjQ1MS4zMTYiIGhlaWdodD0iNDE0LjQ3MyINCgkgdmlld0JveD0iMCAwIDQ1MS4zMTYgNDE0LjQ3MyIgb3ZlcmZsb3c9InZpc2libGUiIGVuYWJsZS1iYWNrZ3JvdW5kPSJuZXcgMCAwIDQ1MS4zMTYgNDE0LjQ3MyIgeG1sOnNwYWNlPSJwcmVzZXJ2ZSI+DQo8Zz4NCgk8cG9seWdvbiBmaWxsPSIjNDg2QUFFIiBwb2ludHM9IjE0LjYxNiwyODYuNzMyIDExNi4yMywyODYuNzMyIDExNi4yMywzMTcuNjU0IDg3LjA3OSwzMTcuNjU0IDg3LjA3OSwzOTEuOTY5IDQ0LjczNywzOTEuOTY5IA0KCQk0NC43MzcsMzE3LjY1NCAxNC42MTYsMzE3LjY1NCAJIi8+DQoJPHBvbHlnb24gZmlsbD0iIzQ4NkFBRSIgcG9pbnRzPSIxNjcuNjkyLDMyOS4yNTIgMTQ2LjI5OCwzOTEuOTY5IDEwNS42MzUsMzkxLjk2OSAxNDUuNTE2LDI4Ni43MzIgMTg5LjY3NywyODYuNzMyIA0KCQkyMzAuNTE5LDM5MS45NjkgMTg5LjM1NiwzOTEuOTY5IAkiLz4NCgk8cG9seWdvbiBmaWxsPSIjNDg2QUFFIiBwb2ludHM9IjIyMC44MDUsMjg2LjczMiAzMjIuNDE1LDI4Ni43MzIgMzIyLjQxNSwzMTcuNjU0IDI5My4yNzMsMzE3LjY1NCAyOTMuMjczLDM5MS45NjkgDQoJCTI1MC45MzMsMzkxLjk2OSAyNTAuOTMzLDMxNy42NTQgMjIwLjgwNSwzMTcuNjU0IAkiLz4NCgk8cG9seWdvbiBmaWxsPSIjNDg2QUFFIiBwb2ludHM9IjM3My44OTUsMzI5LjI1MiAzNTIuNDkzLDM5MS45NjkgMzExLjgzLDM5MS45NjkgMzUxLjcyNCwyODYuNzMyIDM5NS44NzIsMjg2LjczMiA0MzYuNywzOTEuOTY5IA0KCQkzOTUuNTUyLDM5MS45NjkgCSIvPg0KCTxwYXRoIGZpbGwtcnVsZT0iZXZlbm9kZCIgY2xpcC1ydWxlPSJldmVub2RkIiBmaWxsPSIjNDg2QUFFIiBkPSJNMzc1LjM5NCw5My40MzJjLTMuNzk0LTcuNDYxLTguNzkxLTE0LjYxMi0xNS4wMDctMjEuMzE4DQoJCWMtMTMuOTY5LTE1LjA3Ny0zMy42NzgtMjcuNjIzLTU3LjAwMi0zNi4yNzZjLTIzLjUxNi04LjcyLTUwLjMzOC0xMy4zMzQtNzcuNTk1LTEzLjMzNHMtNTQuMDc5LDQuNjE0LTc3LjU4MywxMy4zMzQNCgkJYy0yMy4zMzYsOC42NTQtNDMuMDQ2LDIxLjItNTcuMDE1LDM2LjI3NkM4NC45OCw3OC44MTksNzkuOTY3LDg1Ljk4LDc2LjE3NCw5My40NDVjMzAuMzY1LTcuMzQzLDgyLjMwNi0xNy4wMzgsMTMwLjUzNC0xOC4wNjMNCgkJYzQuNjUyLTAuMSw3Ljg1NSwxLjM5LDkuOTY0LDQuMDYzYzIuNTY5LDMuMjU1LDIuMzc2LDE0Ljg1OCwyLjMxMywyMC4wNDlsLTEuMzcxLDEzNC4xN2MyLjcxNiwwLjA5LDUuNDQ1LDAuMTQ4LDguMTc2LDAuMTQ4DQoJCWMyLjc1NCwwLDUuNDk4LTAuMDQ1LDguMjE0LTAuMTM1bC0xLjM3MS0xMzQuMTg0Yy0wLjA3MS01LjE5LTAuMjctMTYuNzk0LDIuMzA4LTIwLjA0OWMyLjExNC0yLjY3Miw1LjMwNi00LjE2Miw5Ljk1Ny00LjA2Mw0KCQlDMjkzLjEwNiw3Ni4zOTgsMzQ1LjAzNSw4Ni4wOTUsMzc1LjM5NCw5My40MzIiLz4NCgk8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzQ4NkFBRSIgZD0iTTM4MS44NzcsMTEwLjg4Yy00NC40NDItMTAuMDQ3LTc0LjEyMS0xMS45MDUtMTAzLjQwNS0xMy41Mw0KCQljLTI1LjUyNi0xLjQxOS0yNS44NTksNy42OTYtMjMuMzExLDI1LjExNWMwLjE2NywxLjA2MywwLjM3MiwyLjQwMywwLjYxNSwzLjkzMWM4LjU2Miw1MC43MTIsMTkuMjI0LDk0LjM1MiwyMS4wNTYsMTAxLjc1OQ0KCQljNjIuMjMtMTQuMjI1LDEwNy4xMDktNTMuNjY0LDEwNy4xMDktOTkuOTk0QzM4My45NDEsMTIyLjMyNywzODMuMjM2LDExNi41NDcsMzgxLjg3NywxMTAuODgiLz4NCgk8cGF0aCBmaWxsLXJ1bGU9ImV2ZW5vZGQiIGNsaXAtcnVsZT0iZXZlbm9kZCIgZmlsbD0iIzQ4NkFBRSIgZD0iTTE5Ni40NDMsMTIyLjQ2NWMyLjU1MS0xNy40MTgsMi4yMjQtMjYuNTM0LTIzLjI5OS0yNS4xMTUNCgkJYy0yOS4yOTQsMS42MjUtNTguOTgsMy40ODItMTAzLjQzOSwxMy41MzZjLTEuMzU4LDUuNjY3LTIuMDcyLDExLjQ0LTIuMDcyLDE3LjI3NGMwLDIwLjAyNCw4LjE0NiwzOS40LDIzLjU2LDU2LjA0Nw0KCQljMTMuOTY5LDE1LjA3NywzMy42NzksMjcuNjIzLDU3LjAxNSwzNi4yODJjOC40NDYsMy4xMjcsMTcuMzU5LDUuNjksMjYuNTQsNy43NGMxLjcyMy02LjkzOSwxMi42My01MS40ODcsMjEuMjg1LTEwMy4xMDYNCgkJQzE5Ni4xOTMsMTI0LjEzNCwxOTYuMzQxLDEyMy4yMjEsMTk2LjQ0MywxMjIuNDY1Ii8+DQo8L2c+DQo8L3N2Zz4NCg=='
-
 const exportPDF = () => {
-  console.log('🔥 SI ENTRA A exportPDF()')
-
   if (filteredLogs.value.length === 0) {
     alert('No hay registros filtrados para exportar.')
     return
   }
 
-  const doc = new jsPDF()
+  // Crear PDF en orientación horizontal (landscape)
+  const doc = new jsPDF({
+    orientation: 'landscape',
+    unit: 'mm',
+    format: 'a4'
+  })
 
-  // LOGO
-  doc.addImage(tataLogo, 'PNG', 150, 10, 40, 25)
+  const pageWidth = doc.internal.pageSize.getWidth()
+  const pageHeight = doc.internal.pageSize.getHeight()
 
-  // TÍTULO
-  doc.setFontSize(18)
-  doc.text('Reporte de Logs del Sistema', 14, 15)
+  // ========== CABECERA PROFESIONAL ==========
+  
+  // Logo TATA (alineado a la derecha)
+  doc.addImage(tataLogo, 'PNG', pageWidth - 54, 14, 40, 25)
 
+  // Título principal
+  doc.setFontSize(20)
+  doc.setFont('helvetica', 'bold')
+  doc.setTextColor(25, 118, 210) // #1976D2
+  doc.text('Reporte de Logs del Sistema', 14, 22)
+
+  // Subtítulo con fecha actual
+  const now = new Date()
+  const dateString = now.toLocaleDateString('es-ES', { 
+    day: '2-digit', 
+    month: '2-digit', 
+    year: 'numeric' 
+  })
+  const timeString = now.toLocaleTimeString('es-ES', { 
+    hour: '2-digit', 
+    minute: '2-digit' 
+  })
+  
   doc.setFontSize(12)
-  doc.text(`Registros exportados: ${filteredLogs.value.length}`, 14, 25)
+  doc.setFont('helvetica', 'normal')
+  doc.setTextColor(107, 114, 128) // #6B7280
+  doc.text(`Generado el: ${dateString} - ${timeString}`, 14, 30)
 
-  // TABLA
+  // Línea separadora
+  doc.setDrawColor(229, 231, 235) // #E5E7EB
+  doc.setLineWidth(0.5)
+  doc.line(14, 42, pageWidth - 14, 42)
+
+  // ========== TABLA PROFESIONAL ==========
+  
+  // Preparar datos de la tabla
   const rows = filteredLogs.value.map((l) => [
-    l.idLog,
-    l.fechaHora?.substring(0, 19).replace('T', ' '),
-    l.nivel,
-    l.mensaje,
-    l.detalles,
+    l.fechaHora?.substring(0, 19).replace('T', ' ') || '—',
+    l.nivel || '—',
+    l.mensaje || '—',
+    l.detalles || '—',
+    l.rolNombre || '—',
+    l.usuarioNombreCompleto || '—',
+    l.usuarioDocumento || '—'
   ])
 
   autoTable(doc, {
-    startY: 35,
-    head: [['ID', 'Fecha/Hora', 'Nivel', 'Mensaje', 'Detalles']],
+    startY: 48,
+    head: [['Fecha/Hora', 'Nivel', 'Mensaje', 'Detalles', 'Rol', 'Usuario', 'Documento']],
     body: rows,
-    styles: { fontSize: 9, cellPadding: 3 },
+    
+    // Estilos generales
+    styles: {
+      fontSize: 9,
+      cellPadding: 4,
+      lineColor: [209, 213, 219], // #D1D5DB
+      lineWidth: 0.1,
+      textColor: [17, 24, 39], // #111827
+      font: 'helvetica'
+    },
+    
+    // Estilo del encabezado
     headStyles: {
-      fillColor: [41, 128, 185],
-      textColor: '#fff',
+      fillColor: [25, 118, 210], // #1976D2 (azul corporativo)
+      textColor: [255, 255, 255], // Blanco
       fontStyle: 'bold',
+      halign: 'left',
+      fontSize: 10,
+      cellPadding: 5
     },
+    
+    // Filas alternadas
+    alternateRowStyles: {
+      fillColor: [243, 244, 246] // #F3F4F6
+    },
+    
+    // Estilos de columnas específicas
     columnStyles: {
-      0: { cellWidth: 15 },
-      1: { cellWidth: 35 },
-      2: { cellWidth: 22 },
-      3: { cellWidth: 50 },
-      4: { cellWidth: 60 },
+      0: { cellWidth: 32, halign: 'left' },   // Fecha/Hora
+      1: { cellWidth: 20, halign: 'center' }, // Nivel
+      2: { cellWidth: 45, halign: 'left' },   // Mensaje
+      3: { cellWidth: 50, halign: 'left' },   // Detalles
+      4: { cellWidth: 35, halign: 'left' },   // Rol
+      5: { cellWidth: 35, halign: 'left' },   // Usuario
+      6: { cellWidth: 25, halign: 'center' }  // Documento
     },
+    
+    // Márgenes
+    margin: { left: 14, right: 14, top: 20, bottom: 20 },
+    
+    // Callback para personalizar celdas
+    didParseCell: function(data) {
+      // Resaltar nivel según tipo
+      if (data.column.index === 1 && data.section === 'body') {
+        const nivel = data.cell.raw
+        if (nivel === 'ERROR') {
+          data.cell.styles.textColor = [153, 27, 27] // Rojo oscuro
+          data.cell.styles.fontStyle = 'bold'
+        } else if (nivel === 'WARN') {
+          data.cell.styles.textColor = [146, 64, 14] // Naranja oscuro
+          data.cell.styles.fontStyle = 'bold'
+        } else if (nivel === 'SUCCESS') {
+          data.cell.styles.textColor = [6, 95, 70] // Verde oscuro
+          data.cell.styles.fontStyle = 'bold'
+        } else if (nivel === 'INFO') {
+          data.cell.styles.textColor = [25, 118, 210] // Azul #1976D2
+          data.cell.styles.fontStyle = 'bold'
+        }
+      }
+    }
   })
 
-  // FOOTER EN CADA PÁGINA
-  const addFooter = () => {
-    const totalPages = doc.internal.getNumberOfPages()
+  // ========== FOOTER ELEGANTE EN CADA PÁGINA ==========
+  const totalPages = doc.internal.getNumberOfPages()
 
-    for (let i = 1; i <= totalPages; i++) {
-      doc.setPage(i)
-
-      const footerText = `Página ${i} de ${totalPages} — Proyecto TATA · Sistema de Logs 2025`
-
-      doc.setFontSize(10)
-      doc.setTextColor('#6B7280')
-
-      doc.text(
-        footerText,
-        doc.internal.pageSize.getWidth() / 2,
-        doc.internal.pageSize.getHeight() - 12,
-        { align: 'center' },
-      )
-    }
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i)
+    
+    doc.setFontSize(10)
+    doc.setFont('helvetica', 'normal')
+    doc.setTextColor(107, 114, 128) // #6B7280
+    
+    const footerText = `Proyecto TATA – Sistema de Logs © 2025`
+    const pageText = `Página ${i} de ${totalPages}`
+    
+    // Footer centrado
+    doc.text(footerText, pageWidth / 2, pageHeight - 10, { align: 'center' })
+    doc.text(pageText, pageWidth / 2, pageHeight - 6, { align: 'center' })
   }
 
-  addFooter()
-
-  // DESCARGAR PDF
-  doc.save('logs_filtrados.pdf')
+  // ========== DESCARGAR PDF ==========
+  const fileName = `Logs_TATA_${dateString.replace(/\//g, '-')}_${timeString.replace(/:/g, '-')}.pdf`
+  doc.save(fileName)
 }
 </script>
 
-<style scoped>
+<style scoped lang="scss">
 .logs-container {
-  padding: 20px 30px;
-  font-family: 'Segoe UI', sans-serif;
-  color: #333;
+  padding: 24px 32px;
+  background: #FFFFFF;
+  min-height: 100vh;
 }
 
-/* Header */
-.header-row {
+/* ========== HEADER ========== */
+.header-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 32px;
+  gap: 24px;
+}
+
+.header-content {
+  flex: 1;
+}
+
+.page-title {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  line-height: 1.2;
+}
+
+.page-subtitle {
+  margin: 8px 0 0 0;
+  font-family: 'Inter', sans-serif;
+  font-size: 15px;
+  font-weight: 400;
+  color: #6B7280;
+  line-height: 1.6;
+}
+
+.export-btn {
+  height: 44px;
+  padding: 0 24px;
+  background: #2563EB;
+  border-radius: 12px;
+  font-family: 'Inter', sans-serif;
+  font-size: 14px;
+  font-weight: 600;
+  color: #FFFFFF;
+  text-transform: none;
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.2);
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: #1E40AF;
+    box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+  }
+
+  :deep(.q-icon) {
+    font-size: 20px;
+    margin-right: 6px;
+  }
+}
+
+/* ========== SUMMARY CARDS ========== */
+.summary-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
+  margin-bottom: 32px;
+  width: 100%;
+}
+
+/* ========== FILTROS ========== */
+.filter-bar {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 24px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.search-input {
+  flex: 2;
+  min-width: 280px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  :deep(input::placeholder) {
+    color: #9CA3AF;
+  }
+}
+
+.filter-select {
+  flex: 1;
+  min-width: 200px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+}
+
+.role-input {
+  flex: 1;
+  min-width: 200px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  :deep(input::placeholder) {
+    color: #9CA3AF;
+  }
+}
+
+.date-input {
+  flex: 1;
+  min-width: 180px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  :deep(input[type="date"]) {
+    color: #111827;
+  }
+}
+
+/* ========== PAGINACIÓN ========== */
+.pagination-container {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  margin-top: 24px;
+  padding: 20px 0;
   flex-wrap: wrap;
   gap: 16px;
 }
 
-.title {
-  font-size: 28px;
-  font-weight: 700;
-}
-
-.subtitle {
-  margin-top: -5px;
+.pagination-info {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
   font-size: 14px;
-  color: #6b7280;
+  color: #6B7280;
+  font-weight: 500;
 }
 
-.export-btn {
-  border: 1px solid #d0d7e3;
-  border-radius: 10px;
-  padding: 6px 14px;
-  background: white;
-}
-
-.export-text {
-  font-size: 14px;
-  color: #2f80ed;
-  font-weight: 600;
-  margin-left: 5px;
-}
-
-/* Summary cards */
-.summary-row {
-  display: flex;
-  gap: 20px;
-  margin-top: 30px;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-/* Filter panel */
-.filter-panel {
-  margin-top: 25px;
-  display: flex;
-  gap: 15px;
-  align-items: center;
-  flex-wrap: wrap;
-}
-
-.filter-input {
-  width: 350px;
-  max-width: 100%;
-  flex: 1;
-  min-width: 200px;
-}
-
-.filter-select {
-  width: 190px;
-  max-width: 100%;
-  min-width: 150px;
-}
-
-/* Log list */
-.log-list {
-  margin-top: 30px;
-}
-
-/* No results */
-.no-results {
-  margin-top: 50px;
-  text-align: center;
-  color: #777;
-}
-
-/* 📱 RESPONSIVE */
-@media (max-width: 599px) {
+/* ========== RESPONSIVE ========== */
+@media (max-width: 767px) {
   .logs-container {
     padding: 16px;
   }
 
-  .header-row {
+  .header-section {
     flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+    margin-bottom: 24px;
   }
 
-  .title {
-    font-size: 22px;
+  .page-title {
+    font-size: 24px;
   }
 
-  .subtitle {
-    font-size: 13px;
+  .page-subtitle {
+    font-size: 14px;
   }
 
   .export-btn {
@@ -370,79 +712,43 @@ const exportPDF = () => {
     justify-content: center;
   }
 
-  /* 2 arriba + 2 abajo, centrados */
   .summary-row {
+    grid-template-columns: repeat(2, 1fr);
     gap: 12px;
-    margin-top: 20px;
-    max-width: 460px;
-    margin-left: auto;
-    margin-right: auto;
   }
 
-  .filter-panel {
+  .filter-bar {
     flex-direction: column;
     gap: 12px;
-    margin-top: 20px;
   }
 
-  .filter-input,
-  .filter-select {
+  .search-input,
+  .filter-select,
+  .role-input,
+  .date-input {
     width: 100%;
+    min-width: 100%;
   }
 
-  .log-list {
-    margin-top: 20px;
+  .pagination-container {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .pagination-info {
+    order: -1;
+    margin-bottom: 12px;
   }
 }
 
-/* 600px → 1055px: 2 arriba + 2 abajo centrados */
-@media (min-width: 600px) and (max-width: 1055px) {
+@media (min-width: 768px) and (max-width: 1023px) {
   .logs-container {
-    padding: 18px 24px;
+    padding: 20px 24px;
   }
 
-  .title {
-    font-size: 24px;
-  }
-
-  /* Forzar 2 columnas máximo */
   .summary-row {
-    gap: 16px;
-    max-width: 480px;
-    margin-left: auto;
-    margin-right: auto;
+    grid-template-columns: repeat(2, 1fr);
   }
-
-  .filter-panel {
-    gap: 12px;
-  }
-
-  .filter-input {
-    flex: 2;
-  }
-
-  .filter-select {
-    flex: 1;
-  }
-}
-
-/* 1056px en adelante: 4 cuadros en fila horizontal centrados */
-@media (min-width: 1056px) {
-  .summary-row {
-    flex-wrap: nowrap;
-    justify-content: center;
-    gap: 20px;
-    max-width: 960px;
-    margin-left: auto;
-    margin-right: auto;
-  }
-}
-
-.export-btn {
-  border: 1px solid #d0d7e3;
-  border-radius: 10px;
-  background: white;
-  padding: 6px 14px;
-  font-weight: 600;
 }
 </style>

@@ -3,29 +3,66 @@ import { ref, computed } from 'vue'
 
 /**
  * Store de autenticación del usuario
- * Maneja sesión, token y datos del usuario logueado
+ * Maneja sesión, token, datos del usuario y permisos
  */
 export const useAuthStore = defineStore('auth', () => {
   // Estado
-  const token = ref(localStorage.getItem('authToken') || null)
-  const usuario = ref(JSON.parse(localStorage.getItem('usuario') || 'null'))
+  const token = ref(null)
+  const usuario = ref(null)
+  const permisos = ref([])
 
   // Getters
   const isAuthenticated = computed(() => !!token.value)
-  const userEmail = computed(() => usuario.value?.correo || usuario.value?.email || null)
-  const userName = computed(
-    () => usuario.value?.nombre || usuario.value?.nombreCompleto || 'Usuario',
-  )
+  const userEmail = computed(() => usuario.value?.email || null)
+  const userName = computed(() => {
+    if (!usuario.value) return 'Usuario'
+    return (
+      `${usuario.value.nombres || ''} ${usuario.value.apellidos || ''}`.trim() ||
+      usuario.value.username ||
+      'Usuario'
+    )
+  })
+  const userRole = computed(() => usuario.value?.rolNombre || usuario.value?.rolCodigo || null)
 
   /**
-   * Guarda el token y datos del usuario en el estado y localStorage
+   * Verifica si el usuario tiene un permiso específico
    */
-  const setAuth = (authToken, userData) => {
-    token.value = authToken
-    usuario.value = userData
+  const hasPermiso = (codigoPermiso) => {
+    return permisos.value?.includes(codigoPermiso) || false
+  }
 
-    localStorage.setItem('authToken', authToken)
-    localStorage.setItem('usuario', JSON.stringify(userData))
+  /**
+   * Verifica si el usuario tiene al menos uno de los permisos proporcionados
+   */
+  const hasAnyPermiso = (codigosPermisos) => {
+    if (!Array.isArray(codigosPermisos)) return false
+    return codigosPermisos.some((permiso) => permisos.value?.includes(permiso))
+  }
+
+  /**
+   * Guarda el token, datos del usuario y permisos en el estado y localStorage
+   */
+  const setAuth = (authData) => {
+    token.value = authData.token
+
+    usuario.value = {
+      idUsuario: authData.idUsuario,
+      username: authData.username,
+      email: authData.email,
+      idPersonal: authData.idPersonal,
+      nombres: authData.nombres,
+      apellidos: authData.apellidos,
+      idRolSistema: authData.idRolSistema,
+      rolCodigo: authData.rolCodigo,
+      rolNombre: authData.rolNombre,
+    }
+
+    permisos.value = authData.permisos || []
+
+    // Persistir en localStorage
+    localStorage.setItem('authToken', authData.token)
+    localStorage.setItem('authUser', JSON.stringify(usuario.value))
+    localStorage.setItem('authPerms', JSON.stringify(permisos.value))
   }
 
   /**
@@ -34,8 +71,12 @@ export const useAuthStore = defineStore('auth', () => {
   const clearAuth = () => {
     token.value = null
     usuario.value = null
+    permisos.value = []
 
+    // Limpiar todo localStorage relacionado con auth
     localStorage.removeItem('authToken')
+    localStorage.removeItem('authUser')
+    localStorage.removeItem('authPerms')
     localStorage.removeItem('token')
     localStorage.removeItem('usuario')
     localStorage.removeItem('userEmail')
@@ -45,32 +86,50 @@ export const useAuthStore = defineStore('auth', () => {
   /**
    * Restaura la sesión desde localStorage
    */
-  const restoreSession = () => {
-    const storedToken = localStorage.getItem('authToken')
-    const storedUser = localStorage.getItem('usuario')
+  const hydrateFromLocalStorage = () => {
+    try {
+      const storedToken = localStorage.getItem('authToken')
+      const storedUser = localStorage.getItem('authUser')
+      const storedPerms = localStorage.getItem('authPerms')
 
-    if (storedToken && storedUser) {
-      token.value = storedToken
-      usuario.value = JSON.parse(storedUser)
-      return true
+      if (storedToken && storedUser) {
+        token.value = storedToken
+        usuario.value = JSON.parse(storedUser)
+        permisos.value = storedPerms ? JSON.parse(storedPerms) : []
+        return true
+      }
+
+      return false
+    } catch (error) {
+      console.error('Error al restaurar sesión desde localStorage:', error)
+      clearAuth()
+      return false
     }
-
-    return false
   }
+
+  /**
+   * Alias para compatibilidad con código existente
+   */
+  const restoreSession = hydrateFromLocalStorage
 
   return {
     // Estado
     token,
     usuario,
+    permisos,
 
     // Getters
     isAuthenticated,
     userEmail,
     userName,
+    userRole,
 
     // Actions
     setAuth,
     clearAuth,
+    hydrateFromLocalStorage,
     restoreSession,
+    hasPermiso,
+    hasAnyPermiso,
   }
 })

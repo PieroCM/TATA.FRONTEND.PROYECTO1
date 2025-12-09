@@ -282,7 +282,8 @@
 import { ref, computed, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
-import { getUserIdFromToken } from 'src/utils/jwt'
+// Función mejorada que verifica Store → localStorage → JWT
+import { getUserId } from 'src/utils/jwt'
 
 /**
  * COMPONENTE: SlaCreateDialog
@@ -537,8 +538,8 @@ const onSubmit = async () => {
     return
   }
 
-  // Obtener ID del usuario logueado
-  const userId = getUserIdFromToken()
+  // Obtener ID del usuario desde localStorage
+  const userId = getUserId()
   if (!userId) {
     $q.notify({
       type: 'negative',

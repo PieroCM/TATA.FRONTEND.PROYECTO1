@@ -170,36 +170,35 @@ export default {
           throw new Error('El servidor no devolvió un token válido')
         }
 
-        // Guardar token en localStorage con la clave 'authToken'
-        localStorage.setItem('authToken', response.data.token)
+        // Importar el store y guardar toda la información de autenticación
+        const { useAuthStore } = await import('src/stores/useAuthStore')
+        const authStore = useAuthStore()
 
-        // Opcional: guardar información adicional del usuario si viene en la respuesta
-        if (response.data.correo) {
-          localStorage.setItem('userEmail', response.data.correo)
-        }
-        if (response.data.username) {
-          localStorage.setItem('username', response.data.username)
-        }
+        // Guardar token, usuario y permisos usando el nuevo método setAuth
+        authStore.setAuth(response.data)
 
-        console.log('Token guardado exitosamente en localStorage')
+        console.log('✅ Sesión iniciada exitosamente')
+        console.log('Usuario:', response.data.username)
+        console.log('Rol:', response.data.rolNombre)
+        console.log('Permisos:', response.data.permisos)
 
         this.$q.notify({
           type: 'positive',
           message: 'Inicio de sesión exitoso',
+          caption: `Bienvenido ${response.data.nombres} ${response.data.apellidos}`,
           position: 'bottom',
-          timeout: 1500,
+          timeout: 2000,
         })
 
         // Redirigir al sistema (MainLayout)
-        this.$router.push('/sistema')
+        this.$router.push('/sistema/dashboard')
       } catch (error) {
         console.error('Error en login:', error)
         console.error('Detalles del error:', {
           status: error.response?.status,
           data: error.response?.data,
           enviado: {
-            usuarioNombre: this.correo,
-            usuarioContrasena: this.password,
+            email: this.correo,
           },
         })
         this.$q.notify({
@@ -207,7 +206,7 @@ export default {
           message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
           caption: error.response?.data?.errors
             ? Object.values(error.response.data.errors).flat().join(', ')
-            : '',
+            : 'Verifica tus credenciales e intenta nuevamente',
           position: 'bottom',
         })
       }

@@ -6,14 +6,17 @@ import {
   createWebHashHistory,
 } from 'vue-router'
 import routes from './routes'
+import { authGuard } from './guards/authGuard'
+import { permissionGuard } from './guards/permissionGuard'
 
 /*
- * If not building with SSR mode, you can
- * directly export the Router instantiation;
+ * Router con Arquitectura Limpia
  *
- * The function below can be async too; either use
- * async/await or return a Promise which resolves
- * with the Router instance.
+ * Separación de responsabilidades:
+ * - authGuard: Maneja autenticación (token, rutas públicas/privadas)
+ * - permissionGuard: Maneja autorización (permisos específicos de rutas)
+ * - navigationUtils: Funciones reutilizables para inspeccionar rutas
+ * - permissionUtils: Lógica para determinar rutas accesibles por permisos
  */
 
 export default defineRouter(function (/* { store, ssrContext } */) {
@@ -33,27 +36,35 @@ export default defineRouter(function (/* { store, ssrContext } */) {
     history: createHistory(process.env.VUE_ROUTER_BASE),
   })
 
-  // Guard de navegación para proteger rutas autenticadas
-  Router.beforeEach((to, from, next) => {
-    const token = localStorage.getItem('authToken')
-    const isLoginPage = to.path === '/' || to.path === '/login' || to.path === '/forgot-password'
+  /**
+   * Guard Global de Navegación
+   *
+   * Flujo:
+   * 1. authGuard valida autenticación (token, rutas públicas)
+   * 2. Si pasa authGuard, permissionGuard valida permisos
+   *
+   * Evita duplicación de lógica delegando a guards especializados
+   */
+  Router.beforeEach(async (to, from, next) => {
+    // Importar authStore dinámicamente
+    const { useAuthStore } = await import('src/stores/useAuthStore')
+    const authStore = useAuthStore()
 
-    // Si intenta acceder a una ruta protegida sin token
-    if (!isLoginPage && !token) {
-      console.warn('🔒 Acceso denegado: No hay sesión activa')
-      next('/')
-      return
-    }
-
-    // Si tiene token e intenta acceder al login, redirigir al dashboard
-    if (isLoginPage && token) {
-      console.log('✅ Sesión activa, redirigiendo al dashboard')
-      next('/sistema/dashboard')
-      return
-    }
-
-    // Permitir la navegación
-    next()
+    // Ejecutar authGuard primero
+    await authGuard(
+      to,
+      from,
+      (route) => {
+        if (route && route !== true) {
+          // authGuard decidió hacer una redirección
+          next(route)
+        } else {
+          // authGuard permitió continuar, ejecutar permissionGuard
+          permissionGuard(to, from, next, authStore)
+        }
+      },
+      authStore,
+    )
   })
 
   return Router

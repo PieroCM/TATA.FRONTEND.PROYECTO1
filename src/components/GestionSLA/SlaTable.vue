@@ -186,6 +186,11 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import SlaTableRow from './SlaTableRow.vue'
+import {
+  getCumplimientoSlaColor,
+  getCumplimientoSlaLabel,
+  getEstadoSolicitudColor,
+} from 'src/utils/slaMappers'
 
 const props = defineProps({
   registros: {
@@ -273,31 +278,12 @@ const formatFecha = (fecha) => {
   })
 }
 
-const getEstadoColor = (estado) => {
-  const colores = {
-    ACTIVA: 'positive',
-    INACTIVA: 'grey',
-    VENCIDA: 'negative',
-  }
-  return colores[estado] || 'grey'
-}
+// Usar mappers centralizados para cards en mobile
+const getEstadoColor = (estado) => getEstadoSolicitudColor(estado)
 
-const getCumplimientoColor = (cumplimiento) => {
-  if (!cumplimiento) return 'grey'
-  if (cumplimiento.startsWith('CUMPLE_')) return 'positive'
-  if (cumplimiento.startsWith('NO_CUMPLE_')) return 'negative'
-  if (cumplimiento.startsWith('EN_PROCESO_')) return 'warning'
-  return 'grey'
-}
+const getCumplimientoColor = (cumplimiento) => getCumplimientoSlaColor(cumplimiento)
 
-const getCumplimientoLabel = (cumplimiento) => {
-  if (!cumplimiento) return 'N/A'
-  // Extraer la parte después del prefijo
-  if (cumplimiento.startsWith('CUMPLE_')) return 'Cumple SLA'
-  if (cumplimiento.startsWith('NO_CUMPLE_')) return 'No Cumple'
-  if (cumplimiento.startsWith('EN_PROCESO_')) return 'En Proceso'
-  return cumplimiento
-}
+const getCumplimientoLabel = (cumplimiento) => getCumplimientoSlaLabel(cumplimiento)
 
 const handleEditar = (registro) => {
   emit('editar', registro)

@@ -48,9 +48,9 @@ export function getUserIdFromToken() {
   if (!payload) return null
 
   // Intentar diferentes claims comunes para el ID de usuario
-  // Ajusta según lo que use tu backend
+  // ⭐ IMPORTANTE: Agregar 'idUsuario' como primera opción
   const idValue =
-    payload.userId ||
+    payload.idUsuario || // ⭐ NUEVO: Backend puede incluir idUsuario
     payload.UserId ||
     payload.sub ||
     payload.nameid ||
@@ -64,4 +64,58 @@ export function getUserIdFromToken() {
   const userId = typeof idValue === 'string' ? parseInt(idValue, 10) : idValue
 
   return isNaN(userId) ? null : userId
+}
+
+/**
+ * Obtiene el ID del usuario desde authUser en localStorage
+ * (Más confiable que decodificar el token cuando el JWT no contiene el ID)
+ * @returns {number|null} - ID del usuario o null si no se encuentra
+ */
+export function getUserIdFromLocalStorage() {
+  try {
+    const authUserJson = localStorage.getItem('authUser')
+    if (!authUserJson) return null
+
+    const authUser = JSON.parse(authUserJson)
+    if (!authUser?.idUsuario) return null
+
+    const userId =
+      typeof authUser.idUsuario === 'string' ? parseInt(authUser.idUsuario, 10) : authUser.idUsuario
+
+    return isNaN(userId) ? null : userId
+  } catch (error) {
+    console.error('❌ Error al obtener idUsuario de localStorage:', error)
+    return null
+  }
+}
+
+/**
+ * Obtiene el ID del usuario autenticado
+ * Prioriza localStorage (confiable y rápido) antes que decodificar el JWT
+ *
+ * @returns {number|null} - ID del usuario o null si no se encuentra
+ *
+ * @example
+ * const userId = getUserId()
+ * if (!userId) {
+ *   console.error('Usuario no autenticado')
+ *   return
+ * }
+ */
+export function getUserId() {
+  // PRIORIDAD 1: localStorage.authUser (más confiable y rápido)
+  const userId = getUserIdFromLocalStorage()
+  if (userId) {
+    return userId
+  }
+
+  // PRIORIDAD 2: Fallback - decodificar token JWT (por si acaso)
+  const tokenId = getUserIdFromToken()
+  if (tokenId) {
+    console.warn('⚠️ ID de usuario obtenido desde JWT (considera revisar localStorage)')
+    return tokenId
+  }
+
+  console.error('❌ No se pudo obtener el ID del usuario')
+  return null
 }

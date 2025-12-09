@@ -225,20 +225,99 @@
               <div class="q-mt-xl">
                 <div class="text-subtitle1 text-weight-medium q-mb-md">Gráfico de SLA por Rol</div>
 
-                <!-- Leyenda fuera del gráfico -->
+                <!-- Leyenda del gráfico -->
                 <div class="legend-container q-mb-md">
                   <div class="legend-item">
-                    <div class="legend-color" style="background-color: #21ba45"></div>
-                    <span>SLA Cumplido (100%)</span>
+                    <div class="legend-color" style="background-color: #1f60aa"></div>
+                    <span>Cumplen (solicitudes)</span>
                   </div>
                   <div class="legend-item">
-                    <div class="legend-color" style="background-color: #f60008"></div>
-                    <span>SLA Incumplido (&lt;100%)</span>
+                    <div class="legend-color" style="background-color: #35bdec"></div>
+                    <span>No cumplen (solicitudes)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #9e9e9e"></div>
+                    <span>Sin recursos (NA)</span>
+                  </div>
+                </div>
+                <div
+                  class="text-caption text-grey-7 q-mb-sm"
+                  style="text-align: center; font-size: 14px"
+                >
+                  Etiqueta superior: SLA del rol (%).
+                </div>
+
+                <div class="chart-scroll">
+                  <div class="chart-wrapper">
+                    <canvas ref="chartCanvasRef" data-chart="sla" class="chart-canvas"></canvas>
                   </div>
                 </div>
 
-                <div class="chart-wrapper" style="position: relative; width: 100%; height: 500px">
-                  <canvas ref="chartCanvasRef" data-chart="sla" style="display: block"></canvas>
+                <!-- Solicitudes en proceso (informativo, no incluidas en el cálculo) -->
+                <div v-if="solicitudesEnProceso.length" class="q-mt-lg">
+                  <div class="text-body1 q-mb-sm">
+                    Hay <b>{{ solicitudesEnProceso.length }}</b> solicitud(es) en proceso de SLA y
+                    no se toman en cuenta para este reporte.
+                  </div>
+                  <q-table
+                    :rows="solicitudesEnProceso"
+                    :columns="[
+                      {
+                        name: 'rol',
+                        label: 'ROL',
+                        field: (r) => r.rolRegistro?.nombreRol || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'resumen',
+                        label: 'RESUMEN',
+                        field: (r) => r.resumenSla || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'fecha',
+                        label: 'FECHA',
+                        field: (r) => r.fechaSolicitud || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'dias',
+                        label: 'DÍAS SLA',
+                        field: (r) => r.numDiasSla ?? 'N/A',
+                        align: 'center',
+                      },
+                    ]"
+                    row-key="idSolicitud"
+                    flat
+                    bordered
+                    :pagination="{ rowsPerPage: 5 }"
+                  />
+                  <div class="text-caption text-grey-7 q-mt-sm">
+                    Nota: estadoSolicitud = ACTIVA y estadoCumplimientoSla = EN_PROCESO_SLAX.
+                  </div>
+                </div>
+
+                <!-- Gráfico de torta (Resumen) -->
+                <div class="q-mt-lg" v-if="false">
+                  <div class="text-subtitle1 text-weight-medium q-mb-sm">Resumen del Reporte</div>
+                  <div
+                    class="chart-wrapper"
+                    style="
+                      position: relative;
+                      width: 100%;
+                      max-width: 480px;
+                      height: 260px;
+                      margin: 0 auto;
+                    "
+                  >
+                    <canvas ref="pieCanvasRef" data-chart="resumen" style="display: block"></canvas>
+                  </div>
+                  <div class="text-center text-body2 q-mt-sm">
+                    Total recursos: <b>{{ resumen.totalRecursos }}</b> | SLA promedio:
+                    <b>{{ resumen.promedioSla }}%</b> | Roles incluidos:
+                    <b>{{ resumen.rolesIncluidos }}</b> | Sin recursos (NA):
+                    <b>{{ conteoRolesNA }}</b>
+                  </div>
                 </div>
               </div>
             </div>
@@ -344,7 +423,8 @@ import { Chart, registerables } from 'chart.js'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import * as XLSX from 'xlsx'
+// Para Excel con estilos y gráficos embebidos
+import ExcelJS from 'exceljs'
 import { useAppStore } from 'stores/app-store'
 import EnviarReporteDialog from 'components/Reportes/EnviarReporteDialog.vue'
 import LogoPng from 'src/assets/Tata_logo.png'
@@ -401,10 +481,13 @@ const resumen = ref({
   rolesIncluidos: 0,
 })
 const solicitudesFiltradas = ref([]) // para exportar (ids)
+const solicitudesEnProceso = ref([]) // ACTIVA + EN_PROCESO_SLAx (informativo)
 
 // Chart
 const chartCanvasRef = ref(null)
 let chartInstance = null
+const pieCanvasRef = ref(null)
+let pieChartInstance = null
 
 // Para PDF
 const reporteRef = ref(null)
@@ -412,6 +495,8 @@ const reporteRef = ref(null)
 // Diálogo correo
 const dialogCorreo = ref(false)
 const enviandoCorreo = ref(false)
+// Cache PDF base64 (sin prefijo data:) para reutilizar en envío por correo
+const cachedPdfBase64 = ref(null)
 
 // Emit por compatibilidad
 const emit = defineEmits(['onFiltroChange'])
@@ -520,6 +605,9 @@ const tituloReporte = computed(() => {
 
   return `Reporte Indicadores ${codigo} - ${mes}-${anio}`
 })
+
+// Conteo de roles en estado NA (sin recursos)
+const conteoRolesNA = computed(() => filasTabla.value.filter((f) => f.sla === 'NA').length)
 
 // Auxiliares
 const getMesNumero = (nombreMes) => {
@@ -697,8 +785,38 @@ const verReporte = async () => {
       solicitudes = solicitudes.filter((s) => rolesIds.includes(s.idRolRegistro))
     }
 
-    // Estados SLA válidos a considerar
-    const estadosSlaValidos = ['CUMPLE SLA1', 'NO CUMPLE SLA1', 'CUMPLE SLA2', 'NO CUMPLE SLA2']
+    // Estados SLA válidos a considerar (soporta formatos con y sin guión bajo y diferentes números)
+    let estadosSlaValidos = []
+    if (filtros.value.codigoSla) {
+      // Intentar extraer el número del código SLA (e.g., SLA4 -> 4)
+      const match = String(filtros.value.codigoSla).match(/SLA(\d+)/i)
+      const n = match ? match[1] : ''
+      estadosSlaValidos = [
+        `CUMPLE SLA${n}`,
+        `NO CUMPLE SLA${n}`,
+        `CUMPLE_SLA${n}`,
+        `NO_CUMPLE_SLA${n}`,
+      ]
+    } else {
+      // Si no hay código SLA seleccionado, derivar los números desde ConfigSla
+      const nums = Array.from(
+        new Set(
+          (configsSla || [])
+            .map((c) => String(c.codigoSla || ''))
+            .map((code) => {
+              const m = code.match(/SLA(\d+)/i)
+              return m ? m[1] : null
+            })
+            .filter((x) => x),
+        ),
+      )
+      estadosSlaValidos = nums.flatMap((n) => [
+        `CUMPLE SLA${n}`,
+        `NO CUMPLE SLA${n}`,
+        `CUMPLE_SLA${n}`,
+        `NO_CUMPLE_SLA${n}`,
+      ])
+    }
 
     // Filtrar solicitudes que tengan un estado SLA válido
     const solicitudesConEstadoValido = solicitudes.filter(
@@ -706,6 +824,13 @@ const verReporte = async () => {
     )
 
     solicitudesFiltradas.value = solicitudesConEstadoValido
+
+    // Solicitudes en proceso (no consideradas en el reporte)
+    const esEnProceso = (estado) => /^(EN_PROCESO_SLA\d+)$/i.test(String(estado || ''))
+    const solicitudesProceso = solicitudes.filter(
+      (s) => s.estadoSolicitud === 'ACTIVA' && esEnProceso(s.estadoCumplimientoSla),
+    )
+    solicitudesEnProceso.value = solicitudesProceso
 
     // Determinar qué roles mostrar en la tabla
     const rolesParaTabla = todosRoles.filter(
@@ -721,8 +846,9 @@ const verReporte = async () => {
       const cumplen = solicitudesRol.filter(
         (s) =>
           s.estadoCumplimientoSla &&
-          (s.estadoCumplimientoSla === 'CUMPLE SLA1' || s.estadoCumplimientoSla === 'CUMPLE SLA2'),
+          /^(CUMPLE SLA\d+|CUMPLE_SLA\d+)$/i.test(s.estadoCumplimientoSla),
       ).length
+      const noCumplen = total - cumplen
 
       let sla
       if (total === 0) {
@@ -740,6 +866,8 @@ const verReporte = async () => {
         rol: rol.nombreRol,
         numRecursos: total,
         sla: sla,
+        cumplen,
+        noCumplen,
       }
     })
 
@@ -788,6 +916,7 @@ const verReporte = async () => {
     await nextTick()
     try {
       crearGrafico()
+      // crearGraficoResumen() // ocultado: no crear gráfico de resumen
     } catch (graficoError) {
       console.error('Error al crear el gráfico:', graficoError)
     }
@@ -834,18 +963,21 @@ const crearGrafico = () => {
     const dataBruto = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
     const numRecursos = filasConDatos.map((f) => f.numRecursos)
 
-    // Crear dos datasets: uno para cumplimiento (verde) y otro para incumplimiento (rojo)
+    // Normalizar segmentos para que la altura total de la barra sea el SLA% del rol
+    // Segmento verde = sla * (cumplen/total), segmento rojo = sla * (noCumplen/total)
     const dataCumple = dataBruto.map((val, idx) => {
-      if (filasConDatos[idx].numRecursos === 0) return 0
-      return val === 100 ? val : 0
+      const fila = filasConDatos[idx]
+      if (fila.numRecursos === 0 || val === 'NA') return 0
+      return parseFloat((val * (fila.cumplen / fila.numRecursos) || 0).toFixed(2))
     })
 
-    const dataIncumple = dataBruto.map((val, idx) => {
-      if (filasConDatos[idx].numRecursos === 0) return 0
-      return val < 100 && val !== 'NA' ? val : 0
+    const dataNoCumple = dataBruto.map((val, idx) => {
+      const fila = filasConDatos[idx]
+      if (fila.numRecursos === 0 || val === 'NA') return 0
+      return parseFloat((val * (fila.noCumplen / fila.numRecursos) || 0).toFixed(2))
     })
 
-    console.log('Creando Chart con datos:', { labels, dataCumple, dataIncumple, numRecursos })
+    console.log('Creando Chart con datos:', { labels, dataCumple, dataNoCumple, numRecursos })
 
     // Determinar si se debe rotar los labels del eje X
     // Si hay muchos roles (más de 5), rotar 45 grados
@@ -859,67 +991,102 @@ const crearGrafico = () => {
         labels,
         datasets: [
           {
-            label: 'SLA Cumplido (100%)',
+            label: 'Cumplen (SLA%)',
             data: dataCumple,
-            backgroundColor: '#21ba45',
-            borderColor: '#21ba45',
+            backgroundColor: '#1f60aa',
+            borderColor: '#1f60aa',
             borderWidth: 2,
-            hoverBackgroundColor: '#21ba45',
-            hoverBorderColor: '#21ba45',
+            hoverBackgroundColor: '#1f60aa',
+            hoverBorderColor: '#1f60aa',
+            stack: 'sla',
+            datalabels: {
+              labels: {
+                inner: {
+                  anchor: 'center',
+                  align: 'center',
+                  color: '#fff',
+                  font: { weight: 'bold', size: 12 },
+                  formatter: () => '', // Ocultar número interno
+                },
+              },
+            },
           },
           {
-            label: 'SLA Incumplido (<100%)',
-            data: dataIncumple,
-            backgroundColor: '#f60008',
-            borderColor: '#f60008',
+            label: 'No cumplen (%)',
+            data: dataNoCumple,
+            backgroundColor: '#35bdec',
+            borderColor: '#35bdec',
             borderWidth: 2,
-            hoverBackgroundColor: '#f60008',
-            hoverBorderColor: '#f60008',
+            hoverBackgroundColor: '#35bdec',
+            hoverBorderColor: '#35bdec',
+            stack: 'sla',
+            datalabels: {
+              labels: {
+                inner: {
+                  anchor: 'center',
+                  align: 'center',
+                  color: '#fff',
+                  font: { weight: 'bold', size: 12 },
+                  formatter: () => '', // Ocultar número interno
+                },
+                top: {
+                  anchor: 'end',
+                  align: 'top',
+                  offset: 5,
+                  color: '#333',
+                  font: { weight: 'bold', size: 15 },
+                  formatter: (value, context) => {
+                    const idx = context.dataIndex
+                    const fila = filasConDatos[idx]
+                    if (!fila || fila.numRecursos === 0 || fila.sla === 'NA') return ''
+                    return `${fila.sla}%`
+                  },
+                },
+              },
+            },
           },
+          // Dataset fantasma para la etiqueta superior del SLA total
         ],
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 2.2,
         plugins: {
           legend: {
             display: false,
           },
-          datalabels: {
-            anchor: 'end',
-            align: 'top',
-            offset: 10,
-            font: {
-              weight: 'bold',
-              size: 12,
-            },
-            color: '#333',
-            formatter: function (value) {
-              if (value === 0) return ''
-              return value + '%'
-            },
-          },
+          // Configuración base; las opciones específicas por dataset están definidas en cada dataset
+          datalabels: {},
           tooltip: {
             backgroundColor: 'rgba(0, 0, 0, 0.8)',
             padding: 12,
-            titleFont: {
-              size: 14,
-            },
-            bodyFont: {
-              size: 13,
-            },
+            titleFont: { size: 14 },
+            bodyFont: { size: 13 },
+            // Un solo tooltip por columna con resumen
+            mode: 'index',
+            intersect: false,
             callbacks: {
-              title: (context) => {
-                return `Rol: ${context[0].label}`
-              },
-              label: (context) => {
-                const index = context.dataIndex
-                const slaValue = context.parsed.y
-                const numSolicitudes = numRecursos[index]
-                const tipo = context.dataset.label
-                return [`${tipo}: ${slaValue}%`, `Solicitudes: ${numSolicitudes}`]
-              },
+              title: (items) => `Rol: ${items[0].label}`,
+              // Ocultar líneas por-item para evitar múltiples entradas
+              label: () => '',
               afterLabel: () => '',
+              footer: (items) => {
+                const idx = items[0].dataIndex
+                const fila = filasConDatos[idx]
+                const slaValue = fila.sla === 'NA' ? 0 : fila.sla
+                const total = numRecursos[idx]
+                const cumplenCant = fila.cumplen || 0
+                const noCumplenCant = fila.noCumplen || 0
+                const cumplenPct = dataCumple[idx] || 0
+                const noCumplenPct = dataNoCumple[idx] || 0
+                return [
+                  `SLA del rol: ${slaValue}%`,
+                  `Total solicitudes: ${total}`,
+                  `Cumplen: ${cumplenCant} (${cumplenPct}%)`,
+                  `No cumplen: ${noCumplenCant} (${noCumplenPct}%)`,
+                ]
+              },
             },
           },
         },
@@ -963,6 +1130,68 @@ const crearGrafico = () => {
   }
 }
 
+const _crearGraficoResumen = () => {
+  try {
+    const canvasElement = document.querySelector('canvas[data-chart="resumen"]')
+    if (!canvasElement) return
+
+    if (pieChartInstance) {
+      pieChartInstance.destroy()
+    }
+
+    const ctx = canvasElement.getContext('2d')
+
+    const promedio = typeof resumen.value.promedioSla === 'number' ? resumen.value.promedioSla : 0
+    const cumple = Math.max(0, Math.min(100, parseFloat(promedio.toFixed(2))))
+    const noCumple = parseFloat((100 - cumple).toFixed(2))
+
+    pieChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['SLA promedio (cumple)', 'Resto hasta 100%'],
+        datasets: [
+          {
+            data: [cumple, noCumple],
+            backgroundColor: ['#21ba45', '#f60008'],
+            borderColor: ['#21ba45', '#f60008'],
+            borderWidth: 2,
+            hoverBackgroundColor: ['#21ba45', '#f60008'],
+            hoverBorderColor: ['#21ba45', '#f60008'],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.6,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const value = context.parsed
+                const label = context.label || ''
+                return `${label}: ${value}%`
+              },
+            },
+          },
+          datalabels: {
+            color: '#333',
+            font: { weight: 'bold', size: 12 },
+            formatter: (value) => `${Math.round(value)}%`,
+          },
+        },
+      },
+    })
+  } catch (error) {
+    console.error('Error en crearGraficoResumen:', error)
+  }
+}
+
 // Limpiar filtros y reporte
 const limpiarFiltros = () => {
   filtros.value = {
@@ -1000,7 +1229,7 @@ const removerFiltro = (key) => {
   }
 }
 
-// Exportar a Excel desde el frontend sin tocar backend
+// Exportar a Excel desde el frontend con estilos (ExcelJS)
 const exportarExcel = async () => {
   if (!filasTabla.value.length) {
     $q.notify({
@@ -1014,77 +1243,149 @@ const exportarExcel = async () => {
   exportandoExcel.value = true
 
   try {
-    // Crear un nuevo workbook
-    const wb = XLSX.utils.book_new()
+    // Registrar el reporte en el backend para que aparezca en el historial
+    const ids = solicitudesFiltradas.value.map((s) => s.idSolicitud)
 
-    // Preparar datos de la tabla principal
-    const datosTabla = filasTabla.value.map((fila) => ({
-      ROL: fila.rol,
-      NUM_RECURSOS: fila.numRecursos,
-      'SLA (%)': fila.sla === 'NA' ? 'NA' : fila.sla,
-      INDICADOR: getIndicadorTexto(fila),
-    }))
-
-    // Crear hoja de tabla
-    const wsTabla = XLSX.utils.json_to_sheet(datosTabla)
-    XLSX.utils.book_append_sheet(wb, wsTabla, 'Reporte')
-
-    // Preparar datos del resumen
-    const datosResumen = [
-      ['RESUMEN DEL REPORTE'],
-      [],
-      ['Periodo:', `${filtros.value.mes} ${filtros.value.anio}`],
-      ['Código SLA:', filtros.value.codigoSla],
-      ['Roles Incluidos:', selectedRoles.value.join(', ')],
-      [],
-      ['INDICADORES CONSOLIDADOS'],
-      ['Total Recursos:', resumen.value.totalRecursos],
-      ['SLA Promedio:', `${resumen.value.promedioSla}%`],
-      ['Roles Únicos:', resumen.value.rolesIncluidos],
-      [],
-      ['DESGLOSE POR ESTADO SLA'],
-    ]
-
-    // Calcular estadísticas
-    const cumplimiento = filasTabla.value.filter((f) => f.sla === 100).length
-    const incumplimiento = filasTabla.value.filter((f) => f.sla !== 'NA' && f.sla < 100).length
-    const sinRecursos = filasTabla.value.filter((f) => f.sla === 'NA').length
-
-    datosResumen.push(
-      ['SLA Cumplido (100%):', cumplimiento],
-      ['SLA Incumplido (<100%):', incumplimiento],
-      ['Sin Recursos (NA):', sinRecursos],
-    )
-
-    // Crear hoja de resumen
-    const wsResumen = XLSX.utils.aoa_to_sheet(datosResumen)
-    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
-
-    // Preparar datos de solicitudes filtradas
-    if (solicitudesFiltradas.value.length > 0) {
-      const datosSolicitudes = solicitudesFiltradas.value.map((sol) => ({
-        ID: sol.idSolicitud,
-        ROL: sol.nombreRol || 'N/A',
-        FECHA: sol.fechaSolicitud || 'N/A',
-        'ESTADO SLA': sol.estadoCumplimientoSla || 'N/A',
-        'TIPO SOLICITUD': sol.tipoSolicitud || 'N/A',
-      }))
-
-      const wsSolicitudes = XLSX.utils.json_to_sheet(datosSolicitudes)
-      XLSX.utils.book_append_sheet(wb, wsSolicitudes, 'Solicitudes')
+    const payload = {
+      tipoReporte: 'SLA_MENSUAL',
+      formato: 'EXCEL',
+      idsSolicitudes: ids,
+      filtrosJson: JSON.stringify({
+        mes: filtros.value.mes,
+        anio: filtros.value.anio,
+        codigoSla: filtros.value.codigoSla,
+      }),
     }
 
-    // Generar nombre del archivo
-    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
+    try {
+      const res = await api.post('/api/reporte/generar', payload)
+      console.log('Reporte EXCEL registrado en backend:', res.data)
+    } catch (apiError) {
+      console.error('Error registrando reporte EXCEL en API:', apiError)
+      if (apiError.response?.status === 401) {
+        throw new Error('Tu sesión ha expirado. Por favor inicia sesión nuevamente.')
+      }
+      // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
+    }
+
+    // Construir Excel estilizado (solo Resultados del Reporte)
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'TATA SLA'
+    wb.created = new Date()
+
+    const ws = wb.addWorksheet('Reporte')
+
+    // Título
+    const titulo = `Reporte SLA - ${filtros.value.codigoSla || 'TODOS'} - ${filtros.value.mes} ${
+      filtros.value.anio
+    }`
+    ws.mergeCells('A1:D1')
+    ws.getCell('A1').value = titulo
+    ws.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF1F60AA' } }
+    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
+
+    // Encabezados
+    const headers = ['ROL', 'NUM_RECURSOS', 'SLA (%)', 'INDICADOR']
+    ws.addRow([]) // fila 2 vacía
+    ws.addRow(headers) // fila 3
+    const headerRow = ws.getRow(3)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+    headerRow.height = 22
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1F60AA' },
+      }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+      }
+    })
+
+    // Datos
+    const datosTabla = filasTabla.value.map((fila) => [
+      fila.rol,
+      fila.numRecursos,
+      fila.sla === 'NA' ? 'NA' : fila.sla,
+      getIndicadorTexto(fila),
+    ])
+    datosTabla.forEach((row) => ws.addRow(row))
+
+    // Estilo de filas de datos
+    for (let r = 4; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r)
+      row.height = 20
+      row.eachCell((cell, col) => {
+        cell.border = {
+          top: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          left: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          bottom: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          right: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+        }
+        if (col === 3) {
+          cell.alignment = { horizontal: 'center' }
+        }
+      })
+      // Bandas alternas
+      if (r % 2 === 0) {
+        ws.getRow(r).eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF5F9FF' },
+          }
+        })
+      }
+    }
+
+    // Anchos de columna
+    ws.columns = [{ width: 26 }, { width: 14 }, { width: 10 }, { width: 30 }]
+
+    // Autofiltro y congelar encabezado
+    ws.autoFilter = {
+      from: 'A3',
+      to: `D${ws.rowCount}`,
+    }
+    ws.views = [{ state: 'frozen', ySplit: 3 }]
+
+    // Embeber gráfico como imagen (si existe instancia)
+    try {
+      if (chartInstance) {
+        const chartImg = chartInstance.toBase64Image('image/png', 1)
+        const imageId = wb.addImage({ base64: chartImg, extension: 'png' })
+        // Posicionar imagen bajo la tabla
+        const startRow = ws.rowCount + 2
+        ws.addImage(imageId, {
+          tl: { col: 0, row: startRow },
+          ext: { width: 900, height: 420 },
+        })
+      }
+    } catch (e) {
+      console.warn('No se pudo embeber la imagen del gráfico en Excel:', e)
+    }
+
+    // Generar archivo
+    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_$${
       filtros.value.anio
     }.xlsx`
-
-    // Descargar el archivo
-    XLSX.writeFile(wb, fileName)
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
     $q.notify({
       type: 'positive',
-      message: 'Excel exportado exitosamente',
+      message: 'Excel exportado con estilos y gráfico',
       position: 'top-right',
     })
   } catch (error) {
@@ -1148,94 +1449,19 @@ const exportarPdf = async () => {
         throw apiError
       }
     }
-
-    // Crear PDF con tabla y gráfico en una sola página A4
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    let currentY = 10
-
-    // Logo superior (arriba-derecha) y luego título
-    try {
-      const logoImg = await loadImage(LogoPng)
-      const logoW = 35 // mm
-      const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
-      const logoData = compressImage(logoImg, 320, 0.55) // JPEG comprimido
-      pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, currentY, logoW, logoH)
-      currentY += logoH + 6
-    } catch (e) {
-      // Si falla el logo, continuamos sin bloquear el PDF
-      currentY += 4
-    }
-
-    // Título
-    pdf.setFontSize(14)
-    pdf.text('Reporte Indicadores SLA', 10, currentY)
-    currentY += 8
-
-    pdf.setFontSize(10)
-    pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, currentY)
-    currentY += 5
-    pdf.text(`Código SLA: ${filtros.value.codigoSla}`, 10, currentY)
-    currentY += 7
-
-    // Tabla
-    const tableElement = reporteRef.value.querySelector('table')
-    if (tableElement) {
-      const tableCanvas = await html2canvas(tableElement, {
-        scale: 1,
-      })
-      const tableImgData = tableCanvas.toDataURL('image/png')
-      const tableImgWidth = pageWidth - 20
-      const tableImgHeight = (tableCanvas.height * tableImgWidth) / tableCanvas.width
-
-      // Ajustar altura de tabla si es muy grande
-      const maxTableHeight = 60
-      const adjustedTableHeight = Math.min(tableImgHeight, maxTableHeight)
-
-      pdf.addImage(tableImgData, 'PNG', 10, currentY, tableImgWidth, adjustedTableHeight)
-      currentY += adjustedTableHeight + 5
-    }
-
-    // Gráfico con leyenda en la misma página
-    const chartElement = reporteRef.value.querySelector('.chart-wrapper')
-    if (chartElement) {
-      const chartCanvas = await html2canvas(chartElement, {
-        scale: 1,
-      })
-      const chartImgData = chartCanvas.toDataURL('image/png')
-      const chartImgWidth = pageWidth - 20
-
-      // Calcular altura disponible restante en la página
-      const remainingHeight = pageHeight - currentY - 15
-      const chartImgHeight = (chartCanvas.height * chartImgWidth) / chartCanvas.width
-      const adjustedChartHeight = Math.min(chartImgHeight, remainingHeight)
-
-      // Añadir título del gráfico con separación
-      currentY += 15
-      pdf.setFontSize(11)
-      pdf.text('Gráfico de SLA por Rol', 10, currentY)
-      currentY += 6
-
-      // Añadir leyenda compacta
-      pdf.setFontSize(9)
-      pdf.setFillColor(33, 186, 69)
-      pdf.rect(10, currentY, 3, 3, 'F')
-      pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
-
-      pdf.setFillColor(246, 0, 8)
-      pdf.rect(85, currentY, 3, 3, 'F')
-      pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
-      currentY += 6
-
-      // Añadir gráfico
-      pdf.addImage(chartImgData, 'PNG', 10, currentY, chartImgWidth, adjustedChartHeight)
-    }
-
+    // Generar PDF optimizado y descargar
+    const base64 = await generarPdfBase64()
+    if (!base64) throw new Error('No se pudo generar el PDF')
+    cachedPdfBase64.value = base64
     const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
       filtros.value.anio
     }.pdf`
-    pdf.save(fileName)
+    const link = document.createElement('a')
+    link.href = 'data:application/pdf;base64,' + base64
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
     $q.notify({
       type: 'positive',
@@ -1266,121 +1492,35 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
     })
     return
   }
-
-  enviandoCorreo.value = true
   try {
-    // Generar PDF con tabla y gráfico en una sola página A4
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
-    let currentY = 10
-
-    // Logo superior (arriba-derecha) y luego título
-    try {
-      const logoImg = await loadImage(LogoPng)
-      const logoW = 35 // mm
-      const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
-      const logoData = compressImage(logoImg, 320, 0.55)
-      pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, currentY, logoW, logoH)
-      currentY += logoH + 6
-    } catch (e) {
-      currentY += 4
+    // Generar (o reutilizar) PDF antes de activar loading para reducir tiempo de espera visible
+    let pdfBase64 = cachedPdfBase64.value
+    if (!pdfBase64) {
+      pdfBase64 = await generarPdfBase64()
+      cachedPdfBase64.value = pdfBase64
     }
 
-    // Título
-    pdf.setFontSize(14)
-    pdf.text('Reporte Indicadores SLA', 10, currentY)
-    currentY += 8
+    enviandoCorreo.value = true
 
-    pdf.setFontSize(10)
-    pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, currentY)
-    currentY += 5
-    pdf.text(`Código SLA: ${filtros.value.codigoSla}`, 10, currentY)
-    currentY += 7
-
-    // Tabla
-    const tableElement = reporteRef.value.querySelector('table')
-    if (tableElement) {
-      const tableCanvas = await html2canvas(tableElement, {
-        scale: 1,
-      })
-      const tableImgData = tableCanvas.toDataURL('image/png')
-      const tableImgWidth = pageWidth - 20
-      const tableImgHeight = (tableCanvas.height * tableImgWidth) / tableCanvas.width
-
-      // Ajustar altura de tabla si es muy grande
-      const maxTableHeight = 60
-      const adjustedTableHeight = Math.min(tableImgHeight, maxTableHeight)
-
-      pdf.addImage(tableImgData, 'PNG', 10, currentY, tableImgWidth, adjustedTableHeight)
-      currentY += adjustedTableHeight + 5
-    }
-
-    // Gráfico con leyenda en la misma página
-    const chartElement = reporteRef.value.querySelector('.chart-wrapper')
-    if (chartElement) {
-      const chartCanvas = await html2canvas(chartElement, {
-        scale: 1,
-      })
-      const chartImgData = chartCanvas.toDataURL('image/png')
-      const chartImgWidth = pageWidth - 20
-
-      // Calcular altura disponible restante en la página
-      const remainingHeight = pageHeight - currentY - 15
-      const chartImgHeight = (chartCanvas.height * chartImgWidth) / chartCanvas.width
-      const adjustedChartHeight = Math.min(chartImgHeight, remainingHeight)
-
-      // Añadir título del gráfico con separación
-      currentY += 15
-      pdf.setFontSize(11)
-      pdf.text('Gráfico de SLA por Rol', 10, currentY)
-      currentY += 6
-
-      // Añadir leyenda compacta
-      pdf.setFontSize(9)
-      pdf.setFillColor(33, 186, 69)
-      pdf.rect(10, currentY, 3, 3, 'F')
-      pdf.text('SLA Cumplido (100%)', 15, currentY + 2)
-
-      pdf.setFillColor(246, 0, 8)
-      pdf.rect(85, currentY, 3, 3, 'F')
-      pdf.text('SLA Incumplido (<100%)', 90, currentY + 2)
-      currentY += 6
-
-      // Añadir gráfico
-      pdf.addImage(chartImgData, 'PNG', 10, currentY, chartImgWidth, adjustedChartHeight)
-    }
-
-    // Convertir PDF a base64
-    const pdfBase64 = pdf.output('datauristring').split(',')[1]
-
-    // Generar nombre de archivo
     const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
       filtros.value.anio
     }.pdf`
-
-    // Preparar payload para envío de correos
     const payload = {
       tos: correos,
       subject: `Reporte SLA - ${filtros.value.mes} ${filtros.value.anio}`,
       message: `<p>Adjunto encontrará el reporte de indicadores SLA para ${filtros.value.mes} ${filtros.value.anio}.</p><p><strong>Código SLA:</strong> ${filtros.value.codigoSla}</p>`,
-      pdfBase64: pdfBase64,
-      fileName: fileName,
+      pdfBase64,
+      fileName,
     }
 
-    // Enviar correos
     const res = await api.post('/api/reporte/enviar-correo', payload)
-
     console.log('Respuesta del envío de correos:', res.data)
-
     $q.notify({
       type: 'positive',
       message: `Reporte enviado exitosamente a ${correos.length} destinatario(s)`,
       position: 'top-right',
       timeout: 4000,
     })
-
-    // Cerrar diálogo
     dialogCorreo.value = false
   } catch (error) {
     console.error('Error al enviar correo:', error)
@@ -1428,7 +1568,110 @@ onBeforeUnmount(() => {
   if (chartInstance) {
     chartInstance.destroy()
   }
+  if (pieChartInstance) {
+    pieChartInstance.destroy()
+  }
 })
+
+// Invalidate PDF cache when filters or selected roles change
+watch(
+  () => ({ ...filtros.value }),
+  () => {
+    cachedPdfBase64.value = null
+  },
+  { deep: true },
+)
+watch(selectedRoles, () => {
+  cachedPdfBase64.value = null
+})
+
+// Generar PDF (reutilizable) devolviendo base64 sin prefijo
+const generarPdfBase64 = async () => {
+  if (!reporteRef.value) return null
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  let y = 10
+
+  // Logo
+  try {
+    const logoImg = await loadImage(LogoPng)
+    const logoW = 35
+    const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
+    const logoData = compressImage(logoImg, 320, 0.55)
+    pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, y, logoW, logoH)
+    y += logoH + 6
+  } catch (e) {
+    y += 4
+  }
+
+  // Títulos
+  pdf.setFontSize(14)
+  pdf.text('Reporte Indicadores SLA', 10, y)
+  y += 8
+  pdf.setFontSize(10)
+  pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, y)
+  y += 5
+  pdf.text(`Código SLA: ${filtros.value.codigoSla || 'N/A'}`, 10, y)
+  y += 7
+
+  // Tabla (usar html2canvas solo sobre la tabla para minimizar costo)
+  const tableElement = reporteRef.value.querySelector('table')
+  if (tableElement) {
+    const tableCanvas = await html2canvas(tableElement, { scale: 1 })
+    const imgData = tableCanvas.toDataURL('image/png')
+    const imgW = pageWidth - 20
+    const imgH = (tableCanvas.height * imgW) / tableCanvas.width
+    const maxH = 60
+    const adjH = Math.min(imgH, maxH)
+    pdf.addImage(imgData, 'PNG', 10, y, imgW, adjH)
+    y += adjH + 5
+  }
+
+  // Leyenda compacta
+  y += 10
+  pdf.setFontSize(11)
+  pdf.text('Gráfico de SLA por Rol', 10, y)
+  y += 6
+  pdf.setFontSize(9)
+  // Cumplen (azul oscuro)
+  pdf.setFillColor(31, 96, 170)
+  pdf.rect(10, y, 3, 3, 'F')
+  pdf.text('Cumplen (solicitudes)', 15, y + 2)
+  // No cumplen (azul claro)
+  pdf.setFillColor(75, 167, 220)
+  pdf.rect(85, y, 3, 3, 'F')
+  pdf.text('No cumplen (solicitudes)', 90, y + 2)
+  pdf.setFillColor(158, 158, 158)
+  pdf.rect(165, y, 3, 3, 'F')
+  pdf.text('Sin recursos (NA)', 170, y + 2)
+  y += 8
+
+  // Gráfico principal (usar API ChartJS en lugar de html2canvas para performance)
+  if (chartInstance) {
+    const chartImg = chartInstance.toBase64Image('image/png', 1)
+    const chartW = pageWidth - 20
+    const chartH = chartW * 0.45
+    pdf.addImage(chartImg, 'PNG', 10, y, chartW, chartH)
+    y += chartH + 6
+  }
+
+  // Donut resumen (si existe)
+  if (pieChartInstance) {
+    const pieImg = pieChartInstance.toBase64Image('image/png', 1)
+    const pieW = (pageWidth - 20) * 0.5
+    const pieH = pieW * 0.65
+    if (y + pieH + 10 < pageHeight) {
+      pdf.setFontSize(11)
+      pdf.text('Resumen SLA Promedio', 10, y)
+      y += 6
+      pdf.addImage(pieImg, 'PNG', 10, y, pieW, pieH)
+    }
+  }
+
+  const dataUriString = pdf.output('datauristring')
+  return dataUriString.split(',')[1] // base64 sin prefijo
+}
 </script>
 
 <style scoped>
@@ -1469,6 +1712,20 @@ onBeforeUnmount(() => {
   position: relative;
   width: 100%;
   min-height: 320px;
+  height: 500px; /* altura estable para evitar estiramiento vertical */
+  min-width: 1000px; /* ancho mínimo del contenedor para activar scroll y evitar deformación */
+}
+
+.chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .fullscreen-loading {
@@ -1539,7 +1796,7 @@ onBeforeUnmount(() => {
 .filter-button {
   height: 40px !important;
   padding: 0 12px !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
   font-size: 14px !important;
   text-transform: none !important;
   font-weight: 400 !important;
@@ -1559,7 +1816,7 @@ onBeforeUnmount(() => {
 
 /* Encabezado de la tabla del reporte: fondo azul muy claro */
 :deep(.sla-report-table thead tr th) {
-  background-color: #eaf2f9 !important;
+  background-color: #eeeeee !important;
 }
 
 /* Color de texto específico solo para la etiqueta del botón Roles/Áreas (sin afectar el ícono) */
@@ -1571,6 +1828,7 @@ onBeforeUnmount(() => {
 :deep(.filter-button.q-btn--outline) {
   border: 0.5px solid #b6b6b6 !important;
   background-color: #ffffff !important;
+  box-shadow: none !important;
 }
 
 /* Controlar el borde real que Quasar dibuja con el pseudo-elemento :before */
@@ -1586,5 +1844,11 @@ onBeforeUnmount(() => {
 }
 .chip-padding {
   padding: 17px 20px !important; /* vertical | horizontal */
+}
+
+/* Ajuste general de botones: borde 6px y sin sombra */
+:deep(.q-btn) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 </style>
