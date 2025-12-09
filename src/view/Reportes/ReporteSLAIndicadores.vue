@@ -1705,41 +1705,60 @@ const generarPdfBase64 = async () => {
   // Gráfico principal (usar API ChartJS en lugar de html2canvas para performance)
   if (chartInstance) {
     // Ocultar tooltip/hover temporalmente para evitar el recuadro negro en la captura
-    const originalTooltip = chartInstance.options?.plugins?.tooltip?.enabled
-    const originalEvents = chartInstance.options?.events
-    if (!chartInstance.options.plugins) chartInstance.options.plugins = {}
-    if (!chartInstance.options.plugins.tooltip) chartInstance.options.plugins.tooltip = {}
-    chartInstance.options.plugins.tooltip.enabled = false
-    // Desactivar eventos para evitar hover durante la captura
-    chartInstance.options.events = []
-    // Limpiar elementos activos del tooltip
+    const canvasEl = chartCanvasRef.value
+    const originalPointer = canvasEl?.style.pointerEvents
+
+    // Deshabilitar interacción del canvas temporalmente y forzar mouseleave
+    if (canvasEl) {
+      try {
+        canvasEl.style.pointerEvents = 'none'
+        const evt = new MouseEvent('mouseleave', { bubbles: true })
+        canvasEl.dispatchEvent(evt)
+      } catch (e) {
+        console.warn('No se pudo forzar mouseleave del canvas:', e)
+      }
+    }
+
+    // Limpiar elementos activos del tooltip directamente (sin redibujar)
     try {
-      chartInstance.tooltip?.setActiveElements([], { x: 0, y: 0 })
+      if (chartInstance.tooltip) {
+        chartInstance.tooltip.setActiveElements([], { x: 0, y: 0 })
+        // Ocultar el tooltip directamente manipulando su estado interno
+        chartInstance.tooltip._active = []
+      }
     } catch (e) {
       console.warn('No se pudo limpiar tooltip activo:', e)
     }
-    // Actualizar silenciosamente
+
+    // Pequeño retraso para asegurar que el navegador procese el mouseleave
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Redibujar solo el tooltip (no todo el gráfico) para limpiarlo
     try {
-      chartInstance.update('none')
+      chartInstance.tooltip?.draw(chartInstance.ctx)
+      // Forzar un render limpio sin animación
+      chartInstance.render()
     } catch (e) {
-      console.warn('No se pudo actualizar gráfico (ocultar tooltip):', e)
+      // Si falla, intentar update silencioso como fallback
+      try {
+        chartInstance.update('none')
+      } catch (e2) {
+        console.warn('No se pudo limpiar el gráfico:', e2)
+      }
     }
+
+    // Pequeño retraso adicional
+    await new Promise((resolve) => setTimeout(resolve, 50))
 
     const chartPng = chartInstance.toBase64Image('image/png', 1)
 
-    // Restaurar estado del tooltip
-    chartInstance.options.plugins.tooltip.enabled = originalTooltip ?? true
-    chartInstance.options.events = originalEvents ?? [
-      'mousemove',
-      'mouseout',
-      'click',
-      'touchstart',
-      'touchmove',
-    ]
-    try {
-      chartInstance.update('none')
-    } catch (e) {
-      console.warn('No se pudo actualizar gráfico (restaurar tooltip):', e)
+    // Restaurar pointer-events del canvas
+    if (canvasEl) {
+      try {
+        canvasEl.style.pointerEvents = originalPointer ?? ''
+      } catch (e) {
+        console.warn('No se pudo restaurar pointer-events del canvas:', e)
+      }
     }
     // Convertir PNG a JPEG optimizado para reducir peso en PDF
     const tmp = new Image()
