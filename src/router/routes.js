@@ -125,6 +125,18 @@ const routes = [
         component: () => import('src/view/Sistemas/ConfiguracionView.vue'),
         meta: { title: 'Configuración del Sistema' },
       },
+      {
+        path: 'predicciones/dashboard',
+        name: 'predicciones-dashboard',
+        component: () => import('src/view/Predicciones/DashboardPredicciones.vue'),
+        meta: { title: 'Dashboard de Predicciones' },
+      },
+      {
+        path: 'predicciones/riesgo',
+        name: 'predicciones-riesgo',
+        component: () => import('src/view/Predicciones/PrediccionesRiesgoSLA.vue'),
+        meta: { title: 'Predicción de Riesgo SLA' },
+      },
     ],
   },
 

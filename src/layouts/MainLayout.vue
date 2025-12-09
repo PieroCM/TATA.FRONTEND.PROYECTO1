@@ -110,6 +110,25 @@
             />
           </SidebarGroup>
 
+          <!-- GRUPO: Predicciones -->
+          <SidebarGroup
+            icon="psychology"
+            label="Predicciones"
+            :mini="drawerMini"
+            :childrenRoutes="['/sistema/predicciones/dashboard', '/sistema/predicciones/riesgo']"
+          >
+            <SidebarItemChild
+              icon="dashboard"
+              label="Dashboard Predicciones"
+              to="/sistema/predicciones/dashboard"
+            />
+            <SidebarItemChild
+              icon="analytics"
+              label="Análisis de Riesgo"
+              to="/sistema/predicciones/riesgo"
+            />
+          </SidebarGroup>
+
           <!-- GRUPO: Configuración -->
 
           <!-- GRUPO: Sistema -->
