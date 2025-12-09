@@ -11,7 +11,9 @@
           <q-icon name="file_download" color="primary" size="32px" />
           <div>
             <h2 class="export-dialog-header__title">Exportar Solicitudes SLA</h2>
-            <p class="export-dialog-header__subtitle">Configura los filtros y genera el reporte PDF</p>
+            <p class="export-dialog-header__subtitle">
+              Configura los filtros y genera el reporte PDF
+            </p>
           </div>
         </div>
         <q-btn icon="close" flat round dense @click="cerrar" />
@@ -133,29 +135,23 @@
         </div>
 
         <!-- Resumen de registros a exportar -->
-        <q-banner
-          v-if="totalRegistrosFiltrados > 0"
-          rounded
-          class="bg-info text-white q-mt-md"
-        >
+        <q-banner v-if="totalRegistrosFiltrados > 0" rounded class="bg-info text-white q-mt-md">
           <template v-slot:avatar>
             <q-icon name="info" size="24px" />
           </template>
           <div class="text-body2">
-            Se exportarán <strong>{{ totalRegistrosFiltrados }}</strong> registro(s) que coinciden con los filtros seleccionados.
+            Se exportarán <strong>{{ totalRegistrosFiltrados }}</strong> registro(s) que coinciden
+            con los filtros seleccionados.
           </div>
         </q-banner>
 
-        <q-banner
-          v-else
-          rounded
-          class="bg-warning text-white q-mt-md"
-        >
+        <q-banner v-else rounded class="bg-warning text-white q-mt-md">
           <template v-slot:avatar>
             <q-icon name="warning" size="24px" />
           </template>
           <div class="text-body2">
-            <strong>No hay registros</strong> que coincidan con los filtros seleccionados. Ajusta los criterios.
+            <strong>No hay registros</strong> que coincidan con los filtros seleccionados. Ajusta
+            los criterios.
           </div>
         </q-banner>
       </q-card-section>
@@ -164,13 +160,7 @@
 
       <!-- FOOTER: ACCIONES -->
       <q-card-actions class="export-dialog-actions">
-        <q-btn
-          outline
-          color="grey-7"
-          label="Cancelar"
-          @click="cerrar"
-          no-caps
-        />
+        <q-btn outline color="grey-7" label="Cancelar" @click="cerrar" no-caps />
         <q-btn
           unelevated
           color="primary"
@@ -311,13 +301,13 @@ const cerrar = () => {
 
 const exportar = () => {
   exportando.value = true
-  
+
   // Emitir evento con los registros filtrados
   emit('exportar', {
     registros: registrosFiltrados.value,
     filtros: { ...filtrosExportacion.value },
   })
-  
+
   // Simular delay de exportación
   setTimeout(() => {
     exportando.value = false
@@ -381,7 +371,7 @@ onMounted(() => {
   font-family: 'Inter', sans-serif;
   font-size: 14px;
   font-weight: 400;
-  color: #6B7280;
+  color: #6b7280;
   line-height: 1.4;
 }
 
