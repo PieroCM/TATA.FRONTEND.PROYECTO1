@@ -94,7 +94,7 @@
           <!-- Fila 2: Filtros de Datos -->
           <div class="row q-col-gutter-md q-mb-md">
             <!-- Tipos SLA -->
-            <div class="col-12 col-sm-6 col-md-4">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-select
                 v-model="filtros.tiposSla"
                 :options="tiposSlaDisponibles"
@@ -148,7 +148,7 @@
             </div>
 
             <!-- Tipo de Gráfico -->
-            <div class="col-12 col-sm-6 col-md-2">
+            <div class="col-12 col-sm-6 col-md-3">
               <q-select
                 v-model="tipoGrafico"
                 :options="tiposGraficoDisponibles"
@@ -161,9 +161,42 @@
                 </template>
               </q-select>
             </div>
+          </div>
 
-            <!-- Vista de Gráficos (Toggle Switch) -->
-            <div class="col-12 col-sm-6 col-md-2">
+          <!-- Fila 3: Opciones de Visualización -->
+          <div class="row q-col-gutter-md q-mb-md">
+            <!-- Modo de Visualización (Eje Y) -->
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-select
+                v-model="modoVisualizacion"
+                :options="opcionesVisualizacion"
+                label="Modo de Visualización (Eje Y)"
+                outlined
+                dense
+              >
+                <template v-slot:prepend>
+                  <q-icon name="analytics" color="orange" />
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Agrupar Gráficos (Eje X) -->
+            <div class="col-12 col-sm-6 col-md-3">
+              <q-select
+                v-model="agruparPor"
+                :options="opcionesAgrupacion"
+                label="Agrupar Gráficos (Eje X)"
+                outlined
+                dense
+              >
+                <template v-slot:prepend>
+                  <q-icon name="swap_horiz" color="purple" />
+                </template>
+              </q-select>
+            </div>
+
+            <!-- Vista de Gráficos -->
+            <div class="col-12 col-sm-6 col-md-3">
               <q-field outlined dense stack-label label="Vista de Gráficos">
                 <template v-slot:prepend>
                   <q-icon name="view_module" color="primary" />
@@ -180,26 +213,6 @@
                   </div>
                 </template>
               </q-field>
-            </div>
-          </div>
-
-          <!-- Modo de Visualización -->
-          <div class="q-mt-md">
-            <div class="row q-col-gutter-md">
-              <div class="col-12 col-md-4">
-                <q-select
-                  v-model="modoVisualizacion"
-                  :options="opcionesVisualizacion"
-                  label="Modo de Visualización"
-                  outlined
-                  dense
-                  @update:model-value="aplicarFiltros"
-                >
-                  <template v-slot:prepend>
-                    <q-icon name="analytics" color="orange" />
-                  </template>
-                </q-select>
-              </div>
             </div>
           </div>
 
@@ -447,7 +460,7 @@
       </div>
 
       <!-- Estadísticas Rápidas -->
-      <div class="row q-col-gutter-md q-mt-lg">
+      <div v-if="graficos.length > 0" class="row q-col-gutter-md q-mt-lg">
         <div class="col-12 col-md-4">
           <q-card flat bordered class="stat-card">
             <q-card-section>
@@ -683,6 +696,13 @@ const opcionesVisualizacion = [
   { label: 'Cantidad (#)', value: 'cantidad' }
 ]
 
+// Control de eje X (agrupar por SLA o por Rol)
+const agruparPor = ref({ label: 'Por SLA', value: 'sla' })
+const opcionesAgrupacion = [
+  { label: 'Por SLA', value: 'sla' },
+  { label: 'Por Rol', value: 'rol' }
+]
+
 const graficos = ref([])
 
 const estadisticas = ref({
@@ -743,6 +763,18 @@ watch(tipoGrafico, () => {
   }
 })
 
+watch(modoVisualizacion, () => {
+  if (graficos.value.length > 0) {
+    aplicarFiltros()
+  }
+})
+
+watch(agruparPor, () => {
+  if (graficos.value.length > 0) {
+    aplicarFiltros()
+  }
+})
+
 watch(vistaUnificada, () => {
   if (graficos.value.length > 0) {
     nextTick(() => {
@@ -792,6 +824,175 @@ const cargarConfiguracionesIniciales = async () => {
   } catch (error) {
     console.error('❌ Error al cargar configuraciones:', error)
   }
+}
+
+// Función para procesar gráficos agrupados por ROL
+const procesarGraficosPorRol = async (solicitudes, tiposSlaProcesar, configsSla, todosRoles) => {
+  // Determinar roles a procesar
+  const rolesProcesar = filtros.value.roles && filtros.value.roles.length > 0
+    ? todosRoles.filter(r => filtros.value.roles.includes(r.nombreRol))
+    : todosRoles.filter(r => r.esActivo)
+
+  if (rolesProcesar.length === 0) {
+    $q.notify({
+      type: 'warning',
+      message: 'No hay roles disponibles para visualizar',
+      position: 'top-right',
+      timeout: 3000,
+    })
+    return
+  }
+
+  let totalSolicitudesGlobal = 0
+  let sumaPromedios = 0
+  let totalSlasAnalizados = 0
+
+  // Procesar cada Rol
+  for (const rol of rolesProcesar) {
+    // Filtrar solicitudes de este rol
+    let solicitudesRol = solicitudes.filter(s => s.idRolRegistro === rol.idRolRegistro)
+
+    if (solicitudesRol.length === 0) continue
+
+    // Calcular cumplimiento por SLA para este rol
+    const cumplimientoPorSla = tiposSlaProcesar.map(codigoSla => {
+      const configsFiltradas = configsSla.filter(c => c.codigoSla === codigoSla)
+      const idsSla = configsFiltradas.map(c => c.idSla)
+      const solicitudesSla = solicitudesRol.filter(s => idsSla.includes(s.idSla))
+
+      // Calcular estados
+      const solicitudesConEstado = solicitudesSla.map(s => {
+        const config = configsSla.find(c => c.idSla === s.idSla)
+        const diasUmbral = config?.diasUmbral || 0
+
+        let cumpleSla = false
+        let estadoSla = 'Proceso'
+
+        if (s.fechaSolicitud && s.fechaIngreso) {
+          const fechaSol = new Date(s.fechaSolicitud)
+          const fechaIng = new Date(s.fechaIngreso)
+          const diasTranscurridos = Math.floor((fechaIng - fechaSol) / (1000 * 60 * 60 * 24))
+          cumpleSla = diasTranscurridos <= diasUmbral
+          estadoSla = cumpleSla ? 'Cumple' : 'No_cumple'
+        } else if (s.fechaSolicitud && !s.fechaIngreso) {
+          const fechaSol = new Date(s.fechaSolicitud)
+          const hoy = new Date()
+          const diasTranscurridos = Math.floor((hoy - fechaSol) / (1000 * 60 * 60 * 24))
+          estadoSla = diasTranscurridos > diasUmbral ? 'No_cumple' : 'Proceso'
+        }
+
+        return { ...s, cumpleSla, estadoSla }
+      })
+
+      // Filtrar por estado si está seleccionado
+      const solicitudesFiltradas = filtros.value.estado
+        ? solicitudesConEstado.filter(s => s.estadoSla === filtros.value.estado)
+        : solicitudesConEstado
+
+      const totalSla = solicitudesFiltradas.length
+      const cumplenSla = solicitudesFiltradas.filter(s => s.cumpleSla).length
+      const noCumplenSla = solicitudesFiltradas.filter(s => s.estadoSla === 'No_cumple').length
+      const procesoSla = solicitudesFiltradas.filter(s => s.estadoSla === 'Proceso').length
+      const porcentaje = totalSla > 0 ? (cumplenSla / totalSla) * 100 : 0
+
+      return {
+        nombre: codigoSla,
+        porcentaje: parseFloat(porcentaje.toFixed(1)),
+        total: totalSla,
+        cumplidos: cumplenSla,
+        noCumplen: noCumplenSla,
+        proceso: procesoSla,
+      }
+    }).filter(s => s.total > 0)
+
+    if (cumplimientoPorSla.length === 0) continue
+
+    // Configurar datos del gráfico según modo de visualización
+    const usarPorcentaje = modoVisualizacion.value.value === 'porcentaje'
+    let datosGrafico
+    const labels = cumplimientoPorSla.map(s => s.nombre)
+
+    if (tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar') {
+      datosGrafico = {
+        labels: labels,
+        datasets: [{
+          label: usarPorcentaje ? 'Cumplimiento SLA (%)' : 'Solicitudes Cumplidas',
+          data: cumplimientoPorSla.map(s => usarPorcentaje ? s.porcentaje : s.cumplidos),
+          backgroundColor: cumplimientoPorSla.map(s => getColorByPercentage(s.porcentaje)),
+          borderColor: cumplimientoPorSla.map(s => getColorByPercentage(s.porcentaje)),
+          borderWidth: 2,
+        }],
+      }
+    } else {
+      // Barras, líneas, área
+      const esArea = tipoGrafico.value.value === 'area'
+      const esLinea = tipoGrafico.value.value === 'line'
+
+      datosGrafico = {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Cumple',
+            data: cumplimientoPorSla.map(s => usarPorcentaje ? s.porcentaje : s.cumplidos),
+            backgroundColor: esArea || esLinea ? 'rgba(76, 175, 80, 0.5)' : '#4CAF50',
+            borderColor: '#4CAF50',
+            borderWidth: esArea || esLinea ? 2 : 1,
+            fill: esArea,
+            tension: esArea || esLinea ? 0.4 : 0,
+            pointRadius: esLinea ? 5 : (esArea ? 0 : 3),
+          },
+          {
+            label: 'Proceso',
+            data: cumplimientoPorSla.map(s => usarPorcentaje ? ((s.proceso / s.total) * 100).toFixed(1) : s.proceso),
+            backgroundColor: esArea || esLinea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
+            borderColor: '#FF9800',
+            borderWidth: esArea || esLinea ? 2 : 1,
+            fill: esArea,
+            tension: esArea || esLinea ? 0.4 : 0,
+            pointRadius: esLinea ? 5 : (esArea ? 0 : 3),
+          },
+          {
+            label: 'No cumple',
+            data: cumplimientoPorSla.map(s => usarPorcentaje ? ((s.noCumplen / s.total) * 100).toFixed(1) : s.noCumplen),
+            backgroundColor: esArea || esLinea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
+            borderColor: '#F44336',
+            borderWidth: esArea || esLinea ? 2 : 1,
+            fill: esArea,
+            tension: esArea || esLinea ? 0.4 : 0,
+            pointRadius: esLinea ? 5 : (esArea ? 0 : 3),
+          },
+        ],
+      }
+    }
+
+    // Top incumplidores por SLA
+    const topIncumplidores = cumplimientoPorSla
+      .filter(s => s.noCumplen > 0)
+      .sort((a, b) => b.noCumplen - a.noCumplen)
+      .slice(0, 5)
+
+    const totalNoCumplen = cumplimientoPorSla.reduce((sum, s) => sum + s.noCumplen, 0)
+
+    graficos.value.push({
+      codigoSla: rol.nombreRol,
+      titulo: `Análisis por Rol: ${rol.nombreRol}`,
+      datos: datosGrafico,
+      datosRoles: cumplimientoPorSla,
+      topIncumplidores: topIncumplidores,
+      totalNoCumplen: totalNoCumplen
+    })
+
+    totalSolicitudesGlobal += solicitudesRol.length
+    sumaPromedios += cumplimientoPorSla.reduce((sum, s) => sum + s.porcentaje, 0) / cumplimientoPorSla.length
+    totalSlasAnalizados += cumplimientoPorSla.length
+  }
+
+  // Actualizar estadísticas
+  estadisticas.value.totalSolicitudes = totalSolicitudesGlobal
+  estadisticas.value.promedioSla = graficos.value.length > 0
+    ? parseFloat((sumaPromedios / graficos.value.length).toFixed(1))
+    : 0
+  estadisticas.value.rolesAnalizados = totalSlasAnalizados
 }
 
 const aplicarFiltros = async () => {
@@ -902,8 +1103,15 @@ const aplicarFiltros = async () => {
     let sumaPromedios = 0
     let totalRolesAnalizados = 0
 
-    // Procesar cada tipo de SLA seleccionado
-    for (const codigoSla of tiposSlaProcesar) {
+    // Decidir si agrupar por SLA o por Rol
+    if (agruparPor.value.value === 'rol') {
+      // AGRUPAR POR ROL
+      await procesarGraficosPorRol(solicitudes, tiposSlaProcesar, configsSla, todosRoles)
+      // Las estadísticas ya se actualizaron dentro de procesarGraficosPorRol
+    } else {
+      // AGRUPAR POR SLA (comportamiento original)
+      // Procesar cada tipo de SLA seleccionado
+      for (const codigoSla of tiposSlaProcesar) {
       // Filtrar configuraciones y solicitudes por este código SLA
       const configsFiltradas = configsSla.filter((c) => c.codigoSla === codigoSla)
       const idsSla = configsFiltradas.map((c) => c.idSla)
@@ -980,6 +1188,9 @@ const aplicarFiltros = async () => {
 
       // Solo agregar gráfico si hay datos
       if (cumplimientoPorRol.length > 0) {
+        // Determinar si usar porcentaje o cantidad
+        const usarPorcentaje = modoVisualizacion.value.value === 'porcentaje'
+
         // Configurar datos según tipo de gráfico con 3 estados
         let datosGrafico
         const labels = cumplimientoPorRol.map((r) => r.nombre)
@@ -990,7 +1201,7 @@ const aplicarFiltros = async () => {
             datasets: [
               {
                 label: 'Cumple',
-                data: cumplimientoPorRol.map((r) => r.cumplidos),
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? r.porcentaje : r.cumplidos),
                 borderColor: '#4CAF50',
                 backgroundColor: 'rgba(76, 175, 80, 0.1)',
                 borderWidth: 2,
@@ -1003,7 +1214,7 @@ const aplicarFiltros = async () => {
               },
               {
                 label: 'Proceso',
-                data: cumplimientoPorRol.map((r) => r.proceso || 0),
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? ((r.proceso / r.total) * 100).toFixed(1) : (r.proceso || 0)),
                 borderColor: '#FF9800',
                 backgroundColor: 'rgba(255, 152, 0, 0.1)',
                 borderWidth: 2,
@@ -1016,7 +1227,7 @@ const aplicarFiltros = async () => {
               },
               {
                 label: 'No_cumple',
-                data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? ((r.noCumplen / r.total) * 100).toFixed(1) : (r.noCumplen || 0)),
                 borderColor: '#F44336',
                 backgroundColor: 'rgba(244, 67, 54, 0.1)',
                 borderWidth: 2,
@@ -1030,13 +1241,13 @@ const aplicarFiltros = async () => {
             ],
           }
         } else if (tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar') {
-          // Para doughnut y radar, mantener el formato de porcentaje
+          // Para doughnut y radar
           datosGrafico = {
             labels: labels,
             datasets: [
               {
-                label: 'Cumplimiento SLA (%)',
-                data: cumplimientoPorRol.map((r) => r.porcentaje),
+                label: usarPorcentaje ? 'Cumplimiento SLA (%)' : 'Solicitudes Cumplidas',
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? r.porcentaje : r.cumplidos),
                 backgroundColor: cumplimientoPorRol.map((r) => getColorByPercentage(r.porcentaje)),
                 borderColor: cumplimientoPorRol.map((r) => getColorByPercentage(r.porcentaje)),
                 borderWidth: 2,
@@ -1051,7 +1262,7 @@ const aplicarFiltros = async () => {
             datasets: [
               {
                 label: 'Cumple',
-                data: cumplimientoPorRol.map((r) => r.cumplidos),
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? r.porcentaje : r.cumplidos),
                 backgroundColor: esArea ? 'rgba(76, 175, 80, 0.5)' : '#4CAF50',
                 borderColor: '#4CAF50',
                 borderWidth: esArea ? 2 : 1,
@@ -1061,7 +1272,7 @@ const aplicarFiltros = async () => {
               },
               {
                 label: 'Proceso',
-                data: cumplimientoPorRol.map((r) => r.proceso || 0),
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? ((r.proceso / r.total) * 100).toFixed(1) : (r.proceso || 0)),
                 backgroundColor: esArea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
                 borderColor: '#FF9800',
                 borderWidth: esArea ? 2 : 1,
@@ -1071,7 +1282,7 @@ const aplicarFiltros = async () => {
               },
               {
                 label: 'No cumple',
-                data: cumplimientoPorRol.map((r) => r.noCumplen || 0),
+                data: cumplimientoPorRol.map((r) => usarPorcentaje ? ((r.noCumplen / r.total) * 100).toFixed(1) : (r.noCumplen || 0)),
                 backgroundColor: esArea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
                 borderColor: '#F44336',
                 borderWidth: esArea ? 2 : 1,
@@ -1105,14 +1316,15 @@ const aplicarFiltros = async () => {
         sumaPromedios += cumplimientoPorRol.reduce((sum, r) => sum + r.porcentaje, 0) / cumplimientoPorRol.length
         totalRolesAnalizados += cumplimientoPorRol.length
       }
-    }
+      }
 
-    // Estadísticas globales
-    estadisticas.value.totalSolicitudes = totalSolicitudesGlobal
-    estadisticas.value.promedioSla = graficos.value.length > 0
-      ? parseFloat((sumaPromedios / graficos.value.length).toFixed(1))
-      : 0
-    estadisticas.value.rolesAnalizados = totalRolesAnalizados
+      // Estadísticas globales para agrupación por SLA
+      estadisticas.value.totalSolicitudes = totalSolicitudesGlobal
+      estadisticas.value.promedioSla = graficos.value.length > 0
+        ? parseFloat((sumaPromedios / graficos.value.length).toFixed(1))
+        : 0
+      estadisticas.value.rolesAnalizados = totalRolesAnalizados
+    }
 
     await nextTick()
     if (vistaUnificada.value) {
@@ -1178,12 +1390,30 @@ const crearGraficos = () => {
                 const idx = context.dataIndex
                 const datasetLabel = context.dataset.label
                 const valor = context.parsed.y
+                const rol = grafico.datosRoles[idx]
 
-                // Si es "Cumplimiento SLA (%)" mostrar porcentaje, si no mostrar cantidad
-                if (datasetLabel === 'Cumplimiento SLA (%)') {
-                  const rol = grafico.datosRoles[idx]
-                  return rol ? `${datasetLabel}: ${rol.porcentaje}%` : ''
+                if (!rol) return ''
+
+                // Respetar modo de visualización
+                if (modoVisualizacion.value.value === 'porcentaje') {
+                  if (datasetLabel === 'Cumple') {
+                    return `${datasetLabel}: ${rol.porcentaje}%`
+                  } else if (datasetLabel === 'Proceso') {
+                    const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                    return `${datasetLabel}: ${porcentajeProceso}%`
+                  } else if (datasetLabel === 'No cumple' || datasetLabel === 'No_cumple') {
+                    const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+                    return `${datasetLabel}: ${porcentajeNoCumple}%`
+                  }
+                  return `${datasetLabel}: ${valor}%`
                 } else {
+                  if (datasetLabel === 'Cumple') {
+                    return `${datasetLabel}: ${rol.cumplidos} solicitudes`
+                  } else if (datasetLabel === 'Proceso') {
+                    return `${datasetLabel}: ${rol.proceso || 0} solicitudes`
+                  } else if (datasetLabel === 'No cumple' || datasetLabel === 'No_cumple') {
+                    return `${datasetLabel}: ${rol.noCumplen || 0} solicitudes`
+                  }
                   return `${datasetLabel}: ${Math.floor(valor)} solicitudes`
                 }
               },
@@ -1229,8 +1459,8 @@ const crearGraficos = () => {
                   beginAtZero: true,
                   ticks: {
                     callback: function (value) {
-                      // Si es doughnut/radar mostrar %, si no, cantidad
-                      if (tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar') {
+                      // Respetar el modo de visualización
+                      if (modoVisualizacion.value.value === 'porcentaje') {
                         return value + '%'
                       }
                       return Math.floor(value)
@@ -1239,7 +1469,7 @@ const crearGraficos = () => {
                   },
                   title: {
                     display: true,
-                    text: tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'radar'
+                    text: modoVisualizacion.value.value === 'porcentaje'
                       ? 'Porcentaje de Cumplimiento'
                       : 'Cantidad de Solicitudes'
                   }
