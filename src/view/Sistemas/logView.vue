@@ -75,6 +75,34 @@
           <q-icon name="badge" color="grey-6" />
         </template>
       </q-select>
+
+      <q-input
+        v-model="fechaInicio"
+        outlined
+        dense
+        type="date"
+        label="Desde"
+        clearable
+        class="date-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="event" color="grey-6" />
+        </template>
+      </q-input>
+
+      <q-input
+        v-model="fechaFin"
+        outlined
+        dense
+        type="date"
+        label="Hasta"
+        clearable
+        class="date-input"
+      >
+        <template v-slot:prepend>
+          <q-icon name="event" color="grey-6" />
+        </template>
+      </q-input>
     </div>
 
     <!-- TABLA DE LOGS -->
@@ -132,6 +160,8 @@ const counts = ref({
 const searchQuery = ref('')
 const selectedLevel = ref('Todos los niveles')
 const selectedRole = ref(null)
+const fechaInicio = ref('')
+const fechaFin = ref('')
 
 const levelOptions = ['Todos los niveles', 'INFO', 'SUCCESS', 'WARN', 'ERROR']
 
@@ -250,7 +280,11 @@ const filteredLogs = computed(() => {
       !selectedRole.value ||
       (usuarios.value.find(u => u.idUsuario === l.idUsuario)?.idRolSistema === selectedRole.value.value)
 
-    return matchSearch && matchLevel && matchRole
+    const matchFecha =
+      (!fechaInicio.value || new Date(l.fechaHora) >= new Date(fechaInicio.value)) &&
+      (!fechaFin.value || new Date(l.fechaHora) <= new Date(fechaFin.value + 'T23:59:59'))
+
+    return matchSearch && matchLevel && matchRole && matchFecha
   })
 })
 
@@ -275,7 +309,7 @@ const endRecord = computed(() => {
 })
 
 // Resetear a página 1 cuando cambian los filtros
-watch([searchQuery, selectedLevel, selectedRole], () => {
+watch([searchQuery, selectedLevel, selectedRole, fechaInicio, fechaFin], () => {
   currentPage.value = 1
 })
 
@@ -498,11 +532,12 @@ const exportPDF = () => {
 
 /* ========== SUMMARY CARDS ========== */
 .summary-row {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 20px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 32px;
   margin-bottom: 32px;
-  max-width: 1000px;
+  width: 100%;
 }
 
 /* ========== FILTROS ========== */
@@ -603,6 +638,37 @@ const exportPDF = () => {
   }
 }
 
+.date-input {
+  flex: 1;
+  min-width: 180px;
+
+  :deep(.q-field__control) {
+    border-radius: 12px;
+    background-color: #F9FAFB;
+    height: 48px;
+    border: 1.5px solid #E5E7EB;
+
+    &:hover {
+      border-color: #CBD5E1;
+    }
+  }
+
+  :deep(.q-field__control):focus-within {
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  :deep(.q-field__native) {
+    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    color: #111827;
+  }
+
+  :deep(input[type="date"]) {
+    color: #111827;
+  }
+}
+
 /* ========== PAGINACIÓN ========== */
 .pagination-container {
   display: flex;
@@ -658,7 +724,8 @@ const exportPDF = () => {
 
   .search-input,
   .filter-select,
-  .role-input {
+  .role-input,
+  .date-input {
     width: 100%;
     min-width: 100%;
   }
