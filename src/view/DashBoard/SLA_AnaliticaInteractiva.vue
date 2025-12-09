@@ -619,7 +619,6 @@ import { Chart, registerables } from 'chart.js'
 import { useAppStore } from 'stores/app-store'
 import { useSlaStore } from 'stores/useSlaStore'
 import { jsPDF } from 'jspdf'
-import html2canvas from 'html2canvas'
 import { getPorcentajeColorHex } from 'src/utils/slaMappers'
 
 Chart.register(...registerables)
@@ -1192,9 +1191,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'Proceso',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje
-                      ? ((r.proceso / r.total) * 100).toFixed(1)
-                      : r.proceso || 0,
+                    usarPorcentaje ? ((r.proceso / r.total) * 100).toFixed(1) : r.proceso || 0,
                   ),
                   borderColor: '#FF9800',
                   backgroundColor: 'rgba(255, 152, 0, 0.1)',
@@ -1209,9 +1206,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'No_cumple',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje
-                      ? ((r.noCumplen / r.total) * 100).toFixed(1)
-                      : r.noCumplen || 0,
+                    usarPorcentaje ? ((r.noCumplen / r.total) * 100).toFixed(1) : r.noCumplen || 0,
                   ),
                   borderColor: '#F44336',
                   backgroundColor: 'rgba(244, 67, 54, 0.1)',
@@ -1240,9 +1235,7 @@ const aplicarFiltros = async () => {
                   backgroundColor: cumplimientoPorRol.map((r) =>
                     getColorByPercentage(r.porcentaje),
                   ),
-                  borderColor: cumplimientoPorRol.map((r) =>
-                    getColorByPercentage(r.porcentaje),
-                  ),
+                  borderColor: cumplimientoPorRol.map((r) => getColorByPercentage(r.porcentaje)),
                   borderWidth: 2,
                 },
               ],
@@ -1267,9 +1260,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'Proceso',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje
-                      ? ((r.proceso / r.total) * 100).toFixed(1)
-                      : r.proceso || 0,
+                    usarPorcentaje ? ((r.proceso / r.total) * 100).toFixed(1) : r.proceso || 0,
                   ),
                   backgroundColor: esArea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
                   borderColor: '#FF9800',
@@ -1281,9 +1272,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'No cumple',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje
-                      ? ((r.noCumplen / r.total) * 100).toFixed(1)
-                      : r.noCumplen || 0,
+                    usarPorcentaje ? ((r.noCumplen / r.total) * 100).toFixed(1) : r.noCumplen || 0,
                   ),
                   backgroundColor: esArea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
                   borderColor: '#F44336',
@@ -1301,10 +1290,7 @@ const aplicarFiltros = async () => {
             .sort((a, b) => b.noCumplen - a.noCumplen)
             .slice(0, 5)
 
-          const totalNoCumplen = cumplimientoPorRol.reduce(
-            (sum, r) => sum + (r.noCumplen || 0),
-            0,
-          )
+          const totalNoCumplen = cumplimientoPorRol.reduce((sum, r) => sum + (r.noCumplen || 0), 0)
 
           graficos.value.push({
             codigoSla: codigoSla,
@@ -1317,8 +1303,7 @@ const aplicarFiltros = async () => {
 
           totalSolicitudesGlobal += solicitudesConSla.length
           sumaPromedios +=
-            cumplimientoPorRol.reduce((sum, r) => sum + r.porcentaje, 0) /
-            cumplimientoPorRol.length
+            cumplimientoPorRol.reduce((sum, r) => sum + r.porcentaje, 0) / cumplimientoPorRol.length
           totalRolesAnalizados += cumplimientoPorRol.length
         }
       }
@@ -1376,8 +1361,7 @@ const crearGraficos = () => {
         aspectRatio: 2,
         plugins: {
           legend: {
-            display:
-              tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'line',
+            display: tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'line',
             position: 'bottom',
           },
           tooltip: {
@@ -1450,11 +1434,7 @@ const crearGraficos = () => {
                     font: function (context) {
                       if (context.tick && context.tick.label) {
                         const label = context.tick.label
-                        if (
-                          typeof label === 'object' &&
-                          label.length > 1 &&
-                          context.index === 1
-                        ) {
+                        if (typeof label === 'object' && label.length > 1 && context.index === 1) {
                           return { size: 10 }
                         }
                       }
@@ -1702,8 +1682,7 @@ const crearGraficoUnificado = () => {
   } else {
     const labels = graficos.value.map((g) => g.codigoSla)
     const data = graficos.value.map((g) => {
-      const promedio =
-        g.datosRoles.reduce((sum, r) => sum + r.porcentaje, 0) / g.datosRoles.length
+      const promedio = g.datosRoles.reduce((sum, r) => sum + r.porcentaje, 0) / g.datosRoles.length
       return parseFloat(promedio.toFixed(1))
     })
 
@@ -1850,7 +1829,7 @@ const exportarPDF = async () => {
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const margin = 15
-    let yPos = margin
+    let _yPos = margin
     let currentPage = 1
 
     const logoUrl = '/src/assets/Tata_logo.png'
@@ -1872,18 +1851,11 @@ const exportarPDF = async () => {
       console.warn('No se pudo cargar el logo:', error)
     }
 
-    const addHeader = () => {
+    const _addHeader = () => {
       if (logoData) {
         const logoWidth = 40
         const logoHeight = 20
-        pdf.addImage(
-          logoData,
-          'PNG',
-          pageWidth - margin - logoWidth,
-          margin,
-          logoWidth,
-          logoHeight,
-        )
+        pdf.addImage(logoData, 'PNG', pageWidth - margin - logoWidth, margin, logoWidth, logoHeight)
       }
 
       pdf.setFontSize(16)
@@ -1909,13 +1881,13 @@ const exportarPDF = async () => {
       return margin + 20
     }
 
-    const addFooter = () => {
+    const _addFooter = () => {
       pdf.setFontSize(8)
       pdf.setTextColor(128, 128, 128)
       pdf.text(`Página ${currentPage}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
     }
 
-    let primeraSeccionAgregada = false
+    let _primeraSeccionAgregada = false
 
     // Aquí sigue exactamente toda tu lógica de armado del PDF:
     // - Tabla de top roles

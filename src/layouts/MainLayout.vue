@@ -112,17 +112,20 @@
 
           <!-- GRUPO: Predicciones -->
           <SidebarGroup
+            v-if="hasPerm('DASHBOARD_PREDICCIONES') || hasPerm('PREDICCIONES_RIESGO_SLA')"
             icon="psychology"
             label="Predicciones"
             :mini="drawerMini"
             :childrenRoutes="['/sistema/predicciones/dashboard', '/sistema/predicciones/riesgo']"
           >
             <SidebarItemChild
+              v-if="hasPerm('DASHBOARD_PREDICCIONES')"
               icon="dashboard"
               label="Dashboard Predicciones"
               to="/sistema/predicciones/dashboard"
             />
             <SidebarItemChild
+              v-if="hasPerm('PREDICCIONES_RIESGO_SLA')"
               icon="analytics"
               label="Análisis de Riesgo"
               to="/sistema/predicciones/riesgo"
@@ -223,7 +226,6 @@
 
                 <q-separator />
 
-                
                 <!-- Usuario -->
                 <q-item clickable v-ripple class="user-option" @click="irAPerfil" v-close-popup>
                   <q-item-section avatar>
