@@ -228,11 +228,11 @@
                 <!-- Leyenda del gráfico -->
                 <div class="legend-container q-mb-md">
                   <div class="legend-item">
-                    <div class="legend-color" style="background-color: #21ba45"></div>
+                    <div class="legend-color" style="background-color: #1f60aa"></div>
                     <span>Cumplen (solicitudes)</span>
                   </div>
                   <div class="legend-item">
-                    <div class="legend-color" style="background-color: #f60008"></div>
+                    <div class="legend-color" style="background-color: #35bdec"></div>
                     <span>No cumplen (solicitudes)</span>
                   </div>
                   <div class="legend-item">
@@ -247,8 +247,54 @@
                   Etiqueta superior: SLA del rol (%).
                 </div>
 
-                <div class="chart-wrapper" style="position: relative; width: 100%; height: 500px">
-                  <canvas ref="chartCanvasRef" data-chart="sla" style="display: block"></canvas>
+                <div class="chart-scroll">
+                  <div class="chart-wrapper">
+                    <canvas ref="chartCanvasRef" data-chart="sla" class="chart-canvas"></canvas>
+                  </div>
+                </div>
+
+                <!-- Solicitudes en proceso (informativo, no incluidas en el cálculo) -->
+                <div v-if="solicitudesEnProceso.length" class="q-mt-lg">
+                  <div class="text-body1 q-mb-sm">
+                    Hay <b>{{ solicitudesEnProceso.length }}</b> solicitud(es) en proceso de SLA y
+                    no se toman en cuenta para este reporte.
+                  </div>
+                  <q-table
+                    :rows="solicitudesEnProceso"
+                    :columns="[
+                      {
+                        name: 'rol',
+                        label: 'ROL',
+                        field: (r) => r.rolRegistro?.nombreRol || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'resumen',
+                        label: 'RESUMEN',
+                        field: (r) => r.resumenSla || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'fecha',
+                        label: 'FECHA',
+                        field: (r) => r.fechaSolicitud || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'dias',
+                        label: 'DÍAS SLA',
+                        field: (r) => r.numDiasSla ?? 'N/A',
+                        align: 'center',
+                      },
+                    ]"
+                    row-key="idSolicitud"
+                    flat
+                    bordered
+                    :pagination="{ rowsPerPage: 5 }"
+                  />
+                  <div class="text-caption text-grey-7 q-mt-sm">
+                    Nota: estadoSolicitud = ACTIVA y estadoCumplimientoSla = EN_PROCESO_SLAX.
+                  </div>
                 </div>
 
                 <!-- Gráfico de torta (Resumen) -->
@@ -377,7 +423,8 @@ import { Chart, registerables } from 'chart.js'
 import ChartDataLabels from 'chartjs-plugin-datalabels'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import * as XLSX from 'xlsx'
+// Para Excel con estilos y gráficos embebidos
+import ExcelJS from 'exceljs'
 import { useAppStore } from 'stores/app-store'
 import EnviarReporteDialog from 'components/Reportes/EnviarReporteDialog.vue'
 import LogoPng from 'src/assets/Tata_logo.png'
@@ -434,6 +481,7 @@ const resumen = ref({
   rolesIncluidos: 0,
 })
 const solicitudesFiltradas = ref([]) // para exportar (ids)
+const solicitudesEnProceso = ref([]) // ACTIVA + EN_PROCESO_SLAx (informativo)
 
 // Chart
 const chartCanvasRef = ref(null)
@@ -777,6 +825,13 @@ const verReporte = async () => {
 
     solicitudesFiltradas.value = solicitudesConEstadoValido
 
+    // Solicitudes en proceso (no consideradas en el reporte)
+    const esEnProceso = (estado) => /^(EN_PROCESO_SLA\d+)$/i.test(String(estado || ''))
+    const solicitudesProceso = solicitudes.filter(
+      (s) => s.estadoSolicitud === 'ACTIVA' && esEnProceso(s.estadoCumplimientoSla),
+    )
+    solicitudesEnProceso.value = solicitudesProceso
+
     // Determinar qué roles mostrar en la tabla
     const rolesParaTabla = todosRoles.filter(
       (r) => r.esActivo !== false && selectedRoles.value.includes(r.nombreRol),
@@ -938,11 +993,11 @@ const crearGrafico = () => {
           {
             label: 'Cumplen (SLA%)',
             data: dataCumple,
-            backgroundColor: '#21ba45',
-            borderColor: '#21ba45',
+            backgroundColor: '#1f60aa',
+            borderColor: '#1f60aa',
             borderWidth: 2,
-            hoverBackgroundColor: '#21ba45',
-            hoverBorderColor: '#21ba45',
+            hoverBackgroundColor: '#1f60aa',
+            hoverBorderColor: '#1f60aa',
             stack: 'sla',
             datalabels: {
               labels: {
@@ -959,11 +1014,11 @@ const crearGrafico = () => {
           {
             label: 'No cumplen (%)',
             data: dataNoCumple,
-            backgroundColor: '#f60008',
-            borderColor: '#f60008',
+            backgroundColor: '#35bdec',
+            borderColor: '#35bdec',
             borderWidth: 2,
-            hoverBackgroundColor: '#f60008',
-            hoverBorderColor: '#f60008',
+            hoverBackgroundColor: '#35bdec',
+            hoverBorderColor: '#35bdec',
             stack: 'sla',
             datalabels: {
               labels: {
@@ -995,7 +1050,8 @@ const crearGrafico = () => {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 2.2,
         plugins: {
           legend: {
             display: false,
@@ -1106,7 +1162,8 @@ const _crearGraficoResumen = () => {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        aspectRatio: 1.6,
         cutout: '60%',
         plugins: {
           legend: {
@@ -1172,7 +1229,7 @@ const removerFiltro = (key) => {
   }
 }
 
-// Exportar a Excel desde el frontend sin tocar backend
+// Exportar a Excel desde el frontend con estilos (ExcelJS)
 const exportarExcel = async () => {
   if (!filasTabla.value.length) {
     $q.notify({
@@ -1211,77 +1268,124 @@ const exportarExcel = async () => {
       // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
     }
 
-    // Crear un nuevo workbook
-    const wb = XLSX.utils.book_new()
+    // Construir Excel estilizado (solo Resultados del Reporte)
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'TATA SLA'
+    wb.created = new Date()
 
-    // Preparar datos de la tabla principal
-    const datosTabla = filasTabla.value.map((fila) => ({
-      ROL: fila.rol,
-      NUM_RECURSOS: fila.numRecursos,
-      'SLA (%)': fila.sla === 'NA' ? 'NA' : fila.sla,
-      INDICADOR: getIndicadorTexto(fila),
-    }))
+    const ws = wb.addWorksheet('Reporte')
 
-    // Crear hoja de tabla
-    const wsTabla = XLSX.utils.json_to_sheet(datosTabla)
-    XLSX.utils.book_append_sheet(wb, wsTabla, 'Reporte')
+    // Título
+    const titulo = `Reporte SLA - ${filtros.value.codigoSla || 'TODOS'} - ${filtros.value.mes} ${
+      filtros.value.anio
+    }`
+    ws.mergeCells('A1:D1')
+    ws.getCell('A1').value = titulo
+    ws.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF1F60AA' } }
+    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
 
-    // Preparar datos del resumen
-    const datosResumen = [
-      ['RESUMEN DEL REPORTE'],
-      [],
-      ['Periodo:', `${filtros.value.mes} ${filtros.value.anio}`],
-      ['Código SLA:', filtros.value.codigoSla],
-      ['Roles Incluidos:', selectedRoles.value.join(', ')],
-      [],
-      ['INDICADORES CONSOLIDADOS'],
-      ['Total Recursos:', resumen.value.totalRecursos],
-      ['SLA Promedio:', `${resumen.value.promedioSla}%`],
-      ['Roles Únicos:', resumen.value.rolesIncluidos],
-      [],
-      ['DESGLOSE POR ESTADO SLA'],
-    ]
+    // Encabezados
+    const headers = ['ROL', 'NUM_RECURSOS', 'SLA (%)', 'INDICADOR']
+    ws.addRow([]) // fila 2 vacía
+    ws.addRow(headers) // fila 3
+    const headerRow = ws.getRow(3)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+    headerRow.height = 22
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1F60AA' },
+      }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+      }
+    })
 
-    // Calcular estadísticas
-    const cumplimiento = filasTabla.value.filter((f) => f.sla === 100).length
-    const incumplimiento = filasTabla.value.filter((f) => f.sla !== 'NA' && f.sla < 100).length
-    const sinRecursos = filasTabla.value.filter((f) => f.sla === 'NA').length
+    // Datos
+    const datosTabla = filasTabla.value.map((fila) => [
+      fila.rol,
+      fila.numRecursos,
+      fila.sla === 'NA' ? 'NA' : fila.sla,
+      getIndicadorTexto(fila),
+    ])
+    datosTabla.forEach((row) => ws.addRow(row))
 
-    datosResumen.push(
-      ['SLA Cumplido (100%):', cumplimiento],
-      ['SLA Incumplido (<100%):', incumplimiento],
-      ['Sin Recursos (NA):', sinRecursos],
-    )
-
-    // Crear hoja de resumen
-    const wsResumen = XLSX.utils.aoa_to_sheet(datosResumen)
-    XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen')
-
-    // Preparar datos de solicitudes filtradas
-    if (solicitudesFiltradas.value.length > 0) {
-      const datosSolicitudes = solicitudesFiltradas.value.map((sol) => ({
-        ID: sol.idSolicitud,
-        ROL: sol.nombreRol || 'N/A',
-        FECHA: sol.fechaSolicitud || 'N/A',
-        'ESTADO SLA': sol.estadoCumplimientoSla || 'N/A',
-        'TIPO SOLICITUD': sol.tipoSolicitud || 'N/A',
-      }))
-
-      const wsSolicitudes = XLSX.utils.json_to_sheet(datosSolicitudes)
-      XLSX.utils.book_append_sheet(wb, wsSolicitudes, 'Solicitudes')
+    // Estilo de filas de datos
+    for (let r = 4; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r)
+      row.height = 20
+      row.eachCell((cell, col) => {
+        cell.border = {
+          top: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          left: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          bottom: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          right: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+        }
+        if (col === 3) {
+          cell.alignment = { horizontal: 'center' }
+        }
+      })
+      // Bandas alternas
+      if (r % 2 === 0) {
+        ws.getRow(r).eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF5F9FF' },
+          }
+        })
+      }
     }
 
-    // Generar nombre del archivo
-    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
+    // Anchos de columna
+    ws.columns = [{ width: 26 }, { width: 14 }, { width: 10 }, { width: 30 }]
+
+    // Autofiltro y congelar encabezado
+    ws.autoFilter = {
+      from: 'A3',
+      to: `D${ws.rowCount}`,
+    }
+    ws.views = [{ state: 'frozen', ySplit: 3 }]
+
+    // Embeber gráfico como imagen (si existe instancia)
+    try {
+      if (chartInstance) {
+        const chartImg = chartInstance.toBase64Image('image/png', 1)
+        const imageId = wb.addImage({ base64: chartImg, extension: 'png' })
+        // Posicionar imagen bajo la tabla
+        const startRow = ws.rowCount + 2
+        ws.addImage(imageId, {
+          tl: { col: 0, row: startRow },
+          ext: { width: 900, height: 420 },
+        })
+      }
+    } catch (e) {
+      console.warn('No se pudo embeber la imagen del gráfico en Excel:', e)
+    }
+
+    // Generar archivo
+    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_$${
       filtros.value.anio
     }.xlsx`
-
-    // Descargar el archivo
-    XLSX.writeFile(wb, fileName)
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
 
     $q.notify({
       type: 'positive',
-      message: 'Excel exportado y registrado en historial',
+      message: 'Excel exportado con estilos y gráfico',
       position: 'top-right',
     })
   } catch (error) {
@@ -1530,12 +1634,14 @@ const generarPdfBase64 = async () => {
   pdf.text('Gráfico de SLA por Rol', 10, y)
   y += 6
   pdf.setFontSize(9)
-  pdf.setFillColor(33, 186, 69)
+  // Cumplen (azul oscuro)
+  pdf.setFillColor(31, 96, 170)
   pdf.rect(10, y, 3, 3, 'F')
-  pdf.text('SLA Cumplido (100%)', 15, y + 2)
-  pdf.setFillColor(246, 0, 8)
+  pdf.text('Cumplen (solicitudes)', 15, y + 2)
+  // No cumplen (azul claro)
+  pdf.setFillColor(75, 167, 220)
   pdf.rect(85, y, 3, 3, 'F')
-  pdf.text('SLA Incumplido (<100%)', 90, y + 2)
+  pdf.text('No cumplen (solicitudes)', 90, y + 2)
   pdf.setFillColor(158, 158, 158)
   pdf.rect(165, y, 3, 3, 'F')
   pdf.text('Sin recursos (NA)', 170, y + 2)
@@ -1606,6 +1712,20 @@ const generarPdfBase64 = async () => {
   position: relative;
   width: 100%;
   min-height: 320px;
+  height: 500px; /* altura estable para evitar estiramiento vertical */
+  min-width: 1000px; /* ancho mínimo del contenedor para activar scroll y evitar deformación */
+}
+
+.chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .fullscreen-loading {
@@ -1676,7 +1796,7 @@ const generarPdfBase64 = async () => {
 .filter-button {
   height: 40px !important;
   padding: 0 12px !important;
-  border-radius: 4px !important;
+  border-radius: 6px !important;
   font-size: 14px !important;
   text-transform: none !important;
   font-weight: 400 !important;
@@ -1696,7 +1816,7 @@ const generarPdfBase64 = async () => {
 
 /* Encabezado de la tabla del reporte: fondo azul muy claro */
 :deep(.sla-report-table thead tr th) {
-  background-color: #eaf2f9 !important;
+  background-color: #eeeeee !important;
 }
 
 /* Color de texto específico solo para la etiqueta del botón Roles/Áreas (sin afectar el ícono) */
@@ -1708,6 +1828,7 @@ const generarPdfBase64 = async () => {
 :deep(.filter-button.q-btn--outline) {
   border: 0.5px solid #b6b6b6 !important;
   background-color: #ffffff !important;
+  box-shadow: none !important;
 }
 
 /* Controlar el borde real que Quasar dibuja con el pseudo-elemento :before */
@@ -1723,5 +1844,11 @@ const generarPdfBase64 = async () => {
 }
 .chip-padding {
   padding: 17px 20px !important; /* vertical | horizontal */
+}
+
+/* Ajuste general de botones: borde 6px y sin sombra */
+:deep(.q-btn) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 </style>
