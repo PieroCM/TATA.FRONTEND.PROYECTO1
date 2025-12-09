@@ -22,17 +22,20 @@
         <q-list padding>
           <!-- GRUPO: Dashboard -->
           <SidebarGroup
+            v-if="hasPerm('DASHBOARD_EJECUTIVO') || hasPerm('ANALISIS_INTERACTIVO')"
             icon="dashboard"
             label="Dashboard"
             :mini="drawerMini"
             :childrenRoutes="['/sistema/dashboard', '/sistema/analitica-interactiva']"
           >
             <SidebarItemChild
+              v-if="hasPerm('DASHBOARD_EJECUTIVO')"
               label="Dashboard ejecutivo"
               icon="bar_chart"
               to="/sistema/dashboard"
             />
             <SidebarItemChild
+              v-if="hasPerm('ANALISIS_INTERACTIVO')"
               label="Análisis interactivo"
               icon="show_chart"
               to="/sistema/analitica-interactiva"
@@ -40,17 +43,29 @@
           </SidebarGroup>
           <!-- GRUPO: Datos SLA -->
           <SidebarGroup
+            v-if="hasPerm('CARGA_DATOS') || hasPerm('GESTION_SOLICITUD')"
             icon="storage"
             label="Datos solicitud"
             :mini="drawerMini"
             :childrenRoutes="['/sistema/carga-volumen', '/sistema/gestion-sla']"
           >
-            <SidebarItemChild label="Cargar Datos" icon="upload" to="/sistema/carga-volumen" />
-            <SidebarItemChild label="Gestión de solicitud" icon="edit" to="/sistema/gestion-sla" />
+            <SidebarItemChild
+              v-if="hasPerm('CARGA_DATOS')"
+              label="Cargar Datos"
+              icon="upload"
+              to="/sistema/carga-volumen"
+            />
+            <SidebarItemChild
+              v-if="hasPerm('GESTION_SOLICITUD')"
+              label="Gestión de solicitud"
+              icon="edit"
+              to="/sistema/gestion-sla"
+            />
           </SidebarGroup>
 
           <!-- GRUPO: Reportes -->
           <SidebarGroup
+            v-if="hasPerm('REPORTE_CUMPLIMIENTO') || hasPerm('HISTORIAL_REPORTES')"
             icon="description"
             label="Reportes"
             :mini="drawerMini"
@@ -60,11 +75,13 @@
             ]"
           >
             <SidebarItemChild
+              v-if="hasPerm('REPORTE_CUMPLIMIENTO')"
               label="Reporte de cumplimiento"
               icon="bar_chart"
               to="/sistema/reportes/sla-indicadores"
             />
             <SidebarItemChild
+              v-if="hasPerm('HISTORIAL_REPORTES')"
               label="Historial de reportes"
               icon="history"
               to="/sistema/reportes/sla-historial"
@@ -73,17 +90,20 @@
 
           <!-- GRUPO: Alertas SLA -->
           <SidebarGroup
+            v-if="hasPerm('GESTION_ALERTAS') || hasPerm('CONFIGURAR_EMAIL')"
             icon="notifications_active"
             label="Alertas SLA"
             :mini="drawerMini"
             :childrenRoutes="['/sistema/alertas', '/sistema/alertas/config-email']"
           >
             <SidebarItemChild
+              v-if="hasPerm('GESTION_ALERTAS')"
               icon="notifications"
               label="Gestión de Alertas"
               to="/sistema/alertas"
             />
             <SidebarItemChild
+              v-if="hasPerm('CONFIGURAR_EMAIL')"
               icon="email"
               label="Configurar Email"
               to="/sistema/alertas/config-email"
@@ -94,13 +114,25 @@
 
           <!-- GRUPO: Sistema -->
           <SidebarGroup
+            v-if="hasPerm('LOGS') || hasPerm('GESTION_USUARIOS')"
             icon="memory"
             label="Sistema"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios']"
+            :childrenRoutes="['/sistema/log-view', '/sistema/usuarios', '/sistema/configuracion']"
           >
-            <SidebarItemChild icon="monitor_heart" label="Logs" to="/sistema/log-view" />
-            <SidebarItemChild icon="people" label="Gestión de Usuarios" to="/sistema/usuarios" />
+            <SidebarItemChild
+              v-if="hasPerm('LOGS')"
+              icon="monitor_heart"
+              label="Logs"
+              to="/sistema/log-view"
+            />
+            <SidebarItemChild
+              v-if="hasPerm('GESTION_USUARIOS')"
+              icon="people"
+              label="Gestión de Usuarios"
+              to="/sistema/usuarios"
+            />
+            <SidebarItemChild icon="settings" label="Configuración" to="/sistema/configuracion" />
           </SidebarGroup>
         </q-list>
       </q-scroll-area>
@@ -149,7 +181,7 @@
                 <span class="text-body2 text-weight-medium">{{
                   authStore.userName || 'Usuario'
                 }}</span>
-                <span class="text-caption text-grey">{{ authStore.usuario?.rol || 'Rol' }}</span>
+                <span class="text-caption text-grey">{{ authStore.userRole || 'Rol' }}</span>
               </div>
             </template>
 
@@ -274,7 +306,17 @@ export default {
     },
   },
 
+  mounted() {
+    // Asegurar que los permisos estén cargados desde localStorage
+    if (!this.authStore.token) {
+      this.authStore.hydrateFromLocalStorage()
+    }
+  },
+
   methods: {
+    hasPerm(codigoPermiso) {
+      return this.authStore.permisos?.includes(codigoPermiso) || false
+    },
     toggleMini() {
       // En mobile real (<600px), toggle del drawer completo (abrir/cerrar)
       if (this.isMobile) {

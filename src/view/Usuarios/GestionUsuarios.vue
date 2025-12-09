@@ -44,10 +44,13 @@
               outlined
               dense
               placeholder="Rol"
-              :options="rolesFilterOptions"
-              option-value="value"
-              option-label="label"
+              :options="rolesSistema"
+              option-value="nombre"
+              option-label="nombre"
+              emit-value
+              map-options
               clearable
+              :loading="loadingRoles"
               @update:model-value="filtrarUsuarios"
             />
           </div>
@@ -233,8 +236,11 @@
               outlined
               dense
               class="q-mb-md"
+              @blur="verificarCorreoCorporativoDisponible"
               hint="Correo electrónico corporativo"
               ><template #prepend><q-icon name="mail" /></template
+              ><template #append v-if="verificandoCorreo"
+                ><q-spinner color="primary" size="20px" /></template
             ></q-input>
           </div>
 
@@ -284,13 +290,28 @@
                 label="Rol del Sistema *"
                 outlined
                 dense
-                :options="rolesOptions"
+                :options="rolesSistema"
+                option-label="nombre"
+                option-value="idRolSistema"
                 emit-value
                 map-options
                 class="bg-white"
                 hint="Define los permisos del usuario"
-                ><template #prepend><q-icon name="admin_panel_settings" /></template
-              ></q-select>
+                :loading="loadingRoles"
+                :disable="loadingRoles"
+              >
+                <template #prepend>
+                  <q-icon name="admin_panel_settings" />
+                </template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                      <q-item-label caption>{{ scope.opt.descripcion }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </div>
           </template>
 
@@ -439,15 +460,27 @@
               label="Rol del Sistema *"
               outlined
               dense
-              :options="rolesOptions"
+              :options="rolesSistema"
+              option-label="nombre"
+              option-value="idRolSistema"
               emit-value
               map-options
               class="bg-white"
               hint="Define los permisos del usuario"
+              :loading="loadingRoles"
+              :disable="loadingRoles"
               :rules="[(val) => !!val || 'El rol es obligatorio']"
             >
               <template #prepend>
                 <q-icon name="admin_panel_settings" />
+              </template>
+              <template #option="scope">
+                <q-item v-bind="scope.itemProps">
+                  <q-item-section>
+                    <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                    <q-item-label caption>{{ scope.opt.descripcion }}</q-item-label>
+                  </q-item-section>
+                </q-item>
               </template>
             </q-select>
           </div>
@@ -483,6 +516,9 @@ const loadingGuardar = ref(false)
 const loadingEliminar = ref(false)
 const loadingCrearCuenta = ref(false)
 const verificandoDoc = ref(false)
+const verificandoCorreo = ref(false)
+const loadingRoles = ref(false)
+const rolesSistema = ref([])
 const dialogUsuario = ref(false)
 const dialogEliminar = ref(false)
 const dialogCrearCuenta = ref(false)
@@ -558,22 +594,6 @@ const columns = [
   { name: 'acciones', label: 'Acciones', align: 'center' },
 ]
 
-const rolesOptions = [
-  { label: 'ADMIN', value: 1 },
-  { label: 'ANALISTA_SLA', value: 2 },
-  { label: 'GESTOR_ALERTA', value: 3 },
-  { label: 'TRABAJADOR', value: 4 },
-  { label: 'CONSULTOR', value: 5 },
-]
-
-const rolesFilterOptions = [
-  { label: 'Administrador', value: 'Administrador' },
-  { label: 'Analista SLA', value: 'Analista SLA' },
-  { label: 'Gestor Alerta', value: 'Gestor Alerta' },
-  { label: 'Trabajador', value: 'Trabajador' },
-  { label: 'Consultor', value: 'Consultor' },
-]
-
 const estadosOptions = [
   { label: 'Activo', value: 'ACTIVO' },
   { label: 'Inactivo', value: 'INACTIVO' },
@@ -588,6 +608,36 @@ const ordenarPorFechaCreacion = (lista) => {
     const fechaB = new Date(b.creadoEn || b.fechaCreacion || 0)
     return fechaB - fechaA // DESC: más nuevo → más viejo
   })
+}
+
+const cargarRolesSistema = async () => {
+  loadingRoles.value = true
+  try {
+    console.log('🔄 Cargando roles del sistema desde API...')
+    const { data } = await axios.get(`${baseURL}/api/RolesSistema`, {
+      headers: getAuthHeaders(),
+    })
+    // Filtrar solo roles activos
+    rolesSistema.value = data.filter((rol) => rol.esActivo === true)
+    console.log('✅ Roles cargados:', rolesSistema.value.length, 'roles activos')
+  } catch (err) {
+    console.error('❌ Error al cargar roles:', err.response?.status, err.message)
+    $q.notify({
+      type: 'negative',
+      message: 'Error al cargar los roles del sistema',
+      caption: err.message || 'Se mostrarán roles por defecto',
+      position: 'top',
+      timeout: 3000,
+    })
+    // Fallback a roles básicos si falla la carga
+    rolesSistema.value = [
+      { idRolSistema: 3, codigo: 'GESTOR_ALERTA', nombre: 'Gestor Alerta', esActivo: true },
+      { idRolSistema: 4, codigo: 'TRABAJADOR', nombre: 'Trabajador', esActivo: true },
+      { idRolSistema: 5, codigo: 'CONSULTOR', nombre: 'Consultor', esActivo: true },
+    ]
+  } finally {
+    loadingRoles.value = false
+  }
 }
 
 const cargarUsuarios = async () => {
@@ -643,12 +693,13 @@ const filtrarUsuarios = () => {
     resultado = resultado.filter((u) => u.estadoCuentaAcceso === filtro.value.estado)
   }
   if (filtro.value.rol) {
+    // filtro.value.rol ya es el nombre del rol gracias a emit-value
     resultado = resultado.filter((u) => u.nombreRol === filtro.value.rol)
   }
   usuariosFiltrados.value = resultado
 }
 
-const openCreateDialog = () => {
+const openCreateDialog = async () => {
   modoEdicion.value = false
   formUsuario.value = {
     username: '',
@@ -658,8 +709,14 @@ const openCreateDialog = () => {
     correoCorporativo: '',
     estado: 'ACTIVO',
     crearCuentaUsuario: false,
-    idRolSistema: 3,
+    idRolSistema: null,
   }
+
+  // Cargar roles si no están cargados
+  if (rolesSistema.value.length === 0) {
+    await cargarRolesSistema()
+  }
+
   dialogUsuario.value = true
 }
 
@@ -681,25 +738,103 @@ const openEditDialog = (personal) => {
 }
 
 const verificarDocumentoDisponible = async () => {
-  if (!formUsuario.value.documento || modoEdicion.value) return
+  // No verificar si:
+  // - No hay documento ingresado
+  // - El documento es muy corto (menos de 8 caracteres para DNI)
+  // - Estamos en modo edición
+  if (
+    !formUsuario.value.documento ||
+    formUsuario.value.documento.trim().length < 8 ||
+    modoEdicion.value
+  ) {
+    return
+  }
 
   verificandoDoc.value = true
   try {
+    // ✅ Usar parámetro de ruta, NO query string
+    const documentoLimpio = encodeURIComponent(formUsuario.value.documento.trim())
     const response = await axios.get(
-      `${baseURL}/api/personal/verificar-documento?documento=${formUsuario.value.documento}`,
+      `${baseURL}/api/personal/verificar-documento/${documentoLimpio}`,
       { headers: getAuthHeaders() },
     )
-    if (response.data.existe) {
+
+    // ✅ Backend siempre responde 200 OK con { existe: true/false, documento, mensaje }
+    console.log('✅ Verificación de documento:', response.data)
+
+    if (response.data.existe === true) {
       $q.notify({
         type: 'warning',
-        message: 'El documento ya está registrado',
-        position: 'bottom',
+        message: '⚠️ Documento ya registrado',
+        caption: `El documento ${formUsuario.value.documento} ya existe en el sistema`,
+        icon: 'warning',
+        position: 'top',
+        timeout: 4000,
+      })
+    }
+    // Si existe === false, no hacer nada (documento disponible)
+  } catch (error) {
+    // Solo mostrar notify para errores de servidor (5xx)
+    if (error.response?.status && error.response.status >= 500) {
+      console.error('❌ Error del servidor al verificar documento:', error)
+      $q.notify({
+        type: 'negative',
+        message: 'Error de servidor',
+        caption: 'No se pudo verificar el documento. Intenta nuevamente.',
+        position: 'top',
+      })
+    } else {
+      // Errores 4xx solo se registran en consola (sin notify al usuario)
+      console.warn('⚠️ Error al verificar documento:', error.response?.status, error.message)
+    }
+  } finally {
+    verificandoDoc.value = false
+  }
+}
+
+// Función utilitaria para normalizar correos (trim + lowercase)
+const normalizarCorreo = (correo) => (correo || '').trim().toLowerCase()
+
+const verificarCorreoCorporativoDisponible = async () => {
+  // No verificar si no hay correo ingresado
+  if (!formUsuario.value.correoCorporativo) {
+    return
+  }
+
+  const correoTrimmed = formUsuario.value.correoCorporativo.trim()
+
+  // Validar formato básico de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+  if (!emailRegex.test(correoTrimmed)) {
+    return // No verificar si el formato es inválido
+  }
+
+  verificandoCorreo.value = true
+  try {
+    console.log('🔄 Verificando disponibilidad de correo corporativo...')
+
+    // Verificar si el correo ya existe en la lista actual de usuarios
+    // En modo edición, excluir el registro actual de la comparación
+    const correoExiste = usuarios.value.some(
+      (u) =>
+        u.idPersonal !== formUsuario.value.id &&
+        normalizarCorreo(u.correoCorporativo) === normalizarCorreo(correoTrimmed),
+    )
+
+    if (correoExiste) {
+      $q.notify({
+        type: 'warning',
+        message: '⚠️ Este correo ya existe en el sistema',
+        caption: `El correo ${correoTrimmed} ya está registrado`,
+        icon: 'warning',
+        position: 'top',
+        timeout: 4000,
       })
     }
   } catch (error) {
-    console.error('Error al verificar documento:', error)
+    console.error('❌ Error al verificar correo:', error)
   } finally {
-    verificandoDoc.value = false
+    verificandoCorreo.value = false
   }
 }
 
@@ -710,6 +845,56 @@ const guardarUsuario = async () => {
       message: 'Los nombres y apellidos son obligatorios',
       position: 'top',
     })
+  }
+
+  // ✅ Validar que el correo corporativo no esté duplicado
+  // NOTA: Esta validación también debe reforzarse en el backend con una restricción
+  // UNIQUE sobre CorreoCorporativo en la tabla Personal. Si el backend devuelve 409 Conflict,
+  // capturarlo en el catch y mostrar un mensaje claro al usuario.
+  if (formUsuario.value.correoCorporativo) {
+    const correoNormalizado = normalizarCorreo(formUsuario.value.correoCorporativo)
+
+    // En modo creación: validar contra todos los usuarios
+    // En modo edición: validar contra todos excepto el registro actual
+    const correoExiste = usuarios.value.some((u) => {
+      // En edición, ignorar el propio registro
+      if (modoEdicion.value && u.idPersonal === formUsuario.value.id) {
+        return false
+      }
+      return normalizarCorreo(u.correoCorporativo) === correoNormalizado
+    })
+
+    if (correoExiste) {
+      return $q.notify({
+        type: 'negative',
+        message: '❌ Este correo ya existe en el sistema',
+        caption: 'Usa otro correo corporativo.',
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      })
+    }
+  }
+
+  // ✅ Validar que el documento no esté duplicado (solo en modo creación)
+  if (
+    !modoEdicion.value &&
+    formUsuario.value.documento &&
+    formUsuario.value.documento.trim().length >= 8
+  ) {
+    const documentoTrimmed = formUsuario.value.documento.trim()
+    const documentoExiste = usuarios.value.some((u) => u.documento === documentoTrimmed)
+
+    if (documentoExiste) {
+      return $q.notify({
+        type: 'negative',
+        message: '❌ Este documento ya existe en el sistema',
+        caption: `El documento ${formUsuario.value.documento} ya está registrado. Por favor, verifica el número de documento.`,
+        icon: 'error',
+        position: 'top',
+        timeout: 5000,
+      })
+    }
   }
 
   if (!modoEdicion.value && formUsuario.value.crearCuentaUsuario) {
@@ -784,20 +969,25 @@ const guardarUsuario = async () => {
         idRolSistema: formUsuario.value.crearCuentaUsuario ? formUsuario.value.idRolSistema : null,
       }
 
-      const response = await axios.post(`${baseURL}/api/personal`, nuevoPersonal, {
+      // 🔄 Usar endpoint transaccional para crear personal con/sin cuenta
+      const response = await axios.post(`${baseURL}/api/personal/with-account`, nuevoPersonal, {
         headers: getAuthHeaders(),
       })
 
+      console.log('[GestionUsuarios] Respuesta CreateWithAccount:', response.data)
+
+      // 🔄 Recargar lista completa desde el backend
       await cargarUsuarios()
       filtrarUsuarios()
 
-      usuarios.value.push(response.data)
-
+      // 📩 Mostrar notificación según si se creó cuenta o no
       if (response.data.conCuentaUsuario) {
         $q.notify({
           type: 'positive',
-          message: 'Personal y cuenta de usuario creados exitosamente',
-          caption: `Se ha enviado un correo de activación a ${formUsuario.value.correoCorporativo}. El enlace es válido por 24 horas.`,
+          message: response.data.message || 'Personal y cuenta de usuario creados exitosamente',
+          caption:
+            response.data.instrucciones ||
+            `Se ha enviado un correo de activación a ${formUsuario.value.correoCorporativo}. El enlace es válido por 24 horas.`,
           icon: 'mark_email_read',
           position: 'top',
           timeout: 6000,
@@ -806,7 +996,7 @@ const guardarUsuario = async () => {
       } else {
         $q.notify({
           type: 'positive',
-          message: 'Personal registrado exitosamente',
+          message: response.data.message || 'Personal registrado exitosamente',
           caption: 'El personal ha sido agregado sin cuenta de acceso al sistema',
           icon: 'person_add',
           position: 'top',
@@ -870,7 +1060,7 @@ const toggleEstadoCuenta = async (usuario) => {
   }
 }
 
-const crearCuentaParaPersonal = (personal) => {
+const crearCuentaParaPersonal = async (personal) => {
   if (!personal.correoCorporativo) {
     $q.notify({
       type: 'warning',
@@ -887,8 +1077,14 @@ const crearCuentaParaPersonal = (personal) => {
   personalParaCuenta.value = personal
   cuentaForm.value = {
     username: '',
-    idRolSistema: 3,
+    idRolSistema: null,
   }
+
+  // Cargar roles antes de mostrar el modal
+  if (rolesSistema.value.length === 0) {
+    await cargarRolesSistema()
+  }
+
   dialogCrearCuenta.value = true
 }
 
@@ -1110,7 +1306,7 @@ const eliminarUsuario = async () => {
 }
 
 onMounted(async () => {
-  await cargarUsuarios()
+  await Promise.all([cargarUsuarios(), cargarRolesSistema()])
 })
 </script>
 
