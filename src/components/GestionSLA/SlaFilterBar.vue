@@ -14,6 +14,15 @@
         <div class="filtros-header__actions">
           <q-btn
             outline
+            color="primary"
+            icon="download"
+            label="Plantilla Excel"
+            @click="emitDescargarPlantilla"
+            unelevated
+            class="q-mr-sm"
+          />
+          <q-btn
+            outline
             color="grey-7"
             icon="file_download"
             label="Exportar"
@@ -208,7 +217,7 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { api } from 'boot/axios'
 import SlaSearchInput from './SlaSearchInput.vue'
 
-const emit = defineEmits(['filtrar', 'exportar', 'nuevo-registro'])
+const emit = defineEmits(['filtrar', 'exportar', 'nuevo-registro', 'descargar-plantilla'])
 
 // Tab activo
 const tabActivo = ref('fechas')
@@ -304,6 +313,10 @@ const emitFiltros = () => {
 
 const emitExportar = () => {
   emit('exportar')
+}
+
+const emitDescargarPlantilla = () => {
+  emit('descargar-plantilla')
 }
 
 const emitNuevoRegistro = () => {

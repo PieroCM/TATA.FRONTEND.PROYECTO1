@@ -437,6 +437,11 @@ watch(() => props.modelValue, (isOpen) => {
     padding-top: 12px;
     resize: vertical;
     line-height: 1.5;
+    word-break: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    max-width: 100%;
+    box-sizing: border-box;
   }
 
   :deep(input::placeholder),

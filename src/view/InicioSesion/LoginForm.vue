@@ -190,8 +190,9 @@ export default {
           timeout: 2000,
         })
 
-        // Redirigir al sistema (MainLayout)
-        this.$router.push('/sistema/dashboard')
+        // Redirigir al sistema usando REPLACE (no queda en historial)
+        // Esto evita que el botón "Atrás" permita volver al login
+        this.$router.replace('/sistema/dashboard')
       } catch (error) {
         console.error('Error en login:', error)
         console.error('Detalles del error:', {

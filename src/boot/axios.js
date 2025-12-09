@@ -6,8 +6,8 @@ const api = axios.create({ baseURL: 'http://localhost:5260' })
 // Agregar interceptor para incluir token de autenticación
 api.interceptors.request.use(
   (config) => {
-    // Obtener el token desde localStorage usando la clave 'authToken'
-    const token = localStorage.getItem('authToken')
+    // Obtener el token desde localStorage (fall back: 'token')
+    const token = localStorage.getItem('authToken') || localStorage.getItem('token')
 
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
@@ -33,24 +33,22 @@ api.interceptors.request.use(
 // Interceptor de respuesta para manejar errores
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     const status = error.response?.status
 
     if (status === 401) {
       // Token expirado o inválido
       console.warn('🔒 Token expirado o inválido (401)')
 
-      // Limpiar token y datos del usuario
-      localStorage.removeItem('authToken')
-      localStorage.removeItem('token')
-      localStorage.removeItem('usuario')
-      localStorage.removeItem('userEmail')
-      localStorage.removeItem('username')
+      // Importar authStore y limpiar sesión completa
+      const { useAuthStore } = await import('src/stores/useAuthStore')
+      const authStore = useAuthStore()
+      authStore.clearAuth()
 
       // Redirigir al login si no estamos ya ahí
       const currentPath = window.location.pathname
       if (currentPath !== '/' && currentPath !== '/login') {
-        console.log('Redirigiendo a login...')
+        console.log('↪️ Redirigiendo a login...')
         window.location.href = '/login'
       }
     }
