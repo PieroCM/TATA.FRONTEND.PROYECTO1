@@ -17,33 +17,36 @@
     <q-card class="q-mb-md">
       <q-card-section>
         <div class="row q-col-gutter-md">
-          <div class="col-xs-12 col-sm-6">
+          <div class="col-xs-12 col-sm-4">
             <q-input
               v-model="filtro.busqueda"
               outlined
               dense
-              placeholder="Buscar por usuario, correo, nombre..."
+              label="Búsqueda General"
+              placeholder="Usuario, correo, nombre..."
               @update:model-value="filtrarUsuarios"
               ><template #prepend><q-icon name="search" /></template
             ></q-input>
           </div>
           <div class="col-xs-12 col-sm-3">
             <q-select
-              v-model="filtro.estado"
+              v-model="filtro.estadoCuenta"
               outlined
               dense
-              placeholder="Estado"
+              label="Estado de Cuenta de Acceso"
+              placeholder="Seleccionar estado..."
               :options="['ACTIVO', 'INACTIVO']"
               clearable
               @update:model-value="filtrarUsuarios"
             />
           </div>
-          <div class="col-xs-12 col-sm-3">
+          <div class="col-xs-12 col-sm-2">
             <q-select
               v-model="filtro.rol"
               outlined
               dense
-              placeholder="Rol"
+              label="Rol del Sistema"
+              placeholder="Seleccionar rol..."
               :options="rolesSistema"
               option-value="nombre"
               option-label="nombre"
@@ -53,6 +56,32 @@
               :loading="loadingRoles"
               @update:model-value="filtrarUsuarios"
             />
+          </div>
+          <div class="col-xs-12 col-sm-3">
+            <q-select
+              v-model="filtro.estadoPersonal"
+              outlined
+              dense
+              label="Estado Personal"
+              placeholder="Seleccionar estado..."
+              :options="['ACTIVO', 'INACTIVO']"
+              clearable
+              @update:model-value="filtrarUsuarios"
+            />
+          </div>
+        </div>
+        <div class="row q-mt-sm">
+          <div class="col-12">
+            <q-btn
+              color="teal-8"
+              text-color="white"
+              icon="refresh"
+              label="RECARGAR"
+              unelevated
+              :loading="loading"
+              @click="cargarListadoPersonal"
+              ><q-tooltip>Recargar lista de usuarios</q-tooltip></q-btn
+            >
           </div>
         </div>
       </q-card-section>
@@ -65,6 +94,7 @@
         row-key="idPersonal"
         :loading="loading"
         :pagination="pagination"
+        :row-class="getRowClass"
         flat
         bordered
       >
@@ -82,10 +112,14 @@
               v-if="props.row.nombreRol"
               :color="
                 props.row.nombreRol === 'Administrador'
-                  ? 'purple'
-                  : props.row.nombreRol === 'Operador'
-                    ? 'blue'
-                    : 'grey'
+                  ? 'purple' // Color para Administrador
+                  : props.row.nombreRol === 'Super Administrador'
+                    ? 'indigo-9' // Color para Super Administrador
+                    : props.row.nombreRol === 'Especialista SLA'
+                      ? 'teal' // Color para Especialista SLA
+                      : props.row.nombreRol === 'Analista SLA'
+                        ? 'light-blue' // Color para Analista SLA
+                        : 'grey' // Color por defecto si el rol es nuevo o no coincide
               "
             >
               {{ props.row.nombreRol }}
@@ -133,6 +167,16 @@
             <span v-else class="text-grey-6">-</span>
           </q-td>
         </template>
+        <template #body-cell-estadoPersonal="props">
+          <q-td :props="props">
+            <q-badge
+              :color="props.row.estadoPersonal === 'ACTIVO' ? 'green-6' : 'grey-5'"
+              :text-color="props.row.estadoPersonal === 'ACTIVO' ? 'white' : 'grey-9'"
+            >
+              {{ props.row.estadoPersonal }}
+            </q-badge>
+          </q-td>
+        </template>
         <template #body-cell-acciones="props">
           <q-td :props="props">
             <q-btn
@@ -178,11 +222,20 @@
               flat
               dense
               round
-              icon="delete"
-              color="negative"
+              :icon="props.row.estadoPersonal === 'ACTIVO' ? 'archive' : 'unarchive'"
+              :color="props.row.estadoPersonal === 'ACTIVO' ? 'warning' : 'positive'"
               size="sm"
-              @click="confirmarEliminar(props.row)"
-              ><q-tooltip>Eliminar</q-tooltip></q-btn
+              @click="
+                confirmTogglePersonalStatus(
+                  props.row,
+                  props.row.estadoPersonal === 'ACTIVO' ? 'deshabilitar' : 'habilitar',
+                )
+              "
+              ><q-tooltip>{{
+                props.row.estadoPersonal === 'ACTIVO'
+                  ? 'Desactivar Personal (Baja Administrativa)'
+                  : 'Reactivar Personal'
+              }}</q-tooltip></q-btn
             >
           </q-td>
         </template>
@@ -318,19 +371,6 @@
           <template v-if="modoEdicion">
             <q-separator class="q-my-md" />
 
-            <q-select
-              v-model="formUsuario.estado"
-              label="Estado del Personal *"
-              outlined
-              dense
-              :options="estadosOptions"
-              emit-value
-              map-options
-              class="q-mb-md"
-              hint="Estado del registro de personal"
-              ><template #prepend><q-icon name="toggle_on" /></template
-            ></q-select>
-
             <template v-if="usuarioSeleccionado?.idUsuario">
               <div class="text-subtitle1 text-weight-bold text-primary q-mb-md q-mt-md">
                 <q-icon name="lock" class="q-mr-xs" />
@@ -353,13 +393,28 @@
                 label="Rol del Sistema *"
                 outlined
                 dense
-                :options="rolesOptions"
+                :options="rolesSistema"
+                option-label="nombre"
+                option-value="idRolSistema"
                 emit-value
                 map-options
                 class="q-mb-md"
                 hint="Puedes cambiar el rol del usuario"
-                ><template #prepend><q-icon name="admin_panel_settings" /></template
-              ></q-select>
+                :loading="loadingRoles"
+                :disable="loadingRoles"
+              >
+                <template #prepend>
+                  <q-icon name="admin_panel_settings" />
+                </template>
+                <template #option="scope">
+                  <q-item v-bind="scope.itemProps">
+                    <q-item-section>
+                      <q-item-label>{{ scope.opt.nombre }}</q-item-label>
+                      <q-item-label caption>{{ scope.opt.descripcion }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </template>
+              </q-select>
             </template>
           </template>
         </q-card-section>
@@ -373,33 +428,6 @@
             @click="guardarUsuario"
             :loading="loadingGuardar"
             :icon="modoEdicion ? 'save' : 'person_add'"
-          />
-        </q-card-actions>
-      </q-card>
-    </q-dialog>
-
-    <q-dialog v-model="dialogEliminar" persistent>
-      <q-card>
-        <q-card-section class="row items-center">
-          <q-avatar icon="warning" color="negative" text-color="white" />
-          <span class="q-ml-sm">¿Estás seguro de eliminar este usuario?</span>
-        </q-card-section>
-        <q-card-section v-if="usuarioSeleccionado">
-          <div class="text-body2">
-            <strong>Usuario:</strong> {{ usuarioSeleccionado.username || 'Sin cuenta' }}<br />
-            <strong>Nombre:</strong> {{ usuarioSeleccionado.nombres }}
-            {{ usuarioSeleccionado.apellidos }}<br />
-            <strong>Email:</strong> {{ usuarioSeleccionado.correoCorporativo || 'N/A' }}
-          </div>
-        </q-card-section>
-        <q-card-actions align="right">
-          <q-btn label="Cancelar" flat color="grey" v-close-popup />
-          <q-btn
-            label="Eliminar"
-            color="negative"
-            unelevated
-            @click="eliminarUsuario"
-            :loading="loadingEliminar"
           />
         </q-card-actions>
       </q-card>
@@ -513,19 +541,17 @@ const usuariosFiltrados = ref([])
 const loading = ref(false)
 const error = ref(null)
 const loadingGuardar = ref(false)
-const loadingEliminar = ref(false)
 const loadingCrearCuenta = ref(false)
 const verificandoDoc = ref(false)
 const verificandoCorreo = ref(false)
 const loadingRoles = ref(false)
 const rolesSistema = ref([])
 const dialogUsuario = ref(false)
-const dialogEliminar = ref(false)
 const dialogCrearCuenta = ref(false)
 const modoEdicion = ref(false)
 const usuarioSeleccionado = ref(null)
 const personalParaCuenta = ref(null)
-const filtro = ref({ busqueda: '', estado: null, rol: null })
+const filtro = ref({ busqueda: '', estadoCuenta: null, rol: null, estadoPersonal: null })
 
 const baseURL = 'http://localhost:5260'
 
@@ -591,12 +617,14 @@ const columns = [
     align: 'center',
     sortable: true,
   },
+  {
+    name: 'estadoPersonal',
+    label: 'Estado Personal',
+    field: 'estadoPersonal',
+    align: 'center',
+    sortable: true,
+  },
   { name: 'acciones', label: 'Acciones', align: 'center' },
-]
-
-const estadosOptions = [
-  { label: 'Activo', value: 'ACTIVO' },
-  { label: 'Inactivo', value: 'INACTIVO' },
 ]
 
 const pagination = ref({ rowsPerPage: 10 })
@@ -640,7 +668,7 @@ const cargarRolesSistema = async () => {
   }
 }
 
-const cargarUsuarios = async () => {
+const cargarListadoPersonal = async () => {
   loading.value = true
   error.value = null
 
@@ -689,14 +717,21 @@ const filtrarUsuarios = () => {
         u.documento?.toLowerCase().includes(busqueda),
     )
   }
-  if (filtro.value.estado) {
-    resultado = resultado.filter((u) => u.estadoCuentaAcceso === filtro.value.estado)
+  if (filtro.value.estadoCuenta) {
+    resultado = resultado.filter((u) => u.estadoCuentaAcceso === filtro.value.estadoCuenta)
   }
   if (filtro.value.rol) {
     // filtro.value.rol ya es el nombre del rol gracias a emit-value
     resultado = resultado.filter((u) => u.nombreRol === filtro.value.rol)
   }
+  if (filtro.value.estadoPersonal) {
+    resultado = resultado.filter((u) => u.estadoPersonal === filtro.value.estadoPersonal)
+  }
   usuariosFiltrados.value = resultado
+}
+
+const getRowClass = (row) => {
+  return row.estadoPersonal === 'INACTIVO' ? 'fila-archivada' : ''
 }
 
 const openCreateDialog = async () => {
@@ -720,7 +755,7 @@ const openCreateDialog = async () => {
   dialogUsuario.value = true
 }
 
-const openEditDialog = (personal) => {
+const openEditDialog = async (personal) => {
   modoEdicion.value = true
   usuarioSeleccionado.value = personal
   formUsuario.value = {
@@ -734,6 +769,12 @@ const openEditDialog = (personal) => {
     estado: personal.estado || personal.estadoCuentaAcceso || 'ACTIVO',
     idRolSistema: personal.idRolSistema || null,
   }
+
+  // Cargar roles si no están cargados
+  if (rolesSistema.value.length === 0) {
+    await cargarRolesSistema()
+  }
+
   dialogUsuario.value = true
 }
 
@@ -936,19 +977,14 @@ const guardarUsuario = async () => {
         apellidos: formUsuario.value.apellidos,
         documento: formUsuario.value.documento,
         correoCorporativo: formUsuario.value.correoCorporativo,
-        estado: formUsuario.value.estado,
       }
 
       await axios.put(`${baseURL}/api/personal/${formUsuario.value.id}`, datosActualizar, {
         headers: getAuthHeaders(),
       })
 
-      const index = usuarios.value.findIndex((u) => u.idPersonal === formUsuario.value.id)
-      if (index !== -1) {
-        usuarios.value[index] = { ...usuarios.value[index], ...datosActualizar }
-        // 👇 volvemos a ordenar por fecha de creación
-        usuarios.value = ordenarPorFechaCreacion(usuarios.value)
-      }
+      // 🔄 Recargar lista completa desde el backend
+      await cargarListadoPersonal()
       filtrarUsuarios()
 
       $q.notify({
@@ -977,7 +1013,7 @@ const guardarUsuario = async () => {
       console.log('[GestionUsuarios] Respuesta CreateWithAccount:', response.data)
 
       // 🔄 Recargar lista completa desde el backend
-      await cargarUsuarios()
+      await cargarListadoPersonal()
       filtrarUsuarios()
 
       // 📩 Mostrar notificación según si se creó cuenta o no
@@ -1034,15 +1070,16 @@ const toggleEstadoCuenta = async (usuario) => {
   try {
     const nuevoEstado = usuario.estadoCuentaAcceso === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
 
-    await axios.patch(`${baseURL}/api/usuario/${usuario.idUsuario}/toggle-estado`, null, {
-      headers: getAuthHeaders(),
-    })
+    await axios.put(
+      `${baseURL}/api/usuario/${usuario.idUsuario}`,
+      { estado: nuevoEstado },
+      {
+        headers: getAuthHeaders(),
+      },
+    )
 
-    const index = usuarios.value.findIndex((u) => u.idUsuario === usuario.idUsuario)
-    if (index !== -1) {
-      usuarios.value[index].estadoCuentaAcceso = nuevoEstado
-      usuariosFiltrados.value = [...usuarios.value]
-    }
+    // 🔄 Recargar lista completa desde el backend
+    await cargarListadoPersonal()
 
     $q.notify({
       type: 'positive',
@@ -1055,6 +1092,140 @@ const toggleEstadoCuenta = async (usuario) => {
     $q.notify({
       type: 'negative',
       message: error.response?.data?.message || 'Error al cambiar estado de acceso',
+      position: 'top',
+    })
+  }
+}
+
+const confirmTogglePersonalStatus = async (personalRecord, action) => {
+  const idPersonal = personalRecord.idPersonal
+
+  if (action === 'deshabilitar') {
+    // Mostrar diálogo con dos opciones para archivar
+    if (personalRecord.idUsuario !== null) {
+      // Si tiene cuenta de usuario, mostrar ambas opciones
+      $q.dialog({
+        title: '📁 Desactivar Personal',
+        message: `Selecciona cómo deseas archivar a ${personalRecord.nombres} ${personalRecord.apellidos}:`,
+        options: {
+          type: 'radio',
+          model: 'desactivar',
+          items: [
+            {
+              label: '🅰️ Desactivar Cuenta de Usuario y personal (Reversible)',
+              value: 'desactivar',
+              color: 'warning',
+            },
+            {
+              label: '🅱️ Eliminar Cuenta de Usuario y desactivar personal (Irreversible)',
+              value: 'eliminar',
+              color: 'negative',
+            },
+          ],
+        },
+        cancel: {
+          label: 'Cancelar',
+          flat: true,
+          color: 'grey',
+        },
+        ok: {
+          label: 'Continuar',
+          color: 'primary',
+        },
+        persistent: true,
+      }).onOk(async (opcion) => {
+        const eliminarUsuario = opcion === 'eliminar'
+        await ejecutarDeshabilitarPersonal(personalRecord, eliminarUsuario)
+      })
+    } else {
+      // Si no tiene cuenta de usuario, mostrar confirmación simple antes de archivar
+      $q.dialog({
+        title: '⚠️ Confirmar Desactivación',
+        message: `¿Estás seguro que deseas desactivar a ${personalRecord.nombres} ${personalRecord.apellidos}?`,
+        cancel: {
+          label: 'Cancelar',
+          flat: true,
+          color: 'grey',
+        },
+        ok: {
+          label: 'Sí, desactivar',
+          color: 'warning',
+        },
+        persistent: true,
+      }).onOk(async () => {
+        await ejecutarDeshabilitarPersonal(personalRecord, false)
+      })
+    }
+  } else if (action === 'habilitar') {
+    // Reactivar personal
+    $q.dialog({
+      title: '🔄 Reactivar Personal',
+      message: `¿Confirmas reactivar a ${personalRecord.nombres} ${personalRecord.apellidos}?\n\nNOTA DE SEGURIDAD: Si tiene cuenta de usuario, esta permanecerá INACTIVA y deberás habilitarla manualmente.`,
+      cancel: true,
+      persistent: true,
+    }).onOk(async () => {
+      try {
+        await axios.patch(
+          `${baseURL}/api/personal/habilitar/${idPersonal}`,
+          {},
+          {
+            headers: getAuthHeaders(),
+          },
+        )
+
+        $q.notify({
+          type: 'positive',
+          message: 'Personal reactivado exitosamente',
+          icon: 'unarchive',
+          position: 'top',
+        })
+
+        await cargarListadoPersonal()
+      } catch (error) {
+        console.error('❌ Error al reactivar personal:', error)
+        $q.notify({
+          type: 'negative',
+          message: error.response?.data?.message || 'Error al reactivar personal',
+          position: 'top',
+        })
+      }
+    })
+  }
+}
+
+const ejecutarDeshabilitarPersonal = async (personalRecord, eliminarUsuario) => {
+  const idPersonal = personalRecord.idPersonal
+
+  try {
+    await axios.patch(
+      `${baseURL}/api/personal/deshabilitar/${idPersonal}`,
+      { eliminarUsuario },
+      {
+        headers: getAuthHeaders(),
+      },
+    )
+
+    const mensaje = eliminarUsuario
+      ? 'Personal archivado y cuenta de usuario eliminada permanentemente'
+      : 'Personal archivado y cuenta de usuario desactivada'
+
+    $q.notify({
+      type: 'positive',
+      message: mensaje,
+      caption: eliminarUsuario
+        ? 'La cuenta de usuario fue eliminada de forma irreversible'
+        : 'La cuenta de usuario puede reactivarse posteriormente',
+      icon: 'archive',
+      position: 'top',
+      timeout: 5000,
+    })
+
+    await cargarListadoPersonal()
+  } catch (error) {
+    console.error('❌ Error al archivar personal:', error)
+    $q.notify({
+      type: 'negative',
+      message: error.response?.data?.message || 'Error al archivar personal',
       position: 'top',
     })
   }
@@ -1130,7 +1301,7 @@ const confirmarCrearCuenta = async () => {
     })
 
     dialogCrearCuenta.value = false
-    await cargarUsuarios()
+    await cargarListadoPersonal()
   } catch (error) {
     console.error('❌ Error al crear cuenta:', error.response?.status)
 
@@ -1165,153 +1336,32 @@ const confirmarCrearCuenta = async () => {
   }
 }
 
-const confirmarEliminar = (usuario) => {
-  usuarioSeleccionado.value = usuario
-
-  if (usuario.idUsuario !== null) {
-    $q.dialog({
-      title: '⚠️ Advertencia: Cuenta de Usuario Asociada',
-      message: `El usuario <strong>${usuario.username}</strong> tiene una cuenta de acceso al sistema. ¿Qué deseas hacer?`,
-      html: true,
-      options: {
-        type: 'radio',
-        model: 'ambos',
-        items: [
-          {
-            label: 'Eliminar personal Y su cuenta de usuario',
-            value: 'ambos',
-            color: 'negative',
-          },
-          {
-            label: 'Solo eliminar el personal (mantener cuenta huérfana)',
-            value: 'solo-personal',
-            color: 'warning',
-          },
-        ],
-      },
-      cancel: {
-        label: 'Cancelar',
-        flat: true,
-        color: 'grey',
-      },
-      ok: {
-        label: 'Continuar',
-        color: 'negative',
-      },
-      persistent: true,
-    }).onOk((opcion) => {
-      if (opcion === 'ambos') {
-        eliminarUsuarioYCuenta()
-      } else {
-        dialogEliminar.value = true
-      }
-    })
-  } else {
-    dialogEliminar.value = true
-  }
-}
-
-const eliminarUsuarioYCuenta = async () => {
-  loadingEliminar.value = true
-  try {
-    console.log('🗑️ Eliminando cuenta y personal...')
-
-    await axios.delete(`${baseURL}/api/usuario/${usuarioSeleccionado.value.idUsuario}`, {
-      headers: getAuthHeaders(),
-    })
-
-    console.log('✅ Usuario eliminado. Eliminando personal...')
-
-    await axios.delete(`${baseURL}/api/personal/${usuarioSeleccionado.value.idPersonal}`, {
-      headers: getAuthHeaders(),
-    })
-
-    usuarios.value = usuarios.value.filter(
-      (u) => u.idPersonal !== usuarioSeleccionado.value.idPersonal,
-    )
-    usuariosFiltrados.value = [...usuarios.value]
-
-    $q.notify({
-      type: 'positive',
-      message: 'Personal y cuenta de usuario eliminados exitosamente',
-      icon: 'delete_forever',
-      position: 'top',
-      timeout: 3000,
-    })
-
-    dialogEliminar.value = false
-  } catch (error) {
-    console.error('❌ Error al eliminar:', error.response?.status)
-
-    $q.notify({
-      type: 'negative',
-      message: 'Error al eliminar',
-      caption: error.response?.data?.message || error.message || 'Intenta nuevamente',
-      icon: 'error',
-      position: 'top',
-      timeout: 5000,
-    })
-  } finally {
-    loadingEliminar.value = false
-  }
-}
-
-const eliminarUsuario = async () => {
-  loadingEliminar.value = true
-  try {
-    console.log('🗑️ Eliminando personal...')
-
-    await axios.delete(`${baseURL}/api/personal/${usuarioSeleccionado.value.idPersonal}`, {
-      headers: getAuthHeaders(),
-    })
-
-    usuarios.value = usuarios.value.filter(
-      (u) => u.idPersonal !== usuarioSeleccionado.value.idPersonal,
-    )
-    usuariosFiltrados.value = [...usuarios.value]
-
-    $q.notify({
-      type: 'positive',
-      message: 'Personal eliminado exitosamente',
-      icon: 'check_circle',
-      position: 'top',
-    })
-
-    dialogEliminar.value = false
-  } catch (error) {
-    console.error('❌ Error al eliminar personal:', error.response?.status)
-
-    let mensaje = 'Error al eliminar el personal'
-    let caption = error.response?.data?.message || error.message || ''
-
-    if (
-      usuarioSeleccionado.value.idUsuario &&
-      (caption.includes('FK_') || caption.includes('foreign key') || caption.includes('REFERENCE'))
-    ) {
-      mensaje = 'No se puede eliminar: El personal tiene una cuenta de usuario asociada'
-      caption = 'Debes usar la opción "Eliminar personal Y su cuenta de usuario"'
-    }
-
-    $q.notify({
-      type: 'negative',
-      message: mensaje,
-      caption: caption,
-      icon: 'error',
-      position: 'top',
-      timeout: 6000,
-    })
-  } finally {
-    loadingEliminar.value = false
-  }
-}
-
 onMounted(async () => {
-  await Promise.all([cargarUsuarios(), cargarRolesSistema()])
+  await Promise.all([cargarListadoPersonal(), cargarRolesSistema()])
 })
 </script>
 
 <style scoped>
 .full-width {
   width: 100%;
+}
+</style>
+
+<style>
+/* Estilos para filas archivadas (sin scoped para que afecte a Quasar) */
+.fila-archivada {
+  background-color: #e0e0e0 !important;
+}
+
+.fila-archivada td {
+  background-color: #e0e0e0 !important;
+}
+
+.fila-archivada:hover {
+  background-color: #d5d5d5 !important;
+}
+
+.fila-archivada:hover td {
+  background-color: #d5d5d5 !important;
 }
 </style>
