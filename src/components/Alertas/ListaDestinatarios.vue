@@ -20,6 +20,8 @@
             option-value="id"
             option-label="nombre"
             dense
+            emit-value
+            map-options
             @update:model-value="emitirFiltros"
           />
         </div>
@@ -32,6 +34,8 @@
             option-value="id"
             option-label="nombre"
             dense
+            emit-value
+            map-options
             @update:model-value="emitirFiltros"
           />
         </div>
@@ -49,40 +53,49 @@
         <label class="text-caption text-weight-medium text-grey-8">Vista Previa</label>
       </div>
       <div class="lista-usuarios">
-        <div v-for="usuario in usuarios" :key="usuario.id" class="usuario-item">
-          <q-avatar size="40px" color="primary" text-color="white" class="q-mr-sm">
-            {{ usuario.iniciales }}
-          </q-avatar>
-          <div class="usuario-info">
-            <div class="text-weight-bold text-body2">{{ usuario.nombre }}</div>
-            <div class="text-caption text-grey-7">{{ usuario.rol }} • {{ usuario.sla }}</div>
-          </div>
-          <q-btn
-            flat
-            round
-            dense
-            icon="close"
-            size="sm"
-            color="grey-6"
-            @click="$emit('eliminar-usuario', usuario.id)"
-            class="btn-eliminar"
-          >
-            <q-tooltip>Eliminar</q-tooltip>
-          </q-btn>
+        <!-- Estado de carga -->
+        <div v-if="cargando" class="empty-usuarios">
+          <q-spinner color="primary" size="48px" />
+          <p class="text-caption text-grey-6 q-mt-sm">Cargando destinatarios...</p>
         </div>
 
-        <!-- Estado vacío -->
-        <div v-if="usuarios.length === 0" class="empty-usuarios">
-          <q-icon name="person_off" size="48px" color="grey-4" />
-          <p class="text-caption text-grey-6 q-mt-sm">No hay usuarios seleccionados</p>
-        </div>
+        <!-- Lista de usuarios -->
+        <template v-else>
+          <div v-for="usuario in usuarios" :key="usuario.id" class="usuario-item">
+            <q-avatar size="40px" color="primary" text-color="white" class="q-mr-sm">
+              {{ usuario.iniciales }}
+            </q-avatar>
+            <div class="usuario-info">
+              <div class="text-weight-bold text-body2">{{ usuario.nombre }}</div>
+              <div class="text-caption text-grey-7">{{ usuario.rol }} • {{ usuario.sla }}</div>
+            </div>
+            <q-btn
+              flat
+              round
+              dense
+              icon="close"
+              size="sm"
+              color="grey-6"
+              @click="$emit('eliminar-usuario', usuario.id)"
+              class="btn-eliminar"
+            >
+              <q-tooltip>Eliminar</q-tooltip>
+            </q-btn>
+          </div>
+
+          <!-- Estado vacío -->
+          <div v-if="usuarios.length === 0" class="empty-usuarios">
+            <q-icon name="person_off" size="48px" color="grey-4" />
+            <p class="text-caption text-grey-6 q-mt-sm">No hay usuarios seleccionados</p>
+          </div>
+        </template>
       </div>
     </q-card-section>
   </q-card>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 
 // Props
 const props = defineProps({
@@ -90,80 +103,89 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  opcionesSlas: {
+    type: Array,
+    default: () => [{ id: null, nombre: 'Todos' }],
+  },
+  opcionesRoles: {
+    type: Array,
+    default: () => [{ id: null, nombre: 'Todos' }],
+  },
+  cargando: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 // Emits
 const emit = defineEmits(['eliminar-usuario', 'filtrar'])
 
-// Filtros (ahora almacenan objetos con id y nombre)
+// Filtros - ahora usa IDs directamente
 const filtros = ref({
-  sla: { id: 'Todos', nombre: 'Todos' },
-  rol: { id: 'Todos', nombre: 'Todos' },
+  sla: null,
+  rol: null,
 })
 
 /**
- * Opciones de filtros generadas dinámicamente desde usuarios
+ * Opciones de filtros desde props del backend
  */
 const opcionesTipoSla = computed(() => {
-  const slas = new Set()
-  props.usuarios.forEach((u) => {
-    if (u.sla && u.idSla) {
-      slas.add(JSON.stringify({ id: u.idSla, nombre: u.sla }))
-    }
-  })
-
-  const opciones = [{ id: 'Todos', nombre: 'Todos' }]
-  slas.forEach((slaStr) => {
-    opciones.push(JSON.parse(slaStr))
-  })
-
-  return opciones
+  console.log('🔍 Opciones SLA recibidas:', props.opcionesSlas)
+  return props.opcionesSlas
 })
 
 const opcionesRol = computed(() => {
-  const roles = new Set()
-  props.usuarios.forEach((u) => {
-    if (u.rol && u.idRol) {
-      roles.add(JSON.stringify({ id: u.idRol, nombre: u.rol }))
-    }
-  })
-
-  const opciones = [{ id: 'Todos', nombre: 'Todos' }]
-  roles.forEach((rolStr) => {
-    opciones.push(JSON.parse(rolStr))
-  })
-
-  return opciones
+  console.log('🔍 Opciones Rol recibidas:', props.opcionesRoles)
+  return props.opcionesRoles
 })
 
 /**
  * Emite evento de filtrado con IDs
  */
 const emitirFiltros = () => {
+  console.log('📤 Emitiendo filtros:', {
+    idSla: filtros.value.sla,
+    idRol: filtros.value.rol,
+  })
   emit('filtrar', {
-    idSla: filtros.value.sla.id,
-    nombreSla: filtros.value.sla.nombre,
-    idRol: filtros.value.rol.id,
-    nombreRol: filtros.value.rol.nombre,
+    idSla: filtros.value.sla,
+    idRol: filtros.value.rol,
   })
 }
 
-// Watch para resetear filtros cuando cambien los usuarios
+// Watch para reinicializar filtros cuando cambien las opciones
 watch(
-  () => props.usuarios,
-  () => {
-    // Verificar si los filtros actuales siguen siendo válidos
-    const slaValida = opcionesTipoSla.value.some((opt) => opt.id === filtros.value.sla.id)
-    const rolValida = opcionesRol.value.some((opt) => opt.id === filtros.value.rol.id)
-
-    if (!slaValida) {
-      filtros.value.sla = { id: 'Todos', nombre: 'Todos' }
-    }
-    if (!rolValida) {
-      filtros.value.rol = { id: 'Todos', nombre: 'Todos' }
+  () => props.opcionesSlas,
+  (newSlas) => {
+    if (newSlas.length > 0 && filtros.value.sla === undefined) {
+      filtros.value.sla = null
+      console.log('🔄 Filtro SLA inicializado')
     }
   },
+  { immediate: true },
 )
+
+watch(
+  () => props.opcionesRoles,
+  (newRoles) => {
+    if (newRoles.length > 0 && filtros.value.rol === undefined) {
+      filtros.value.rol = null
+      console.log('🔄 Filtro Rol inicializado')
+    }
+  },
+  { immediate: true },
+)
+
+// Emitir filtros iniciales al montar
+onMounted(() => {
+  console.log('🚀 ListaDestinatarios montado')
+  console.log('Props recibidas:', {
+    usuarios: props.usuarios.length,
+    slas: props.opcionesSlas.length,
+    roles: props.opcionesRoles.length,
+  })
+  emitirFiltros()
+})
 </script>
 
 <style scoped>

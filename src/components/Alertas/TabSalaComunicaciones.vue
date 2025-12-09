@@ -3,14 +3,17 @@
     <div class="comunicaciones-layout">
       <!-- COLUMNA IZQUIERDA: Destinatarios -->
       <ListaDestinatarios
-        :usuarios="usuariosSeleccionados"
+        :usuarios="usuariosPreview"
+        :opciones-slas="opcionesSlas"
+        :opciones-roles="opcionesRoles"
+        :cargando="cargandoPreview"
         @eliminar-usuario="eliminarUsuario"
         @filtrar="aplicarFiltros"
       />
 
       <!-- COLUMNA DERECHA: Redactar Comunicado -->
       <FormularioComunicado
-        :cantidad-usuarios="usuariosSeleccionados.length"
+        :cantidad-usuarios="usuariosPreview.length"
         @enviar-prueba="enviarPrueba"
         @enviar-comunicado="enviarComunicado"
       />
@@ -19,310 +22,285 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
+import { useAuthStore } from 'stores/useAuthStore'
 import ListaDestinatarios from './ListaDestinatarios.vue'
 import FormularioComunicado from './FormularioComunicado.vue'
 
 const $q = useQuasar()
+const authStore = useAuthStore()
 
-// Estado de carga
-const cargando = ref(false)
+// --- ESTADOS ---
+const cargandoPreview = ref(false)
+const usuariosPreview = ref([])
 
-// Filtros seleccionados (IDs del backend)
-const filtrosActuales = ref({
-  idSlaFilter: null,
-  idRolFilter: null,
+// Filtros Reactivos
+const filtros = ref({
+  idSla: null,
+  idRol: null,
 })
 
-// Usuarios disponibles desde el backend
-const usuariosTodos = ref([
-  // Temporal - se carga desde backend
-  {
-    id: 1,
-    nombre: 'Carlos Méndez',
-    iniciales: 'CM',
-    rol: 'Desarrollador .NET',
-    sla: 'SLA1',
-    email: 'carlos.mendez@empresa.com',
-  },
-  {
-    id: 2,
-    nombre: 'Ana Rodríguez',
-    iniciales: 'AR',
-    rol: 'Analista',
-    sla: 'SLA2',
-    email: 'ana.rodriguez@empresa.com',
-  },
-  {
-    id: 3,
-    nombre: 'Luis Fernández',
-    iniciales: 'LF',
-    rol: 'Project Manager',
-    sla: 'SLA1',
-    email: 'luis.fernandez@empresa.com',
-  },
-  {
-    id: 4,
-    nombre: 'María García',
-    iniciales: 'MG',
-    rol: 'QA Tester',
-    sla: 'SLA3',
-    email: 'maria.garcia@empresa.com',
-  },
-  {
-    id: 5,
-    nombre: 'Pedro Sánchez',
-    iniciales: 'PS',
-    rol: 'Desarrollador .NET',
-    sla: 'SLA2',
-    email: 'pedro.sanchez@empresa.com',
-  },
-  {
-    id: 6,
-    nombre: 'Laura Torres',
-    iniciales: 'LT',
-    rol: 'Analista',
-    sla: 'SLA1',
-    email: 'laura.torres@empresa.com',
-  },
-  {
-    id: 7,
-    nombre: 'Jorge Martínez',
-    iniciales: 'JM',
-    rol: 'Desarrollador .NET',
-    sla: 'SLA3',
-    email: 'jorge.martinez@empresa.com',
-  },
-  {
-    id: 8,
-    nombre: 'Sofía López',
-    iniciales: 'SL',
-    rol: 'QA Tester',
-    sla: 'SLA2',
-    email: 'sofia.lopez@empresa.com',
-  },
-])
+// Opciones Selectores
+const opcionesSlas = ref([])
+const opcionesRoles = ref([])
 
-// Usuarios seleccionados (filtrados)
-const usuariosSeleccionados = ref([...usuariosTodos.value])
+// --- 1. CARGA INICIAL DE SELECTORES ---
+const cargarSelectores = async () => {
+  try {
+    console.log('📋 Iniciando carga de selectores...')
 
-/**
- * Aplica filtros a la lista de usuarios
- */
-const aplicarFiltros = ({ idSla, nombreSla, idRol, nombreRol }) => {
-  let resultado = [...usuariosTodos.value]
+    // Cargar roles y SLAs en paralelo
+    const [resSlas, resRoles] = await Promise.all([
+      api.get('/api/email/slas'),
+      api.get('/api/email/roles'),
+    ])
 
-  // Guardar IDs de filtros para el envío masivo
-  filtrosActuales.value = {
-    idSlaFilter: idSla !== 'Todos' ? idSla : null,
-    idRolFilter: idRol !== 'Todos' ? idRol : null,
+    console.log('📦 Respuesta SLAs:', resSlas.data)
+    console.log('📦 Respuesta Roles:', resRoles.data)
+
+    // Mapear respuestas - el backend devuelve { total: n, slas: [...], roles: [...] }
+    const slas = resSlas.data.slas || []
+    const roles = resRoles.data.roles || []
+
+    opcionesSlas.value = [
+      { id: null, nombre: 'Todos' },
+      ...slas.map((s) => ({
+        id: s.id,
+        nombre: s.descripcion || s.nombre, // Backend usa 'descripcion'
+      })),
+    ]
+
+    opcionesRoles.value = [
+      { id: null, nombre: 'Todos' },
+      ...roles.map((r) => ({
+        id: r.id,
+        nombre: r.descripcion || r.nombre, // Backend usa 'descripcion'
+      })),
+    ]
+
+    console.log('✅ SLAs procesados:', opcionesSlas.value)
+    console.log('✅ Roles procesados:', opcionesRoles.value)
+  } catch (error) {
+    console.error('❌ Error cargando selectores:', error)
+    console.error('❌ Detalles:', error.response?.data)
+    $q.notify({
+      type: 'warning',
+      message: 'No se pudieron cargar los filtros',
+      position: 'top-right',
+    })
+    // Fallback
+    opcionesRoles.value = [{ id: null, nombre: 'Todos' }]
+    opcionesSlas.value = [{ id: null, nombre: 'Todos' }]
   }
-
-  console.log('🔍 Filtros aplicados:', filtrosActuales.value)
-
-  // Filtro por SLA (vista)
-  if (nombreSla && nombreSla !== 'Todos') {
-    resultado = resultado.filter((u) => u.sla === nombreSla)
-  }
-
-  // Filtro por Rol (vista)
-  if (nombreRol && nombreRol !== 'Todos') {
-    resultado = resultado.filter((u) => u.rol === nombreRol)
-  }
-
-  usuariosSeleccionados.value = resultado
 }
 
-/**
- * Elimina un usuario de la lista
- */
+// --- 2. VISTA PREVIA DE DESTINATARIOS ---
+const aplicarFiltros = ({ idSla, idRol }) => {
+  console.log('🔍 Filtros recibidos:', { idSla, idRol })
+  filtros.value.idSla = idSla === 'Todos' || idSla === null ? null : idSla
+  filtros.value.idRol = idRol === 'Todos' || idRol === null ? null : idRol
+}
+
+const cargarVistaPrevia = async () => {
+  cargandoPreview.value = true
+  try {
+    const params = {}
+    if (filtros.value.idSla) params.idSla = filtros.value.idSla
+    if (filtros.value.idRol) params.idRol = filtros.value.idRol
+
+    console.log('📋 Cargando preview con params:', params)
+
+    const { data } = await api.get('/api/email/preview-destinatarios', { params })
+
+    console.log('📦 Respuesta preview-destinatarios:', data)
+
+    // Mapear destinatarios - verificar estructura
+    const destinatarios = data.destinatarios || data.data || data || []
+
+    usuariosPreview.value = destinatarios.map((usuario, index) => ({
+      id: index + 1,
+      nombre: usuario.nombre || usuario.nombreCompleto || 'Sin Nombre',
+      iniciales: (usuario.nombre || usuario.nombreCompleto || 'NA')
+        .split(' ')
+        .map((n) => n[0])
+        .join('')
+        .toUpperCase()
+        .substring(0, 2),
+      rol: usuario.rol || usuario.nombreRol || 'Sin Rol',
+      sla: usuario.sla || usuario.tipoSla || 'N/A',
+      email: usuario.email || usuario.correo || '',
+    }))
+
+    console.log(`✅ ${usuariosPreview.value.length} destinatarios en preview`)
+  } catch (error) {
+    console.error('❌ Error en vista previa:', error)
+    console.error('❌ Response:', error.response?.data)
+    usuariosPreview.value = []
+    $q.notify({
+      type: 'warning',
+      message: 'Error al cargar destinatarios',
+      position: 'top-right',
+    })
+  } finally {
+    cargandoPreview.value = false
+  }
+}
+
+// Watch para recargar preview cuando cambien filtros
+watch(
+  filtros,
+  () => {
+    cargarVistaPrevia()
+  },
+  { deep: true },
+)
+
+// Eliminar usuario de la vista local
 const eliminarUsuario = (id) => {
-  usuariosSeleccionados.value = usuariosSeleccionados.value.filter((u) => u.id !== id)
+  usuariosPreview.value = usuariosPreview.value.filter((u) => u.id !== id)
 }
 
-/**
- * Convierte texto plano a HTML básico
- */
+// --- UTILIDADES ---
 const convertirTextoAHtml = (texto) => {
   if (!texto) return ''
-
-  // Convertir saltos de línea a <br>
   let html = texto.replace(/\n/g, '<br>')
-
-  // Detectar y convertir listas
   html = html.replace(/^[-•*]\s+(.+)$/gm, '<li>$1</li>')
-
-  // Envolver listas en <ul>
   if (html.includes('<li>')) {
     html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>')
   }
-
-  // Envolver en div con estilos
-  return `
-    <div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">
-      ${html}
-    </div>
-  `
+  return `<div style="font-family: Arial, sans-serif; padding: 20px; line-height: 1.6;">${html}</div>`
 }
 
-/**
- * Envía prueba al usuario actual
- */
-const enviarPrueba = async (comunicado) => {
-  try {
-    console.log('📧 Enviando prueba con filtros:', filtrosActuales.value)
-
-    // Convertir cuerpo a HTML
-    const mensajeHtml = convertirTextoAHtml(comunicado.cuerpo)
-
-    // Payload para el backend
-    const payload = {
-      idSlaFilter: filtrosActuales.value.idSlaFilter,
-      idRolFilter: filtrosActuales.value.idRolFilter,
-      asunto: comunicado.asunto,
-      mensajeHtml: mensajeHtml,
-    }
-
-    console.log('📤 Payload de prueba:', payload)
-
-    // NOTA: El backend no tiene endpoint específico para prueba
-    // Por ahora solo mostramos notificación
-    $q.notify({
-      type: 'info',
-      message: 'Función de prueba no disponible. Use "Enviar a Destinatarios" para envío real.',
-      position: 'top-right',
-      icon: 'info',
-      timeout: 3000,
+// --- 3. ENVÍO DE CORREOS ---
+const enviarPrueba = (comunicado) => {
+  $q.dialog({
+    title: 'Enviar correo de prueba',
+    message: 'Ingresa el correo electrónico donde deseas recibir la prueba:',
+    prompt: {
+      model: authStore.userEmail || '',
+      type: 'email',
+      isValid: (val) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val),
+    },
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
+    ok: {
+      label: 'Enviar',
+      color: 'primary',
+    },
+    persistent: true,
+  }).onOk(async (emailPrueba) => {
+    const loading = $q.loading.show({
+      message: 'Enviando correo de prueba...',
     })
-  } catch (error) {
-    console.error('❌ Error al enviar prueba:', error)
-    $q.notify({
-      type: 'negative',
-      message: 'Error al enviar prueba',
-      position: 'top-right',
-    })
-  }
-}
 
-/**
- * Envía comunicado a todos los destinatarios
- */
-const enviarComunicado = async (comunicado) => {
-  // Mostrar loading
-  const loading = $q.loading.show({
-    message: 'Enviando comunicado en masa...',
-  })
+    try {
+      const payload = {
+        asunto: comunicado.asunto,
+        mensajeHtml: convertirTextoAHtml(comunicado.cuerpo),
+        idSla: filtros.value.idSla,
+        idRol: filtros.value.idRol,
+        esPrueba: true,
+        emailPrueba: emailPrueba,
+      }
 
-  try {
-    console.log('📧 Enviando comunicado a destinatarios filtrados')
-    console.log('🔍 Filtros actuales:', filtrosActuales.value)
-    console.log('👥 Usuarios seleccionados:', usuariosSeleccionados.value.length)
+      console.log('📤 Enviando prueba:', payload)
 
-    // Convertir cuerpo a HTML
-    const mensajeHtml = convertirTextoAHtml(comunicado.cuerpo)
+      const { data } = await api.post('/api/email/broadcast', payload)
 
-    // Payload para el backend
-    const payload = {
-      idSlaFilter: filtrosActuales.value.idSlaFilter,
-      idRolFilter: filtrosActuales.value.idRolFilter,
-      asunto: comunicado.asunto,
-      mensajeHtml: mensajeHtml,
-    }
-
-    console.log('📤 Payload de envío masivo:', payload)
-
-    // Llamar al endpoint de broadcast
-    const response = await api.post('/api/email/broadcast', payload)
-
-    console.log('✅ Respuesta del backend:', response.data)
-
-    $q.notify({
-      type: 'positive',
-      message: `Comunicado enviado exitosamente a los destinatarios filtrados`,
-      position: 'top-right',
-      icon: 'check_circle',
-      timeout: 3000,
-    })
-  } catch (error) {
-    console.error('❌ Error al enviar comunicado:', error)
-
-    $q.notify({
-      type: 'negative',
-      message: error.response?.data?.message || 'Error al enviar comunicado masivo',
-      position: 'top-right',
-      timeout: 3000,
-    })
-  } finally {
-    loading()
-  }
-}
-
-/**
- * Carga usuarios desde alertas del backend
- */
-const cargarUsuarios = async () => {
-  cargando.value = true
-
-  try {
-    console.log('📋 Cargando usuarios desde alertas...')
-
-    // Cargar alertas del dashboard
-    const response = await api.get('/api/alertas/dashboard')
-
-    if (response.data && Array.isArray(response.data)) {
-      // Mapear alertas a usuarios únicos
-      const usuariosMap = new Map()
-
-      response.data.forEach((alerta) => {
-        const key = alerta.emailResponsable
-        if (key && !usuariosMap.has(key)) {
-          // Generar iniciales
-          const iniciales =
-            alerta.nombreResponsable
-              ?.split(' ')
-              .map((n) => n[0])
-              .join('')
-              .toUpperCase()
-              .substring(0, 2) || 'NA'
-
-          usuariosMap.set(key, {
-            id: usuariosMap.size + 1,
-            nombre: alerta.nombreResponsable || 'Sin Nombre',
-            iniciales: iniciales,
-            rol: alerta.nombreRol || 'Sin Rol',
-            sla: alerta.tipoSla || 'N/A',
-            email: alerta.emailResponsable,
-            idSla: alerta.idSla,
-            idRol: alerta.idRol,
-          })
-        }
+      $q.notify({
+        type: 'positive',
+        message: data.mensaje || `Correo de prueba enviado a ${emailPrueba}`,
+        icon: 'check_circle',
+        position: 'top-right',
       })
-
-      usuariosTodos.value = Array.from(usuariosMap.values())
-      usuariosSeleccionados.value = [...usuariosTodos.value]
-
-      console.log(`✅ ${usuariosTodos.value.length} usuarios únicos cargados`)
+    } catch (error) {
+      console.error('❌ Error al enviar prueba:', error)
+      $q.notify({
+        type: 'negative',
+        message: error.response?.data?.mensaje || 'Error al enviar prueba',
+        position: 'top-right',
+      })
+    } finally {
+      loading()
     }
-  } catch (error) {
-    console.error('❌ Error al cargar usuarios:', error)
+  })
+}
 
+const enviarComunicado = (comunicado) => {
+  if (usuariosPreview.value.length === 0) {
     $q.notify({
       type: 'warning',
-      message: 'Error al cargar usuarios. Usando datos por defecto.',
+      message: 'No hay destinatarios seleccionados.',
       position: 'top-right',
     })
-  } finally {
-    cargando.value = false
+    return
   }
+
+  $q.dialog({
+    title: 'Confirmar envío masivo',
+    message: `¿Estás seguro de enviar este comunicado a ${usuariosPreview.value.length} destinatario(s)?`,
+    html: true,
+    cancel: {
+      label: 'Cancelar',
+      flat: true,
+      color: 'grey-7',
+    },
+    ok: {
+      label: 'Enviar',
+      color: 'primary',
+    },
+    persistent: true,
+  }).onOk(async () => {
+    const loading = $q.loading.show({
+      message: 'Enviando comunicado masivo...',
+    })
+
+    try {
+      const payload = {
+        asunto: comunicado.asunto,
+        mensajeHtml: convertirTextoAHtml(comunicado.cuerpo),
+        idSla: filtros.value.idSla,
+        idRol: filtros.value.idRol,
+        esPrueba: false,
+        emailPrueba: null,
+      }
+
+      console.log('📤 Enviando comunicado masivo:', payload)
+
+      const { data } = await api.post('/api/email/broadcast', payload)
+
+      $q.notify({
+        type: 'positive',
+        message:
+          data.mensaje ||
+          `Comunicado enviado exitosamente a ${usuariosPreview.value.length} destinatario(s)`,
+        icon: 'check_circle',
+        position: 'top-right',
+        timeout: 3000,
+      })
+    } catch (error) {
+      console.error('❌ Error al enviar comunicado:', error)
+      $q.notify({
+        type: 'negative',
+        message: error.response?.data?.mensaje || 'Error al enviar comunicado',
+        position: 'top-right',
+      })
+    } finally {
+      loading()
+    }
+  })
 }
 
-onMounted(() => {
-  cargarUsuarios()
+onMounted(async () => {
+  await cargarSelectores()
+  await cargarVistaPrevia()
 })
 </script>
-
 <style scoped>
 .sala-comunicaciones {
   width: 100%;
