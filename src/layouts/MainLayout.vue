@@ -114,21 +114,21 @@
           <SidebarGroup
             v-if="hasPerm('DASHBOARD_PREDICCIONES') || hasPerm('PREDICCIONES_RIESGO_SLA')"
             icon="psychology"
-            label="Predicciones"
+            label="Predicciones ML"
             :mini="drawerMini"
-            :childrenRoutes="['/sistema/predicciones/dashboard', '/sistema/predicciones/riesgo']"
+            :childrenRoutes="['/sistema/predicciones/dashboard', '/sistema/predicciones/entrenamiento']"
           >
             <SidebarItemChild
               v-if="hasPerm('DASHBOARD_PREDICCIONES')"
-              icon="dashboard"
-              label="Dashboard Predicciones"
+              icon="analytics"
+              label="Predicciones Actuales"
               to="/sistema/predicciones/dashboard"
             />
             <SidebarItemChild
               v-if="hasPerm('PREDICCIONES_RIESGO_SLA')"
-              icon="analytics"
-              label="Análisis de Riesgo"
-              to="/sistema/predicciones/riesgo"
+              icon="model_training"
+              label="Entrenar Modelo"
+              to="/sistema/predicciones/entrenamiento"
             />
           </SidebarGroup>
 
