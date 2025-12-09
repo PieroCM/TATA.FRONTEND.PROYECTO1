@@ -413,10 +413,16 @@ const handleFile = (file) => {
 
 // Descargar plantilla
 const handleDownloadTemplate = () => {
+  // Crear un enlace temporal para descargar la plantilla desde public/plantilla
+  const link = document.createElement('a')
+  link.href = '/plantilla/Plantilla_Carga_SLA.xlsx'
+  link.download = 'Plantilla_Carga_SLA.xlsx'
+  link.click()
+
   $q.notify({
-    type: 'info',
-    message: 'Descarga de plantilla',
-    caption: 'La funcionalidad está en desarrollo',
+    type: 'positive',
+    message: 'Descarga iniciada',
+    caption: 'Plantilla Excel descargada correctamente',
     position: 'top-right',
   })
 }

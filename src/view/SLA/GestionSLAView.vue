@@ -34,6 +34,7 @@
         <SlaFilterBar
           @filtrar="handleFiltrar"
           @exportar="handleExportar"
+          @descargar-plantilla="handleDescargarPlantilla"
           @nuevo-registro="handleNuevoRegistro"
         />
       </div>
@@ -239,6 +240,21 @@ const handleFiltrar = (nuevosFiltros) => {
 
 const handleExportar = () => {
   showExportDialog.value = true
+}
+
+const handleDescargarPlantilla = () => {
+  // Crear un enlace temporal para descargar la plantilla desde public/plantilla
+  const link = document.createElement('a')
+  link.href = '/plantilla/Plantilla_Carga_SLA.xlsx'
+  link.download = 'Plantilla_Carga_SLA.xlsx'
+  link.click()
+
+  $q.notify({
+    type: 'positive',
+    message: 'Descarga iniciada',
+    caption: 'Plantilla Excel descargada correctamente',
+    position: 'top-right',
+  })
 }
 
 const handleExportarPDF = ({ registros }) => {
