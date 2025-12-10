@@ -132,25 +132,6 @@
               <q-icon name="schedule" color="grey-6" size="20px" />
             </template>
           </q-select>
-
-          <!-- Es Leída -->
-          <q-select
-            outlined
-            v-model="filtros.esLeida"
-            :options="opcionesEsLeida"
-            option-label="label"
-            option-value="value"
-            emit-value
-            map-options
-            label="Estado Lectura"
-            dense
-            class="filtro-select-nuevo"
-            clearable
-          >
-            <template v-slot:prepend>
-              <q-icon name="visibility" color="grey-6" size="20px" />
-            </template>
-          </q-select>
         </div>
       </q-card-section>
     </q-card>
@@ -418,16 +399,11 @@ const filtros = ref({
   rolResponsable: null,
   nivel: null,
   estadoTiempo: 'VIGENTE', // Default: VIGENTE
-  esLeida: false, // Default: false (No leída)
 })
 
 // Opciones para los filtros
 const opcionesNivel = ['CRITICO', 'MEDIO', 'BAJO']
 const opcionesEstadoTiempo = ['VIGENTE', 'VENCIDO']
-const opcionesEsLeida = [
-  { label: 'Leída', value: true },
-  { label: 'No Leída', value: false },
-]
 
 // Opciones de SLAs y Roles dinámicas desde el backend
 const opcionesSlas = ref([])
@@ -668,7 +644,6 @@ const limpiarFiltros = () => {
     rolResponsable: null, // Limpiar Rol
     nivel: null, // Limpiar nivel
     estadoTiempo: 'VIGENTE', // Default: VIGENTE
-    esLeida: false, // Default: false (No leída)
   }
 
   // Recargar alertas con los filtros actualizados
@@ -985,17 +960,6 @@ const cargarAlertas = async () => {
       params.append('estadoTiempo', filtros.value.estadoTiempo)
     }
 
-    // Filtro Es Leída - enviar como "estado" al backend
-    if (filtros.value.esLeida !== null && filtros.value.esLeida !== undefined) {
-      // Si esLeida es true, buscar alertas con estado = "LEIDA"
-      // Si esLeida es false, buscar alertas con estado != "LEIDA" (ACTIVA, NUEVA, etc.)
-      if (filtros.value.esLeida === true) {
-        params.append('estado', 'LEIDA')
-      } else if (filtros.value.esLeida === false) {
-        params.append('estado', 'NO_LEIDA') // Backend debe filtrar estado != "LEIDA"
-      }
-    }
-
     // Construir URL con parámetros
     const queryString = params.toString()
     const url = queryString ? `/api/alertas/dashboard?${queryString}` : '/api/alertas/dashboard'
@@ -1052,13 +1016,12 @@ watch(
     filtros.value.rolResponsable,
     filtros.value.nivel,
     filtros.value.estadoTiempo,
-    filtros.value.esLeida,
     filtros.value.busqueda,
   ],
   (newValues, oldValues) => {
     // Si solo cambió la búsqueda, aplicar debounce de 500ms
-    const busquedaCambio = newValues[5] !== oldValues[5]
-    const otrosCambios = newValues.slice(0, 5).some((val, idx) => val !== oldValues[idx])
+    const busquedaCambio = newValues[4] !== oldValues[4]
+    const otrosCambios = newValues.slice(0, 4).some((val, idx) => val !== oldValues[idx])
 
     if (busquedaCambio && !otrosCambios) {
       // Debounce para búsqueda
