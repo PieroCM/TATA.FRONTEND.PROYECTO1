@@ -98,6 +98,40 @@
           </template>
         </q-input>
 
+        <!-- Widget de Validación (Siempre Visible) -->
+        <div class="validation-widget q-mb-md">
+          <div class="widget-title">
+            <q-icon name="info" size="18px" color="primary" />
+            <span>Requisitos de Contraseña</span>
+          </div>
+          <div class="validation-list">
+            <div class="validation-item" :class="{ valid: validations.minLength }">
+              <q-icon :name="validations.minLength ? 'check_circle' : 'cancel'" size="18px" />
+              <span>Mínimo 8 caracteres</span>
+            </div>
+            <div class="validation-item" :class="{ valid: validations.hasUppercase }">
+              <q-icon :name="validations.hasUppercase ? 'check_circle' : 'cancel'" size="18px" />
+              <span>Mayúscula</span>
+            </div>
+            <div class="validation-item" :class="{ valid: validations.hasLowercase }">
+              <q-icon :name="validations.hasLowercase ? 'check_circle' : 'cancel'" size="18px" />
+              <span>Minúscula</span>
+            </div>
+            <div class="validation-item" :class="{ valid: validations.hasNumber }">
+              <q-icon :name="validations.hasNumber ? 'check_circle' : 'cancel'" size="18px" />
+              <span>Número</span>
+            </div>
+            <div class="validation-item" :class="{ valid: validations.hasSymbol }">
+              <q-icon :name="validations.hasSymbol ? 'check_circle' : 'cancel'" size="18px" />
+              <span>Símbolo</span>
+            </div>
+            <div class="validation-item" :class="{ valid: validations.passwordsMatch }">
+              <q-icon :name="validations.passwordsMatch ? 'check_circle' : 'cancel'" size="18px" />
+              <span>Coincidencia</span>
+            </div>
+          </div>
+        </div>
+
         <!-- Botón Activar -->
         <q-btn
           label="Activar Cuenta"
@@ -105,6 +139,7 @@
           unelevated
           class="full-width q-mb-md"
           :loading="loading"
+          :disable="!allValidationsPassed"
           @click="activarCuenta"
         />
 
@@ -137,6 +172,14 @@ export default {
       confirmPassword: '', // Confirmación de nueva contraseña
       isPwd: true, // Para ocultar/mostrar contraseña
       loading: false, // Estado de carga para el botón
+      validations: {
+        minLength: false,
+        hasUppercase: false,
+        hasLowercase: false,
+        hasNumber: false,
+        hasSymbol: false,
+        passwordsMatch: false,
+      },
 
       // Mismos slides que ForgotPassword
       slides: [
@@ -164,11 +207,43 @@ export default {
     }
   },
 
+  computed: {
+    allValidationsPassed() {
+      return (
+        this.validations.minLength &&
+        this.validations.hasUppercase &&
+        this.validations.hasLowercase &&
+        this.validations.hasNumber &&
+        this.validations.hasSymbol &&
+        this.validations.passwordsMatch
+      )
+    },
+  },
+
+  watch: {
+    newPassword() {
+      this.updateValidations()
+    },
+    confirmPassword() {
+      this.updateValidations()
+    },
+  },
+
   mounted() {
     this.resolverIdentidad()
   },
 
   methods: {
+    updateValidations() {
+      const pwd = this.newPassword
+      this.validations.minLength = pwd.length >= 8
+      this.validations.hasUppercase = /[A-Z]/.test(pwd)
+      this.validations.hasLowercase = /[a-z]/.test(pwd)
+      this.validations.hasNumber = /\d/.test(pwd)
+      this.validations.hasSymbol = /[!@#$%^&*(),.?":{}|<>_-]/.test(pwd)
+      this.validations.passwordsMatch =
+        pwd.length > 0 && this.confirmPassword.length > 0 && pwd === this.confirmPassword
+    },
     /**
      * Resuelve la identidad del usuario desde los parámetros de la URL.
      * Soporta tanto email como username. El backend se encarga de la conversión.
@@ -301,5 +376,51 @@ export default {
 
 .full-width {
   width: 100%;
+}
+
+/* Widget de Validación */
+.validation-widget {
+  background: #eff6ff;
+  border: 1.5px solid #bfdbfe;
+  border-radius: 12px;
+  padding: 16px;
+}
+
+.widget-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #1e40af;
+}
+
+.validation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.validation-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #6b7280;
+  transition: all 0.2s ease;
+}
+
+.validation-item .q-icon {
+  color: #ef4444;
+}
+
+.validation-item.valid {
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.validation-item.valid .q-icon {
+  color: #16a34a;
 }
 </style>
