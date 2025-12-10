@@ -125,17 +125,18 @@ const routes = [
         component: () => import('src/view/Sistemas/ConfiguracionView.vue'),
         meta: { title: 'Configuración del Sistema' },
       },
+      // Predicciones ML
       {
         path: 'predicciones/dashboard',
         name: 'predicciones-dashboard',
         component: () => import('src/view/Predicciones/DashboardPredicciones.vue'),
-        meta: { title: 'Dashboard de Predicciones', permisos: ['DASHBOARD_PREDICCIONES'] },
+        meta: { title: 'Predicciones de SLA', permisos: ['DASHBOARD_PREDICCIONES'] },
       },
       {
-        path: 'predicciones/riesgo',
-        name: 'predicciones-riesgo',
+        path: 'predicciones/entrenamiento',
+        name: 'predicciones-entrenamiento',
         component: () => import('src/view/Predicciones/PrediccionesRiesgoSLA.vue'),
-        meta: { title: 'Predicción de Riesgo SLA', permisos: ['PREDICCIONES_RIESGO_SLA'] },
+        meta: { title: 'Entrenamiento del Modelo', permisos: ['PREDICCIONES_RIESGO_SLA'] },
       },
     ],
   },
