@@ -204,9 +204,8 @@ watch(
       formulario.value.remitenteEmail = userEmail
       formulario.value.remitenteNombre = userName
 
-      // Rellenar destinatarios con el correo del usuario logueado (según solicitud)
-      // El usuario registrado será el responsable de recibir/enviar las pruebas
-      formulario.value.destinatarios = userEmail || newAlerta.emailResponsable || ''
+      // Rellenar destinatarios con el correo del responsable de la alerta
+      formulario.value.destinatarios = newAlerta.emailResponsable || ''
 
       // Pre-llenar asunto con codigoSolicitud del backend
       formulario.value.asunto = `Alerta de Vencimiento: Solicitud ${newAlerta.codigoSolicitud || 'N/A'}`
