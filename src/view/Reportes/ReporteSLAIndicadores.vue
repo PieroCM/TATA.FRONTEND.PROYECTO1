@@ -1242,6 +1242,25 @@ const exportarExcel = async () => {
     return
   }
 
+  // Validar que existe un token antes de intentar la exportación
+  const token = localStorage.getItem('authToken')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.',
+      position: 'top-right',
+    })
+    console.error('❌ exportarExcel: No hay token en localStorage')
+    return
+  }
+
+  console.log('📊 Iniciando exportación Excel:', {
+    filasTabla: filasTabla.value.length,
+    solicitudesFiltradas: solicitudesFiltradas.value.length,
+    tokenExists: !!token,
+    tokenLength: token.length,
+  })
+
   exportandoExcel.value = true
 
   try {
@@ -1259,19 +1278,69 @@ const exportarExcel = async () => {
       }),
     }
 
+    console.log('📤 Enviando request a /api/reporte/generar:', {
+      payload,
+      headers: { Authorization: `Bearer ${token.substring(0, 20)}...` },
+    })
+
     try {
       const res = await api.post('/api/reporte/generar', payload)
-      console.log('Reporte EXCEL registrado en backend:', res.data)
+      console.log('✅ Reporte EXCEL registrado en backend:', res.data)
     } catch (apiError) {
-      console.error('Error registrando reporte EXCEL en API:', apiError)
-      // Si falla el registro (incluido 401), continuamos con la descarga local para no bloquear al usuario
+      console.error('❌ Error registrando reporte EXCEL en API:', {
+        error: apiError,
+        status: apiError.response?.status,
+        data: apiError.response?.data,
+        headers: apiError.config?.headers,
+      })
+
+      // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
       const status = apiError.response?.status
+      const mensajeError =
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        apiError.response?.data ||
+        ''
+      const mensajeStr =
+        typeof mensajeError === 'string' ? mensajeError : JSON.stringify(mensajeError)
+
       if (status === 401) {
-        $q.notify({
-          type: 'warning',
-          message: 'No autorizado para registrar en backend. Se generará el Excel localmente.',
-          position: 'top-right',
-        })
+        // Distinguir entre diferentes tipos de error 401
+        const esFaltaClaim =
+          mensajeStr.toLowerCase().includes('claim') || mensajeStr.toLowerCase().includes('userid')
+
+        const esFaltaPermisos =
+          mensajeStr.toLowerCase().includes('permisos') ||
+          mensajeStr.toLowerCase().includes('permission') ||
+          mensajeStr.toLowerCase().includes('rol') ||
+          mensajeStr.toLowerCase().includes('role') ||
+          mensajeStr.toLowerCase().includes('forbidden')
+
+        if (esFaltaClaim) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'El servidor requiere configuración adicional para registrar reportes. Se generará el Excel localmente.',
+            caption: 'Nota técnica: Falta claim "UserId" en el token JWT',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        } else if (esFaltaPermisos) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'No tienes permisos para registrar reportes en el servidor. Se generará el Excel localmente.',
+            position: 'top-right',
+            timeout: 4000,
+          })
+        } else {
+          $q.notify({
+            type: 'warning',
+            message: 'Sesión expirada o sin autorización. Se generará el Excel localmente.',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        }
       } else {
         $q.notify({
           type: 'warning',
@@ -1440,6 +1509,23 @@ const exportarPdf = async () => {
     return
   }
 
+  // Validar que existe un token antes de intentar la exportación
+  const token = localStorage.getItem('authToken')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.',
+      position: 'top-right',
+    })
+    console.error('❌ exportarPdf: No hay token en localStorage')
+    return
+  }
+
+  console.log('📄 Iniciando exportación PDF:', {
+    tokenExists: !!token,
+    tokenLength: token.length,
+  })
+
   exportandoPdf.value = true
 
   try {
@@ -1457,10 +1543,11 @@ const exportarPdf = async () => {
       }),
     }
 
+    console.log('📤 Enviando request a /api/reporte/generar (PDF):', payload)
+
     try {
       const res = await api.post('/api/reporte/generar', payload)
-      console.log('Respuesta del backend:', res.data)
-      console.log('Reporte generado en backend:', res.data)
+      console.log('✅ Reporte PDF registrado en backend:', res.data)
       $q.notify({
         type: 'info',
         message: 'Reporte registrado',
@@ -1468,16 +1555,59 @@ const exportarPdf = async () => {
         timeout: 2000,
       })
     } catch (apiError) {
-      console.error('Error en API:', apiError)
-      // Si falla el registro (incluido 401), continuar con generación local del PDF para no bloquear al usuario
+      console.error('❌ Error registrando reporte PDF en API:', {
+        error: apiError,
+        status: apiError.response?.status,
+        data: apiError.response?.data,
+      })
+
+      // Si falla el registro, continuar con generación local del PDF para no bloquear al usuario
       const status = apiError.response?.status
+      const mensajeError =
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        apiError.response?.data ||
+        ''
+      const mensajeStr =
+        typeof mensajeError === 'string' ? mensajeError : JSON.stringify(mensajeError)
+
       if (status === 401) {
-        $q.notify({
-          type: 'warning',
-          message: 'No autorizado para registrar en backend. Se generará el PDF localmente.',
-          position: 'top-right',
-          timeout: 2500,
-        })
+        // Distinguir entre diferentes tipos de error 401
+        const esFaltaClaim =
+          mensajeStr.toLowerCase().includes('claim') || mensajeStr.toLowerCase().includes('userid')
+
+        const esFaltaPermisos =
+          mensajeStr.toLowerCase().includes('permisos') ||
+          mensajeStr.toLowerCase().includes('permission') ||
+          mensajeStr.toLowerCase().includes('rol') ||
+          mensajeStr.toLowerCase().includes('role') ||
+          mensajeStr.toLowerCase().includes('forbidden')
+
+        if (esFaltaClaim) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'El servidor requiere configuración adicional para registrar reportes. Se generará el PDF localmente.',
+            caption: 'Nota técnica: Falta claim "UserId" en el token JWT',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        } else if (esFaltaPermisos) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'No tienes permisos para registrar reportes en el servidor. Se generará el PDF localmente.',
+            position: 'top-right',
+            timeout: 4000,
+          })
+        } else {
+          $q.notify({
+            type: 'warning',
+            message: 'Sesión expirada o sin autorización. Se generará el PDF localmente.',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        }
       } else {
         $q.notify({
           type: 'warning',

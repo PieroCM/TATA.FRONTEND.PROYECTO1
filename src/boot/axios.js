@@ -10,22 +10,34 @@ api.interceptors.request.use(
     const token = localStorage.getItem('authToken') || localStorage.getItem('token')
 
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`
-      console.log('📤 Request con token:', {
-        url: config.url,
-        method: config.method,
-        hasToken: true,
-      })
+      // Validar que el token no esté vacío o corrupto
+      if (token.trim().length > 0) {
+        config.headers.Authorization = `Bearer ${token}`
+        console.log('📤 Request con token:', {
+          url: config.url,
+          method: config.method,
+          hasToken: true,
+          tokenLength: token.length,
+          tokenPreview: token.substring(0, 20) + '...',
+        })
+      } else {
+        console.error('❌ Token vacío o corrupto en localStorage')
+      }
     } else {
       console.warn('⚠️ Request SIN token:', {
         url: config.url,
         method: config.method,
+        localStorage: {
+          authToken: localStorage.getItem('authToken') !== null,
+          token: localStorage.getItem('token') !== null,
+        },
       })
     }
 
     return config
   },
   (error) => {
+    console.error('❌ Error en request interceptor:', error)
     return Promise.reject(error)
   },
 )
@@ -35,21 +47,84 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const status = error.response?.status
+    const config = error.config
 
     if (status === 401) {
       // Token expirado o inválido
-      console.warn('🔒 Token expirado o inválido (401)')
+      console.warn('🔒 Token expirado o inválido (401)', {
+        url: config?.url,
+        method: config?.method,
+        hasAuthHeader: !!config?.headers?.Authorization,
+        responseData: error.response?.data,
+      })
 
-      // Importar authStore y limpiar sesión completa
-      const { useAuthStore } = await import('src/stores/useAuthStore')
-      const authStore = useAuthStore()
-      authStore.clearAuth()
+      // Verificar si localStorage tiene token
+      const tokenInStorage = localStorage.getItem('authToken')
+      console.log('💾 Token en localStorage:', {
+        exists: !!tokenInStorage,
+        length: tokenInStorage?.length || 0,
+      })
 
-      // Redirigir al login si no estamos ya ahí
-      const currentPath = window.location.pathname
-      if (currentPath !== '/' && currentPath !== '/login') {
-        console.log('↪️ Redirigiendo a login...')
-        window.location.href = '/login'
+      // ✨ NUEVA LÓGICA: Solo limpiar sesión y redirigir si:
+      // 1. Es un endpoint crítico (login, datos de usuario, etc.)
+      // 2. O si el error indica token expirado/inválido (no falta de permisos o claims)
+
+      const url = config?.url || ''
+      const esEndpointSecundario = url.includes('/reporte/') || url.includes('/export')
+      const mensajeError =
+        error.response?.data?.message || error.response?.data?.error || error.response?.data || ''
+      const mensajeStr =
+        typeof mensajeError === 'string' ? mensajeError : JSON.stringify(mensajeError)
+
+      const esTokenExpirado =
+        mensajeStr.toLowerCase().includes('expired') ||
+        mensajeStr.toLowerCase().includes('token inválido') ||
+        mensajeStr.toLowerCase().includes('invalid token')
+
+      const esFaltaClaim =
+        mensajeStr.toLowerCase().includes('claim') || mensajeStr.toLowerCase().includes('userid')
+
+      // Solo limpiar sesión si es endpoint crítico Y (token expirado O no es falta de claim)
+      if (!esEndpointSecundario && !esFaltaClaim) {
+        console.log('🧹 Limpiando sesión por 401 en endpoint crítico')
+
+        // Importar authStore y limpiar sesión completa
+        const { useAuthStore } = await import('src/stores/useAuthStore')
+        const authStore = useAuthStore()
+        authStore.clearAuth()
+
+        // Redirigir al login si no estamos ya ahí
+        const currentPath = window.location.pathname
+        if (currentPath !== '/' && currentPath !== '/login') {
+          console.log('↪️ Redirigiendo a login...')
+          window.location.href = '/login'
+        }
+      } else if (esTokenExpirado) {
+        console.log('🧹 Limpiando sesión por token expirado')
+
+        const { useAuthStore } = await import('src/stores/useAuthStore')
+        const authStore = useAuthStore()
+        authStore.clearAuth()
+
+        const currentPath = window.location.pathname
+        if (currentPath !== '/' && currentPath !== '/login') {
+          console.log('↪️ Redirigiendo a login por token expirado')
+          window.location.href = '/login'
+        }
+      } else {
+        // Es un endpoint secundario con falta de permisos/claims - NO limpiar sesión
+        if (esFaltaClaim) {
+          console.log(
+            '⚠️ 401 por falta de claim (UserId) en endpoint secundario - NO se limpia sesión',
+          )
+          console.log(
+            '💡 Sugerencia: El backend requiere claim "UserId" en el JWT para este endpoint',
+          )
+        } else {
+          console.log(
+            '⚠️ 401 en endpoint secundario - NO se limpia sesión (probablemente falta de permisos)',
+          )
+        }
       }
     }
 
