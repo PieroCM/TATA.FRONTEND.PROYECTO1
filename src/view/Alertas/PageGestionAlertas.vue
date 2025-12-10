@@ -71,64 +71,8 @@
           </div>
         </div>
 
-        <!-- Fila 2: Selectores de Rango y Categoría (Grid 6 columnas) -->
+        <!-- Fila 2: Selectores de Filtros -->
         <div class="filtros-fila-2">
-          <!-- Mes Inicio -->
-          <q-select
-            outlined
-            v-model="filtros.mesInicio"
-            :options="opcionesMeses"
-            label="Mes Inicio"
-            dense
-            class="filtro-select-nuevo"
-          >
-            <template v-slot:prepend>
-              <q-icon name="event" color="grey-6" size="20px" />
-            </template>
-          </q-select>
-
-          <!-- Mes Fin -->
-          <q-select
-            outlined
-            v-model="filtros.mesFin"
-            :options="opcionesMeses"
-            label="Mes Fin"
-            dense
-            class="filtro-select-nuevo"
-          >
-            <template v-slot:prepend>
-              <q-icon name="event" color="grey-6" size="20px" />
-            </template>
-          </q-select>
-
-          <!-- Año Inicio -->
-          <q-select
-            outlined
-            v-model="filtros.anioInicio"
-            :options="opcionesAnios"
-            label="Año Inicio"
-            dense
-            class="filtro-select-nuevo"
-          >
-            <template v-slot:prepend>
-              <q-icon name="calendar_month" color="grey-6" size="20px" />
-            </template>
-          </q-select>
-
-          <!-- Año Fin -->
-          <q-select
-            outlined
-            v-model="filtros.anioFin"
-            :options="opcionesAnios"
-            label="Año Fin"
-            dense
-            class="filtro-select-nuevo"
-          >
-            <template v-slot:prepend>
-              <q-icon name="calendar_month" color="grey-6" size="20px" />
-            </template>
-          </q-select>
-
           <!-- Tipo SLA -->
           <q-select
             outlined
@@ -137,6 +81,7 @@
             label="Tipo SLA"
             dense
             class="filtro-select-nuevo"
+            clearable
           >
             <template v-slot:prepend>
               <q-icon name="category" color="grey-6" size="20px" />
@@ -147,13 +92,63 @@
           <q-select
             outlined
             v-model="filtros.rolResponsable"
-            :options="opcionesRoles"
+            :options="opcionesRoles.map((r) => r.nombre)"
             label="Roles/Áreas"
             dense
             class="filtro-select-nuevo"
+            clearable
           >
             <template v-slot:prepend>
               <q-icon name="groups" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Nivel -->
+          <q-select
+            outlined
+            v-model="filtros.nivel"
+            :options="opcionesNivel"
+            label="Nivel"
+            dense
+            class="filtro-select-nuevo"
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="priority_high" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Estado Tiempo -->
+          <q-select
+            outlined
+            v-model="filtros.estadoTiempo"
+            :options="opcionesEstadoTiempo"
+            label="Estado Tiempo"
+            dense
+            class="filtro-select-nuevo"
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="schedule" color="grey-6" size="20px" />
+            </template>
+          </q-select>
+
+          <!-- Es Leída -->
+          <q-select
+            outlined
+            v-model="filtros.esLeida"
+            :options="opcionesEsLeida"
+            option-label="label"
+            option-value="value"
+            emit-value
+            map-options
+            label="Estado Lectura"
+            dense
+            class="filtro-select-nuevo"
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="visibility" color="grey-6" size="20px" />
             </template>
           </q-select>
         </div>
@@ -302,17 +297,9 @@
             <template v-slot:body-cell-estado="props">
               <q-td :props="props">
                 <q-badge
-                  :color="
-                    props.row.estado === 'ACTIVA' || props.row.estado === 'NUEVA'
-                      ? 'red-2'
-                      : 'green-2'
-                  "
-                  :text-color="
-                    props.row.estado === 'ACTIVA' || props.row.estado === 'NUEVA'
-                      ? 'red-9'
-                      : 'green-9'
-                  "
-                  :label="props.row.estado === 'LEIDA' ? 'Leída' : 'Activa'"
+                  :color="props.row.estado === 'LEIDA' ? 'green-2' : 'red-2'"
+                  :text-color="props.row.estado === 'LEIDA' ? 'green-9' : 'red-9'"
+                  :label="props.row.estado === 'LEIDA' ? 'Leída' : 'No Leída'"
                   class="badge-estado"
                 />
               </q-td>
@@ -412,7 +399,7 @@
 </template>
 
 <script setup>
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import ModalNotificarEmail from 'components/Alertas/ModalNotificarEmail.vue'
@@ -424,48 +411,31 @@ const alertas = ref([])
 const isLoading = ref(false)
 const mensajeCarga = ref('Cargando alertas...')
 
-// Estado de Filtros (vacíos al inicio)
+// Estado de Filtros con valores por defecto
 const filtros = ref({
   busqueda: '',
-  mesInicio: null,
-  mesFin: null,
-  anioInicio: null,
-  anioFin: null,
   tipoSla: null,
   rolResponsable: null,
+  nivel: null,
+  estadoTiempo: 'VIGENTE', // Default: VIGENTE
+  esLeida: false, // Default: false (No leída)
 })
 
-// Opciones para los selectores
-const opcionesMeses = [
-  'Enero',
-  'Febrero',
-  'Marzo',
-  'Abril',
-  'Mayo',
-  'Junio',
-  'Julio',
-  'Agosto',
-  'Septiembre',
-  'Octubre',
-  'Noviembre',
-  'Diciembre',
+// Opciones para los filtros
+const opcionesNivel = ['CRITICO', 'MEDIO', 'BAJO']
+const opcionesEstadoTiempo = ['VIGENTE', 'VENCIDO']
+const opcionesEsLeida = [
+  { label: 'Leída', value: true },
+  { label: 'No Leída', value: false },
 ]
 
-const opcionesAnios = ['2023', '2024', '2025', '2026']
+// Opciones de SLAs y Roles dinámicas desde el backend
+const opcionesSlas = ref([])
+const opcionesRoles = ref([])
 
-const opcionesTipoSla = ['Todos los SLA', 'SLA1', 'SLA2', 'SLA3']
-
-/**
- * Opciones de roles dinámicas desde las alertas cargadas
- */
-const opcionesRoles = computed(() => {
-  const roles = new Set()
-  alertas.value.forEach((alerta) => {
-    if (alerta.nombreRol) {
-      roles.add(alerta.nombreRol)
-    }
-  })
-  return ['Todos los roles', ...Array.from(roles).sort()]
+// Opciones Legacy (mantener si se usa en la UI)
+const opcionesTipoSla = computed(() => {
+  return opcionesSlas.value.map((s) => s.nombre)
 })
 
 // Estado del modal de email
@@ -563,47 +533,6 @@ const alertasFiltradas = computed(() => {
   // Filtro de Rol (solo si está seleccionado)
   if (filtros.value.rolResponsable && filtros.value.rolResponsable !== 'Todos los roles') {
     resultado = resultado.filter((alerta) => alerta.nombreRol === filtros.value.rolResponsable)
-  }
-
-  // Filtro por rango de fechas
-  if (filtros.value.mesInicio || filtros.value.anioInicio) {
-    resultado = resultado.filter((alerta) => {
-      if (!alerta.fechaSolicitud) return false
-
-      const fechaSolicitud = new Date(alerta.fechaSolicitud)
-      const mesAlerta = fechaSolicitud.getMonth() // 0-11
-      const anioAlerta = fechaSolicitud.getFullYear()
-
-      // Validar año inicio
-      if (filtros.value.anioInicio) {
-        const anioInicio = parseInt(filtros.value.anioInicio)
-        if (anioAlerta < anioInicio) return false
-      }
-
-      // Validar año fin
-      if (filtros.value.anioFin) {
-        const anioFin = parseInt(filtros.value.anioFin)
-        if (anioAlerta > anioFin) return false
-      }
-
-      // Validar mes inicio
-      if (filtros.value.mesInicio && filtros.value.anioInicio) {
-        const mesInicio = opcionesMeses.indexOf(filtros.value.mesInicio)
-        const anioInicio = parseInt(filtros.value.anioInicio)
-
-        if (anioAlerta === anioInicio && mesAlerta < mesInicio) return false
-      }
-
-      // Validar mes fin
-      if (filtros.value.mesFin && filtros.value.anioFin) {
-        const mesFin = opcionesMeses.indexOf(filtros.value.mesFin)
-        const anioFin = parseInt(filtros.value.anioFin)
-
-        if (anioAlerta === anioFin && mesAlerta > mesFin) return false
-      }
-
-      return true
-    })
   }
 
   return resultado
@@ -728,18 +657,22 @@ const getColorProgresoFromBackend = (alerta) => {
 }
 
 /**
- * Limpia todos los filtros
+ * Limpia todos los filtros y recarga las alertas
+ * Resetea búsqueda y filtros estáticos a sus valores por defecto
  */
 const limpiarFiltros = () => {
+  // Resetear todos los filtros a sus valores por defecto
   filtros.value = {
-    busqueda: '',
-    mesInicio: null,
-    mesFin: null,
-    anioInicio: null,
-    anioFin: null,
-    tipoSla: null,
-    rolResponsable: null,
+    busqueda: '', // Limpiar búsqueda
+    tipoSla: null, // Limpiar SLA
+    rolResponsable: null, // Limpiar Rol
+    nivel: null, // Limpiar nivel
+    estadoTiempo: 'VIGENTE', // Default: VIGENTE
+    esLeida: false, // Default: false (No leída)
   }
+
+  // Recargar alertas con los filtros actualizados
+  cargarAlertas()
 }
 
 /**
@@ -837,7 +770,7 @@ const handleNotificacionEnviada = (data) => {
 
 /**
  * Acción Ver Detalle
- * Si estado === 'ACTIVA', marca como 'LEIDA'
+ * Muestra el mensaje de la alerta y la marca como leída usando PUT /api/alertas/{id}
  */
 const verDetalle = async (alerta) => {
   console.log('👁️ Ver detalle:', alerta.codigoSolicitud)
@@ -853,15 +786,19 @@ const verDetalle = async (alerta) => {
     },
   })
 
-  // Si es ACTIVA/NUEVA, marcar como LEIDA
-  if (alerta.estado === 'ACTIVA' || alerta.estado === 'NUEVA') {
+  // Marcar como LEÍDA (si no está ya leída)
+  if (!alerta.esLeida) {
     try {
-      console.log('📝 Marcando alerta como LEIDA...')
+      console.log('📝 Marcando alerta como LEÍDA...')
+      console.log('📋 ID Alerta:', alerta.idAlerta)
+
+      // Llamar al endpoint PUT /api/alertas/{id} con el formato que espera el backend
       await api.put(`/api/alertas/${alerta.idAlerta}`, {
-        estado: 'LEIDA',
+        estado: 'LEIDA', // ✅ Backend espera: { "estado": "LEIDA" }
       })
 
-      // Actualizar localmente
+      // Actualizar localmente ambos campos
+      alerta.esLeida = true
       alerta.estado = 'LEIDA'
 
       $q.notify({
@@ -871,9 +808,20 @@ const verDetalle = async (alerta) => {
         icon: 'check_circle',
         timeout: 1500,
       })
+
+      console.log('✅ Alerta marcada como leída exitosamente')
     } catch (error) {
       console.error('❌ Error al marcar como leída:', error)
+      console.error('❌ Detalles:', error.response?.data)
+
+      $q.notify({
+        type: 'negative',
+        message: error.response?.data?.mensaje || 'Error al marcar como leída',
+        position: 'top-right',
+      })
     }
+  } else {
+    console.log('ℹ️ Alerta ya está marcada como leída')
   }
 }
 
@@ -942,16 +890,121 @@ const eliminarAlerta = (idAlerta) => {
 }
 
 /**
- * Carga inicial de datos: solo dashboard (sync ya corrió en MainLayout/Login)
+ * Carga de selectores (SLAs y Roles) desde el backend
+ */
+const cargarSelectores = async () => {
+  try {
+    console.log('📋 Iniciando carga de selectores...')
+
+    // Cargar roles y SLAs en paralelo
+    const [resSlas, resRoles] = await Promise.all([
+      api.get('/api/email/slas'),
+      api.get('/api/email/roles'),
+    ])
+
+    console.log('📦 Respuesta SLAs:', resSlas.data)
+    console.log('📦 Respuesta Roles:', resRoles.data)
+
+    // Mapear respuestas - el backend devuelve { total: n, slas: [...], roles: [...] }
+    const slas = resSlas.data.slas || []
+    const roles = resRoles.data.roles || []
+
+    opcionesSlas.value = [
+      { id: null, nombre: 'Todos los SLA' },
+      ...slas.map((s) => ({
+        id: s.id,
+        nombre: s.descripcion || s.nombre, // Backend usa 'descripcion'
+      })),
+    ]
+
+    opcionesRoles.value = [
+      { id: null, nombre: 'Todos los roles' },
+      ...roles.map((r) => ({
+        id: r.id,
+        nombre: r.descripcion || r.nombre, // Backend usa 'descripcion'
+      })),
+    ]
+
+    console.log('✅ SLAs procesados:', opcionesSlas.value)
+    console.log('✅ Roles procesados:', opcionesRoles.value)
+  } catch (error) {
+    console.error('❌ Error cargando selectores:', error)
+    console.error('❌ Detalles:', error.response?.data)
+    $q.notify({
+      type: 'warning',
+      message: 'No se pudieron cargar los filtros de SLA y Roles',
+      position: 'top-right',
+    })
+    // Fallback
+    opcionesSlas.value = [{ id: null, nombre: 'Todos los SLA' }]
+    opcionesRoles.value = [{ id: null, nombre: 'Todos los roles' }]
+  }
+}
+
+/**
+ * Carga de alertas con filtros dinámicos usando URLSearchParams
  */
 const cargarAlertas = async () => {
   isLoading.value = true
   mensajeCarga.value = 'Cargando alertas...'
 
   try {
-    // Cargar dashboard (datos ya sincronizados en el arranque del sistema)
-    console.log('📊 Cargando dashboard...')
-    const response = await api.get('/api/alertas/dashboard')
+    // Construcción de parámetros de consulta
+    const params = new URLSearchParams()
+
+    // Búsqueda de texto
+    if (filtros.value.busqueda && filtros.value.busqueda.trim()) {
+      params.append('busqueda', filtros.value.busqueda.trim())
+    }
+
+    // Filtro SLA - obtener el ID desde opcionesSlas
+    if (filtros.value.tipoSla && filtros.value.tipoSla !== 'Todos los SLA') {
+      const slaSeleccionado = opcionesSlas.value.find((s) => s.nombre === filtros.value.tipoSla)
+      if (slaSeleccionado && slaSeleccionado.id) {
+        params.append('idSla', slaSeleccionado.id)
+      }
+    }
+
+    // Filtro Rol - obtener el ID desde opcionesRoles
+    if (filtros.value.rolResponsable && filtros.value.rolResponsable !== 'Todos los roles') {
+      const rolSeleccionado = opcionesRoles.value.find(
+        (r) => r.nombre === filtros.value.rolResponsable,
+      )
+      if (rolSeleccionado && rolSeleccionado.id) {
+        params.append('idRol', rolSeleccionado.id)
+      }
+    }
+
+    // Filtro Nivel (CRITICO, MEDIO, BAJO)
+    if (filtros.value.nivel) {
+      params.append('nivel', filtros.value.nivel)
+    }
+
+    // Filtro Estado Tiempo (VIGENTE, VENCIDO)
+    if (filtros.value.estadoTiempo) {
+      params.append('estadoTiempo', filtros.value.estadoTiempo)
+    }
+
+    // Filtro Es Leída - enviar como "estado" al backend
+    if (filtros.value.esLeida !== null && filtros.value.esLeida !== undefined) {
+      // Si esLeida es true, buscar alertas con estado = "LEIDA"
+      // Si esLeida es false, buscar alertas con estado != "LEIDA" (ACTIVA, NUEVA, etc.)
+      if (filtros.value.esLeida === true) {
+        params.append('estado', 'LEIDA')
+      } else if (filtros.value.esLeida === false) {
+        params.append('estado', 'NO_LEIDA') // Backend debe filtrar estado != "LEIDA"
+      }
+    }
+
+    // Construir URL con parámetros
+    const queryString = params.toString()
+    const url = queryString ? `/api/alertas/dashboard?${queryString}` : '/api/alertas/dashboard'
+
+    console.log('📊 Cargando dashboard con filtros:', url)
+    console.log('📋 Parámetros:', Object.fromEntries(params))
+    console.log('📋 Parámetros:', Object.fromEntries(params))
+
+    const response = await api.get(url)
 
     if (response.data && Array.isArray(response.data)) {
       alertas.value = response.data
@@ -988,9 +1041,44 @@ const cargarAlertas = async () => {
   }
 }
 
-// Cargar alertas al montar el componente
-onMounted(() => {
-  cargarAlertas()
+/**
+ * Watcher para recargar alertas cuando cambien los filtros
+ * Incluye debounce para la búsqueda de texto
+ */
+let searchTimeout = null
+watch(
+  () => [
+    filtros.value.tipoSla,
+    filtros.value.rolResponsable,
+    filtros.value.nivel,
+    filtros.value.estadoTiempo,
+    filtros.value.esLeida,
+    filtros.value.busqueda,
+  ],
+  (newValues, oldValues) => {
+    // Si solo cambió la búsqueda, aplicar debounce de 500ms
+    const busquedaCambio = newValues[5] !== oldValues[5]
+    const otrosCambios = newValues.slice(0, 5).some((val, idx) => val !== oldValues[idx])
+
+    if (busquedaCambio && !otrosCambios) {
+      // Debounce para búsqueda
+      if (searchTimeout) clearTimeout(searchTimeout)
+      searchTimeout = setTimeout(() => {
+        cargarAlertas()
+      }, 500)
+    } else {
+      // Recarga inmediata para otros filtros
+      if (searchTimeout) clearTimeout(searchTimeout)
+      cargarAlertas()
+    }
+  },
+  { deep: true },
+)
+
+// Cargar alertas y selectores al montar el componente
+onMounted(async () => {
+  await cargarSelectores()
+  await cargarAlertas()
 })
 </script>
 
@@ -1099,10 +1187,10 @@ onMounted(() => {
   border-width: 2px;
 }
 
-/* Fila 2: Grid de 6 columnas */
+/* Fila 2: Grid de 3 columnas en pantallas grandes, adaptable a menores */
 .filtros-fila-2 {
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
