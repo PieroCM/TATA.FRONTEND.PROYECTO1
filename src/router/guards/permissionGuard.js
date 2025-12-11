@@ -39,20 +39,20 @@ export function permissionGuard(to, from, next, authStore) {
   }
 
   // ⛔ Usuario NO tiene permisos
-  console.warn('⛔ Acceso denegado: Sin permisos suficientes')
-  console.warn('Permisos requeridos:', requiredPerms)
-  console.warn('Permisos del usuario:', userPerms)
+  // console.warn('⛔ Acceso denegado: Sin permisos suficientes')
+  // console.warn('Permisos requeridos:', requiredPerms)
+  // console.warn('Permisos del usuario:', userPerms)
 
   // Buscar la primera ruta accesible para el usuario
   const firstAccessibleRoute = findFirstAccessibleRoute(userPerms, to.fullPath)
 
   if (firstAccessibleRoute) {
-    console.log('↪️ Redirigiendo a la primera ruta accesible:', firstAccessibleRoute)
+    // console.log('↪️ Redirigiendo a la primera ruta accesible:', firstAccessibleRoute)
     next(firstAccessibleRoute)
     return
   }
 
   // Si no tiene ninguna ruta accesible, enviarlo a página de no autorizado
-  console.warn('⚠️ Usuario sin rutas accesibles, redirigiendo a /no-autorizado')
+  // console.warn('⚠️ Usuario sin rutas accesibles, redirigiendo a /no-autorizado')
   next('/no-autorizado')
 }

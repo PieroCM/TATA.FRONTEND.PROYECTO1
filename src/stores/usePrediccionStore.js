@@ -15,7 +15,7 @@ export const usePrediccionStore = defineStore('prediccion', {
       pagina: 1,
       tamanoPagina: 50,
       totalRegistros: 0,
-      totalPaginas: 0
+      totalPaginas: 0,
     },
     loading: false,
     loadingCriticas: false,
@@ -25,7 +25,7 @@ export const usePrediccionStore = defineStore('prediccion', {
     filtrosDisponibles: {
       codigosSla: [],
       roles: [],
-      bloquesTech: []
+      bloquesTech: [],
     },
     loadingFiltros: false,
     // Caché local para evitar llamadas repetidas
@@ -33,11 +33,11 @@ export const usePrediccionStore = defineStore('prediccion', {
       criticas: 0,
       resumen: 0,
       tendencias: 0,
-      filtros: 0
+      filtros: 0,
     },
     CACHE_DURATION: 5 * 60 * 1000, // 5 minutos
     // URL del microservicio de predicción
-    prediccionApiUrl: null
+    prediccionApiUrl: null,
   }),
 
   getters: {
@@ -45,7 +45,7 @@ export const usePrediccionStore = defineStore('prediccion', {
      * Predicciones filtradas por nivel de riesgo
      */
     porNivelRiesgo: (state) => (nivel) => {
-      return state.predicciones.filter(p => p.nivelRiesgo === nivel)
+      return state.predicciones.filter((p) => p.nivelRiesgo === nivel)
     },
 
     /**
@@ -53,10 +53,10 @@ export const usePrediccionStore = defineStore('prediccion', {
      */
     conteoPorRiesgo: (state) => {
       return {
-        critico: state.predicciones.filter(p => p.nivelRiesgo === 'CRITICO').length,
-        alto: state.predicciones.filter(p => p.nivelRiesgo === 'ALTO').length,
-        medio: state.predicciones.filter(p => p.nivelRiesgo === 'MEDIO').length,
-        bajo: state.predicciones.filter(p => p.nivelRiesgo === 'BAJO').length
+        critico: state.predicciones.filter((p) => p.nivelRiesgo === 'CRITICO').length,
+        alto: state.predicciones.filter((p) => p.nivelRiesgo === 'ALTO').length,
+        medio: state.predicciones.filter((p) => p.nivelRiesgo === 'MEDIO').length,
+        bajo: state.predicciones.filter((p) => p.nivelRiesgo === 'BAJO').length,
       }
     },
 
@@ -66,7 +66,7 @@ export const usePrediccionStore = defineStore('prediccion', {
     promedioRiesgo: (state) => {
       if (!state.predicciones.length) return 0
       const suma = state.predicciones.reduce((acc, p) => acc + p.probabilidadIncumplimiento, 0)
-      return (suma / state.predicciones.length * 100).toFixed(1)
+      return ((suma / state.predicciones.length) * 100).toFixed(1)
     },
 
     /**
@@ -81,9 +81,9 @@ export const usePrediccionStore = defineStore('prediccion', {
      */
     totalAlertasPrediccion: (state) => {
       return state.prediccionesCriticas.filter(
-        p => p.nivelRiesgo === 'CRITICO' || p.nivelRiesgo === 'ALTO'
+        (p) => p.nivelRiesgo === 'CRITICO' || p.nivelRiesgo === 'ALTO',
       ).length
-    }
+    },
   },
 
   actions: {
@@ -103,7 +103,7 @@ export const usePrediccionStore = defineStore('prediccion', {
           return this.prediccionApiUrl
         }
       } catch (e) {
-        console.log('Microservicio directo no disponible, intentando proxy...')
+        // console.log('Microservicio directo no disponible, intentando proxy...')
       }
 
       // Si falla, intentar a través de la API .NET (proxy)
@@ -112,7 +112,7 @@ export const usePrediccionStore = defineStore('prediccion', {
         this.prediccionApiUrl = '/api/prediccion'
         return this.prediccionApiUrl
       } catch (e2) {
-        console.warn('Servicio de predicción no disponible')
+        // console.warn('Servicio de predicción no disponible')
         this.prediccionApiUrl = 'http://localhost:8000' // fallback al microservicio directo
         return this.prediccionApiUrl
       }
@@ -123,7 +123,12 @@ export const usePrediccionStore = defineStore('prediccion', {
      * NO carga todo de una vez - optimizado para grandes volúmenes
      * Por defecto incluye todas las solicitudes (activas e históricas)
      */
-    async fetchPrediccionesPaginadas(pagina = 1, tamanoPagina = 50, incluirHistoricas = true, codigoSla = null) {
+    async fetchPrediccionesPaginadas(
+      pagina = 1,
+      tamanoPagina = 50,
+      incluirHistoricas = true,
+      codigoSla = null,
+    ) {
       this.loading = true
       this.error = null
 
@@ -143,15 +148,21 @@ export const usePrediccionStore = defineStore('prediccion', {
         }
 
         const responseData = await response.json()
-        const { data, pagina: pag, tamano_pagina: tam, total_registros, total_paginas } = responseData
+        const {
+          data,
+          pagina: pag,
+          tamano_pagina: tam,
+          total_registros,
+          total_paginas,
+        } = responseData
 
         // Mapear campos de snake_case a camelCase
-        this.predicciones = (data || []).map(p => this._mapearPrediccion(p))
+        this.predicciones = (data || []).map((p) => this._mapearPrediccion(p))
         this.paginacion = {
           pagina: pag || 1,
           tamanoPagina: tam || tamanoPagina,
           totalRegistros: total_registros || 0,
-          totalPaginas: total_paginas || 0
+          totalPaginas: total_paginas || 0,
         }
 
         return this.predicciones
@@ -174,14 +185,16 @@ export const usePrediccionStore = defineStore('prediccion', {
 
       try {
         const baseUrl = await this._getPrediccionUrl()
-        const response = await fetch(`${baseUrl}/predecir/paginado?pagina=${siguientePagina}&tamano=${this.paginacion.tamanoPagina}&incluir_historicas=true`)
+        const response = await fetch(
+          `${baseUrl}/predecir/paginado?pagina=${siguientePagina}&tamano=${this.paginacion.tamanoPagina}&incluir_historicas=true`,
+        )
 
         if (!response.ok) {
           throw new Error(`HTTP error! status: ${response.status}`)
         }
 
         const responseData = await response.json()
-        const nuevasPredicciones = (responseData.data || []).map(p => this._mapearPrediccion(p))
+        const nuevasPredicciones = (responseData.data || []).map((p) => this._mapearPrediccion(p))
 
         // Agregar a las existentes, no reemplazar
         this.predicciones = [...this.predicciones, ...nuevasPredicciones]
@@ -202,9 +215,11 @@ export const usePrediccionStore = defineStore('prediccion', {
       const now = Date.now()
 
       // Usar caché si no ha expirado
-      if (!force &&
-          this.prediccionesCriticas.length > 0 &&
-          now - this.lastFetch.criticas < this.CACHE_DURATION) {
+      if (
+        !force &&
+        this.prediccionesCriticas.length > 0 &&
+        now - this.lastFetch.criticas < this.CACHE_DURATION
+      ) {
         return this.prediccionesCriticas
       }
 
@@ -219,7 +234,7 @@ export const usePrediccionStore = defineStore('prediccion', {
         }
 
         const responseData = await response.json()
-        this.prediccionesCriticas = (responseData || []).map(p => this._mapearPrediccion(p))
+        this.prediccionesCriticas = (responseData || []).map((p) => this._mapearPrediccion(p))
         this.lastFetch.criticas = now
 
         return this.prediccionesCriticas
@@ -241,9 +256,7 @@ export const usePrediccionStore = defineStore('prediccion', {
     async fetchResumen(force = false) {
       const now = Date.now()
 
-      if (!force &&
-          this.resumen &&
-          now - this.lastFetch.resumen < this.CACHE_DURATION) {
+      if (!force && this.resumen && now - this.lastFetch.resumen < this.CACHE_DURATION) {
         return this.resumen
       }
 
@@ -266,14 +279,23 @@ export const usePrediccionStore = defineStore('prediccion', {
           altas: responseData.altas || 0,
           medias: responseData.medias || 0,
           bajas: responseData.bajas || 0,
-          promedioRiesgo: responseData.promedio_riesgo || 0
+          promedioRiesgo: responseData.promedio_riesgo || 0,
         }
         this.lastFetch.resumen = now
 
         return this.resumen
       } catch (error) {
         console.error('Error al obtener resumen:', error)
-        return this.resumen || { totalAnalizadas: 0, criticas: 0, altas: 0, medias: 0, bajas: 0, promedioRiesgo: 0 }
+        return (
+          this.resumen || {
+            totalAnalizadas: 0,
+            criticas: 0,
+            altas: 0,
+            medias: 0,
+            bajas: 0,
+            promedioRiesgo: 0,
+          }
+        )
       } finally {
         this.loadingResumen = false
       }
@@ -285,9 +307,11 @@ export const usePrediccionStore = defineStore('prediccion', {
     async fetchTendencias(meses = 6, force = false) {
       const now = Date.now()
 
-      if (!force &&
-          this.tendencias.length > 0 &&
-          now - this.lastFetch.tendencias < this.CACHE_DURATION) {
+      if (
+        !force &&
+        this.tendencias.length > 0 &&
+        now - this.lastFetch.tendencias < this.CACHE_DURATION
+      ) {
         return this.tendencias
       }
 
@@ -323,8 +347,8 @@ export const usePrediccionStore = defineStore('prediccion', {
             id_solicitud: solicitud.idSolicitud,
             dias_transcurridos: solicitud.diasTranscurridos,
             dias_umbral: solicitud.diasUmbral,
-            id_rol: solicitud.idRol
-          })
+            id_rol: solicitud.idRol,
+          }),
         })
 
         if (!response.ok) {
@@ -346,7 +370,7 @@ export const usePrediccionStore = defineStore('prediccion', {
       try {
         const baseUrl = await this._getPrediccionUrl()
         const response = await fetch(`${baseUrl}/modelo/reentrenar`, {
-          method: 'POST'
+          method: 'POST',
         })
 
         if (!response.ok) {
@@ -380,12 +404,12 @@ export const usePrediccionStore = defineStore('prediccion', {
         const responseData = await response.json()
         return {
           disponible: true,
-          ...responseData
+          ...responseData,
         }
       } catch (error) {
         return {
           disponible: false,
-          error: error.message
+          error: error.message,
         }
       }
     },
@@ -407,13 +431,13 @@ export const usePrediccionStore = defineStore('prediccion', {
           status: responseData.status,
           modelLoaded: responseData.model_loaded,
           timestamp: responseData.timestamp,
-          version: responseData.version
+          version: responseData.version,
         }
       } catch (error) {
         return {
           status: 'error',
           modelLoaded: false,
-          error: error.message
+          error: error.message,
         }
       }
     },
@@ -426,9 +450,11 @@ export const usePrediccionStore = defineStore('prediccion', {
       const now = Date.now()
 
       // Usar caché si no ha expirado
-      if (!force &&
-          this.filtrosDisponibles.codigosSla.length > 0 &&
-          now - this.lastFetch.filtros < this.CACHE_DURATION) {
+      if (
+        !force &&
+        this.filtrosDisponibles.codigosSla.length > 0 &&
+        now - this.lastFetch.filtros < this.CACHE_DURATION
+      ) {
         return this.filtrosDisponibles
       }
 
@@ -445,18 +471,18 @@ export const usePrediccionStore = defineStore('prediccion', {
         const responseData = await response.json()
 
         this.filtrosDisponibles = {
-          codigosSla: (responseData.codigos_sla || []).map(sla => ({
+          codigosSla: (responseData.codigos_sla || []).map((sla) => ({
             codigo: sla.codigo_sla,
             descripcion: sla.descripcion,
             diasUmbral: sla.dias_umbral,
-            tipoSolicitud: sla.tipo_solicitud
+            tipoSolicitud: sla.tipo_solicitud,
           })),
-          roles: (responseData.roles || []).map(rol => ({
+          roles: (responseData.roles || []).map((rol) => ({
             id: rol.id_rol_registro,
             nombre: rol.nombre_rol,
-            bloqueTech: rol.bloque_tech
+            bloqueTech: rol.bloque_tech,
           })),
-          bloquesTech: responseData.bloques_tech || []
+          bloquesTech: responseData.bloques_tech || [],
         }
         this.lastFetch.filtros = now
 
@@ -482,7 +508,7 @@ export const usePrediccionStore = defineStore('prediccion', {
         nivelRiesgo: p.nivel_riesgo,
         diasRestantes: p.dias_restantes,
         fechaPrediccion: p.fecha_prediccion,
-        factoresRiesgo: p.factores_riesgo || []
+        factoresRiesgo: p.factores_riesgo || [],
       }
     },
 
@@ -503,14 +529,14 @@ export const usePrediccionStore = defineStore('prediccion', {
         return {
           features: responseData.features || [],
           interpretacion: responseData.interpretacion || {},
-          recomendacion: responseData.recomendacion || ''
+          recomendacion: responseData.recomendacion || '',
         }
       } catch (error) {
         console.error('Error al obtener importancia de variables:', error)
         return {
           features: [],
           interpretacion: {},
-          recomendacion: 'No se pudo obtener la importancia de variables'
+          recomendacion: 'No se pudo obtener la importancia de variables',
         }
       }
     },
@@ -527,10 +553,10 @@ export const usePrediccionStore = defineStore('prediccion', {
         pagina: 1,
         tamanoPagina: 50,
         totalRegistros: 0,
-        totalPaginas: 0
+        totalPaginas: 0,
       }
       this.lastFetch = { criticas: 0, resumen: 0, tendencias: 0, filtros: 0 }
       this.error = null
-    }
-  }
+    },
+  },
 })

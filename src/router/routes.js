@@ -44,9 +44,11 @@ const routes = [
             store.fetchSolicitudes(false),
             store.fetchRoles(false),
             store.fetchConfigSla(false),
-          ]).catch((err) => console.log('Pre-carga en segundo plano:', err))
+          ]).catch((_err) => {
+            // console.log('Pre-carga en segundo plano:', _err)
+          })
         } catch (error) {
-          console.log('Error en pre-carga:', error)
+          // console.log('Error en pre-carga:', error)
         }
       }
       next()

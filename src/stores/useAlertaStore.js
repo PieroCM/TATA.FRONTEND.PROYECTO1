@@ -53,19 +53,19 @@ export const useAlertaStore = defineStore('alerta', {
         if (response.data && Array.isArray(response.data)) {
           // Asignar directamente la data del backend
           this.alertas = response.data
-          console.log(`✅ ${this.alertas.length} alertas cargadas desde el backend`)
+          // console.log(`✅ ${this.alertas.length} alertas cargadas desde el backend`)
         } else {
-          console.warn('⚠️ La respuesta del backend no contiene un array de alertas')
+          // console.warn('⚠️ La respuesta del backend no contiene un array de alertas')
           this.alertas = []
         }
 
         return response.data
       } catch (error) {
-        console.error('❌ Error al obtener alertas desde /api/alertas/dashboard:', error)
+        // console.error('❌ Error al obtener alertas desde /api/alertas/dashboard:', error)
 
         // Si el backend no está disponible, usar datos de desarrollo
         if (error.response?.status === 404 || error.code === 'ERR_NETWORK') {
-          console.warn('⚠️ Usando datos de prueba (backend no disponible)')
+          // console.warn('⚠️ Usando datos de prueba (backend no disponible)')
           this.alertas = this.generarDatosPrueba()
           return this.alertas
         }
@@ -143,26 +143,20 @@ export const useAlertaStore = defineStore('alerta', {
      * Realiza petición DELETE al backend y actualiza estado local
      */
     async eliminarAlerta(idAlerta) {
-      try {
-        console.log('Eliminando alerta con ID:', idAlerta)
+      // console.log('Eliminando alerta con ID:', idAlerta)
 
-        // Realizar petición DELETE al backend
-        const response = await api.delete(`/api/alerta/${idAlerta}`)
-        console.log('Respuesta del servidor:', response)
+      // Realizar petición DELETE al backend
+      await api.delete(`/api/alerta/${idAlerta}`)
+      // console.log('Respuesta del servidor:', _response)
 
-        // Actualizar estado local sin recargar (Optimistic UI)
-        const index = this.alertas.findIndex((a) => a.idAlerta === idAlerta)
-        if (index !== -1) {
-          this.alertas.splice(index, 1)
-          console.log(`Alerta ${idAlerta} eliminada del estado local`)
-        }
-
-        return true
-      } catch (error) {
-        console.error('Error al eliminar alerta:', error)
-        console.error('Detalles del error:', error.response?.data)
-        throw error
+      // Actualizar estado local sin recargar (Optimistic UI)
+      const index = this.alertas.findIndex((a) => a.idAlerta === idAlerta)
+      if (index !== -1) {
+        this.alertas.splice(index, 1)
+        // console.log(`Alerta ${idAlerta} eliminada del estado local`)
       }
+
+      return true
     },
 
     /**

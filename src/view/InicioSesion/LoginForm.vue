@@ -166,7 +166,7 @@ export default {
 
         // Validar que la respuesta contenga el token
         if (!response.data?.token) {
-          console.error('La respuesta del backend no contiene token:', response.data)
+          // console.error('La respuesta del backend no contiene token:', response.data)
           throw new Error('El servidor no devolvió un token válido')
         }
 
@@ -177,10 +177,10 @@ export default {
         // Guardar token, usuario y permisos usando el nuevo método setAuth
         authStore.setAuth(response.data)
 
-        console.log('✅ Sesión iniciada exitosamente')
-        console.log('Usuario:', response.data.username)
-        console.log('Rol:', response.data.rolNombre)
-        console.log('Permisos:', response.data.permisos)
+        // console.log('✅ Sesión iniciada exitosamente')
+        // console.log('Usuario:', response.data.username)
+        // console.log('Rol:', response.data.rolNombre)
+        // console.log('Permisos:', response.data.permisos)
 
         this.$q.notify({
           type: 'positive',
@@ -194,14 +194,14 @@ export default {
         // Esto evita que el botón "Atrás" permita volver al login
         this.$router.replace('/sistema/dashboard')
       } catch (error) {
-        console.error('Error en login:', error)
-        console.error('Detalles del error:', {
-          status: error.response?.status,
-          data: error.response?.data,
-          enviado: {
-            email: this.correo,
-          },
-        })
+        // console.error('Error en login:', error)
+        // console.error('Detalles del error:', {
+        //   status: error.response?.status,
+        //   data: error.response?.data,
+        //   enviado: {
+        //     email: this.correo,
+        //   },
+        // })
         this.$q.notify({
           type: 'negative',
           message: error.response?.data?.message || error.message || 'Error al iniciar sesión',

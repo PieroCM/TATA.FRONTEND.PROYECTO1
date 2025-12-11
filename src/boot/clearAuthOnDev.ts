@@ -27,7 +27,7 @@ export default () => {
 
     if (isPrimeraVez) {
       // SOLO limpia en la primera carga (al iniciar el servidor)
-      console.log('🧹 [DEV MODE] Primera carga detectada → Limpiando autenticación...')
+      // console.log('🧹 [DEV MODE] Primera carga detectada → Limpiando autenticación...')
 
       localStorage.removeItem('authToken')
       localStorage.removeItem('authUser')
@@ -36,10 +36,10 @@ export default () => {
       // Marcar que el servidor ya se inició (persiste durante la sesión de navegador)
       sessionStorage.setItem(DEV_SESSION_KEY, 'true')
 
-      console.log('✅ [DEV MODE] localStorage limpiado. Puedes hacer login.')
+      // console.log('✅ [DEV MODE] localStorage limpiado. Puedes hacer login.')
     } else {
       // F5 o recarga normal → NO hacer nada
-      console.log('🔄 [DEV MODE] Recarga detectada → Sesión preservada (F5 permitido)')
+      // console.log('🔄 [DEV MODE] Recarga detectada → Sesión preservada (F5 permitido)')
     }
   }
 }

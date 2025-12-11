@@ -91,130 +91,131 @@
           </div>
         </div>
 
-      <!-- Fila 2: Filtros de Datos -->
-      <div class="row q-col-gutter-md q-mb-md">
-        <!-- Tipos SLA -->
-        <div class="col-12 col-sm-6 col-md-4">
-          <q-select
-            v-model="filtros.tiposSla"
-            :options="tiposSlaDisponibles"
-            label="Tipos SLA"
-            outlined
-            dense
-            multiple
-            use-chips
-            clearable
-          >
-            <template v-slot:prepend>
-              <q-icon name="category" color="primary" />
-            </template>
-          </q-select>
+        <!-- Fila 2: Filtros de Datos -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <!-- Tipos SLA -->
+          <div class="col-12 col-sm-6 col-md-4">
+            <q-select
+              v-model="filtros.tiposSla"
+              :options="tiposSlaDisponibles"
+              label="Tipos SLA"
+              outlined
+              dense
+              multiple
+              use-chips
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="category" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Roles -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.roles"
+              :options="rolesDisponibles"
+              label="Roles/Áreas"
+              outlined
+              dense
+              multiple
+              use-chips
+              clearable
+            >
+              <template v-slot:prepend>
+                <q-icon name="people" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Estado SLA -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="filtros.estado"
+              :options="estadosDisponibles"
+              label="Estado de Cumplimiento"
+              outlined
+              dense
+              clearable
+              emit-value
+              map-options
+            >
+              <template v-slot:prepend>
+                <q-icon name="track_changes" color="primary" />
+              </template>
+            </q-select>
+          </div>
+
+          <!-- Tipo de Gráfico -->
+          <div class="col-12 col-sm-6 col-md-2">
+            <q-select
+              v-model="tipoGrafico"
+              :options="tiposGraficoDisponibles"
+              label="Tipo Gráfico"
+              outlined
+              dense
+            >
+              <template v-slot:prepend>
+                <q-icon name="show_chart" color="primary" />
+              </template>
+            </q-select>
+          </div>
         </div>
 
-        <!-- Roles -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-select
-            v-model="filtros.roles"
-            :options="rolesDisponibles"
-            label="Roles/Áreas"
-            outlined
-            dense
-            multiple
-            use-chips
-            clearable
-          >
-            <template v-slot:prepend>
-              <q-icon name="people" color="primary" />
-            </template>
-          </q-select>
-        </div>
+        <!-- Fila 3: Opciones de Visualización Interactiva -->
+        <div class="row q-col-gutter-md q-mb-md">
+          <!-- Modo de Visualización (Eje Y) -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="modoVisualizacion"
+              :options="opcionesVisualizacion"
+              label="Modo Visualización"
+              outlined
+              dense
+            >
+              <template v-slot:prepend>
+                <q-icon name="analytics" color="orange" />
+              </template>
+            </q-select>
+          </div>
 
-        <!-- Estado SLA -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-select
-            v-model="filtros.estado"
-            :options="estadosDisponibles"
-            label="Estado de Cumplimiento"
-            outlined
-            dense
-            clearable
-            emit-value
-            map-options
-          >
-            <template v-slot:prepend>
-              <q-icon name="track_changes" color="primary" />
-            </template>
-          </q-select>
-        </div>
+          <!-- Agrupar Gráficos (Eje X) -->
+          <div class="col-12 col-sm-6 col-md-3">
+            <q-select
+              v-model="agruparPor"
+              :options="opcionesAgrupacion"
+              label="Agrupar Por"
+              outlined
+              dense
+            >
+              <template v-slot:prepend>
+                <q-icon name="swap_horiz" color="purple" />
+              </template>
+            </q-select>
+          </div>
 
-        <!-- Tipo de Gráfico -->
-        <div class="col-12 col-sm-6 col-md-2">
-          <q-select
-            v-model="tipoGrafico"
-            :options="tiposGraficoDisponibles"
-            label="Tipo Gráfico"
-            outlined
-            dense
-          >
-            <template v-slot:prepend>
-              <q-icon name="show_chart" color="primary" />
-            </template>
-          </q-select>
+          <!-- Vista de Gráficos (Toggle) -->
+          <div class="col-12 col-sm-6 col-md-2">
+            <q-field outlined dense stack-label label="Vista de Gráficos">
+              <template v-slot:prepend>
+                <q-icon name="view_module" color="primary" />
+              </template>
+              <template v-slot:control>
+                <div class="self-center full-width no-outline q-px-sm">
+                  <q-toggle
+                    v-model="vistaUnificada"
+                    color="primary"
+                    size="sm"
+                    :label="vistaUnificada ? 'Unificado' : 'Separado'"
+                    dense
+                  />
+                </div>
+              </template>
+            </q-field>
+          </div>
         </div>
-      </div>
-
-      <!-- Fila 3: Opciones de Visualización Interactiva -->
-      <div class="row q-col-gutter-md q-mb-md">
-        <!-- Modo de Visualización (Eje Y) -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-select
-            v-model="modoVisualizacion"
-            :options="opcionesVisualizacion"
-            label="Modo Visualización"
-            outlined
-            dense
-          >
-            <template v-slot:prepend>
-              <q-icon name="analytics" color="orange" />
-            </template>
-          </q-select>
-        </div>
-
-        <!-- Agrupar Gráficos (Eje X) -->
-        <div class="col-12 col-sm-6 col-md-3">
-          <q-select
-            v-model="agruparPor"
-            :options="opcionesAgrupacion"
-            label="Agrupar Por"
-            outlined
-            dense
-          >
-            <template v-slot:prepend>
-              <q-icon name="swap_horiz" color="purple" />
-            </template>
-          </q-select>
-        </div>
-
-        <!-- Vista de Gráficos (Toggle) -->
-        <div class="col-12 col-sm-6 col-md-2">
-          <q-field outlined dense stack-label label="Vista de Gráficos">
-            <template v-slot:prepend>
-              <q-icon name="view_module" color="primary" />
-            </template>
-            <template v-slot:control>
-              <div class="self-center full-width no-outline q-px-sm">
-                <q-toggle
-                  v-model="vistaUnificada"
-                  color="primary"
-                  size="sm"
-                  :label="vistaUnificada ? 'Unificado' : 'Separado'"
-                  dense
-                />
-              </div>
-            </template>
-          </q-field>
-        </div>
-      </div>        <!-- Botones de acción -->
+        <!-- Botones de acción -->
         <div class="row q-col-gutter-sm q-mt-sm">
           <div class="col-12 col-sm-4 col-md-auto">
             <q-btn
@@ -519,7 +520,12 @@
 
         <q-card-section class="q-pt-md scroll-section">
           <q-list separator class="rounded-borders">
-            <q-item tag="label" v-ripple clickable class="q-py-md">
+            <q-item
+              v-ripple
+              clickable
+              class="q-py-md"
+              @click="seccionesExportar.graficos = !seccionesExportar.graficos"
+            >
               <q-item-section avatar top>
                 <q-checkbox v-model="seccionesExportar.graficos" color="primary" size="lg" />
               </q-item-section>
@@ -534,7 +540,12 @@
               </q-item-section>
             </q-item>
 
-            <q-item tag="label" v-ripple clickable class="q-py-md">
+            <q-item
+              v-ripple
+              clickable
+              class="q-py-md"
+              @click="seccionesExportar.topRoles = !seccionesExportar.topRoles"
+            >
               <q-item-section avatar top>
                 <q-checkbox v-model="seccionesExportar.topRoles" color="primary" size="lg" />
               </q-item-section>
@@ -549,7 +560,12 @@
               </q-item-section>
             </q-item>
 
-            <q-item tag="label" v-ripple clickable class="q-py-md">
+            <q-item
+              v-ripple
+              clickable
+              class="q-py-md"
+              @click="seccionesExportar.distribucion = !seccionesExportar.distribucion"
+            >
               <q-item-section avatar top>
                 <q-checkbox v-model="seccionesExportar.distribucion" color="primary" size="lg" />
               </q-item-section>
@@ -564,7 +580,12 @@
               </q-item-section>
             </q-item>
 
-            <q-item tag="label" v-ripple clickable class="q-py-md">
+            <q-item
+              v-ripple
+              clickable
+              class="q-py-md"
+              @click="seccionesExportar.resumen = !seccionesExportar.resumen"
+            >
               <q-item-section avatar top>
                 <q-checkbox v-model="seccionesExportar.resumen" color="primary" size="lg" />
               </q-item-section>
@@ -940,7 +961,9 @@ const procesarGraficosPorRol = async (solicitudes, tiposSlaProcesar, configsSla,
           {
             label: 'Proceso',
             data: cumplimientoPorSla.map((s) =>
-              usarPorcentaje ? parseFloat(((s.proceso / s.total) * 100).toFixed(1)) : s.proceso || 0,
+              usarPorcentaje
+                ? parseFloat(((s.proceso / s.total) * 100).toFixed(1))
+                : s.proceso || 0,
             ),
             backgroundColor: esArea || esLinea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
             borderColor: '#FF9800',
@@ -952,7 +975,9 @@ const procesarGraficosPorRol = async (solicitudes, tiposSlaProcesar, configsSla,
           {
             label: 'No cumple',
             data: cumplimientoPorSla.map((s) =>
-              usarPorcentaje ? parseFloat(((s.noCumplen / s.total) * 100).toFixed(1)) : s.noCumplen || 0,
+              usarPorcentaje
+                ? parseFloat(((s.noCumplen / s.total) * 100).toFixed(1))
+                : s.noCumplen || 0,
             ),
             backgroundColor: esArea || esLinea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
             borderColor: '#F44336',
@@ -1190,7 +1215,9 @@ const aplicarFiltros = async () => {
                 {
                   label: 'Proceso',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? parseFloat(((r.proceso / r.total) * 100).toFixed(1)) : r.proceso || 0,
+                    usarPorcentaje
+                      ? parseFloat(((r.proceso / r.total) * 100).toFixed(1))
+                      : r.proceso || 0,
                   ),
                   borderColor: '#FF9800',
                   backgroundColor: 'rgba(255, 152, 0, 0.1)',
@@ -1205,7 +1232,9 @@ const aplicarFiltros = async () => {
                 {
                   label: 'No_cumple',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? parseFloat(((r.noCumplen / r.total) * 100).toFixed(1)) : r.noCumplen || 0,
+                    usarPorcentaje
+                      ? parseFloat(((r.noCumplen / r.total) * 100).toFixed(1))
+                      : r.noCumplen || 0,
                   ),
                   borderColor: '#F44336',
                   backgroundColor: 'rgba(244, 67, 54, 0.1)',
@@ -1259,7 +1288,9 @@ const aplicarFiltros = async () => {
                 {
                   label: 'Proceso',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? parseFloat(((r.proceso / r.total) * 100).toFixed(1)) : r.proceso || 0,
+                    usarPorcentaje
+                      ? parseFloat(((r.proceso / r.total) * 100).toFixed(1))
+                      : r.proceso || 0,
                   ),
                   backgroundColor: esArea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
                   borderColor: '#FF9800',
@@ -1271,7 +1302,9 @@ const aplicarFiltros = async () => {
                 {
                   label: 'No cumple',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? parseFloat(((r.noCumplen / r.total) * 100).toFixed(1)) : r.noCumplen || 0,
+                    usarPorcentaje
+                      ? parseFloat(((r.noCumplen / r.total) * 100).toFixed(1))
+                      : r.noCumplen || 0,
                   ),
                   backgroundColor: esArea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
                   borderColor: '#F44336',
@@ -1352,7 +1385,7 @@ const crearGraficos = () => {
     const canvas = chartCanvasRefs.value[index]
     if (!canvas || !grafico.datos.labels.length) return
 
-    const ctx = canvas.getContext('2d')
+    const ctx = canvas.getContext('2d', { willReadFrequently: true })
     const chartType = tipoGrafico.value.value === 'area' ? 'line' : tipoGrafico.value.value
 
     const chart = new Chart(ctx, {
@@ -1371,9 +1404,9 @@ const crearGraficos = () => {
               padding: 15,
               font: {
                 size: 12,
-                weight: 'bold'
-              }
-            }
+                weight: 'bold',
+              },
+            },
           },
           tooltip: {
             enabled: true,
@@ -1388,10 +1421,10 @@ const crearGraficos = () => {
             displayColors: false,
             titleFont: {
               size: 14,
-              weight: 'bold'
+              weight: 'bold',
             },
             bodyFont: {
-              size: 13
+              size: 13,
             },
             callbacks: {
               title: function (context) {
@@ -1422,14 +1455,16 @@ const crearGraficos = () => {
                     return `✓ Cumple: ${rol.cumplidos} solicitudes`
                   }
                 } else if (datasetLabel === 'Proceso') {
-                  const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                  const porcentajeProceso =
+                    rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
                   if (esModoPorcentaje) {
                     return `⚠ Proceso: ${porcentajeProceso}%`
                   } else {
                     return `⚠ Proceso: ${rol.proceso || 0} solicitudes`
                   }
                 } else if (datasetLabel === 'No cumple' || datasetLabel === 'No_cumple') {
-                  const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+                  const porcentajeNoCumple =
+                    rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
                   if (esModoPorcentaje) {
                     return `✗ No cumple: ${porcentajeNoCumple}%`
                   } else {
@@ -1492,21 +1527,21 @@ const crearGraficos = () => {
                 },
               }
             : tipoGrafico.value.value === 'radar'
-            ? {
-                r: {
-                  beginAtZero: true,
-                  max: modoVisualizacion.value.value === 'porcentaje' ? 100 : undefined,
-                  ticks: {
-                    callback: function (value) {
-                      if (modoVisualizacion.value.value === 'porcentaje') {
-                        return value + '%'
-                      }
-                      return Math.floor(value)
+              ? {
+                  r: {
+                    beginAtZero: true,
+                    max: modoVisualizacion.value.value === 'porcentaje' ? 100 : undefined,
+                    ticks: {
+                      callback: function (value) {
+                        if (modoVisualizacion.value.value === 'porcentaje') {
+                          return value + '%'
+                        }
+                        return Math.floor(value)
+                      },
                     },
                   },
-                },
-              }
-            : {},
+                }
+              : {},
       },
     })
 
@@ -1522,7 +1557,7 @@ const crearGraficoUnificado = () => {
 
   if (!chartUnificadoCanvas.value || graficos.value.length === 0) return
 
-  const ctx = chartUnificadoCanvas.value.getContext('2d')
+  const ctx = chartUnificadoCanvas.value.getContext('2d', { willReadFrequently: true })
   const chartType = tipoGrafico.value.value === 'area' ? 'line' : tipoGrafico.value.value
 
   if (tipoGrafico.value.value === 'line' || tipoGrafico.value.value === 'area') {
@@ -1600,10 +1635,10 @@ const crearGraficoUnificado = () => {
             displayColors: false,
             titleFont: {
               size: 14,
-              weight: 'bold'
+              weight: 'bold',
             },
             bodyFont: {
-              size: 13
+              size: 13,
             },
             callbacks: {
               title: function (context) {
@@ -1626,14 +1661,16 @@ const crearGraficoUnificado = () => {
 
                 if (!rol) return 'Sin datos'
 
-                const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
-                const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+                const porcentajeProceso =
+                  rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                const porcentajeNoCumple =
+                  rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
 
                 return [
                   `${dataset.label}:`,
                   `✓ Cumple: ${rol.porcentaje.toFixed(1)}% (${rol.cumplidos})`,
                   `⚠ Proceso: ${porcentajeProceso}% (${rol.proceso || 0})`,
-                  `✗ No cumple: ${porcentajeNoCumple}% (${rol.noCumplen || 0})`
+                  `✗ No cumple: ${porcentajeNoCumple}% (${rol.noCumplen || 0})`,
                 ]
               },
             },
@@ -1720,9 +1757,9 @@ const crearGraficoUnificado = () => {
               padding: 15,
               font: {
                 size: 13,
-                weight: 'bold'
-              }
-            }
+                weight: 'bold',
+              },
+            },
           },
           tooltip: {
             enabled: true,
@@ -1737,10 +1774,10 @@ const crearGraficoUnificado = () => {
             displayColors: true,
             titleFont: {
               size: 14,
-              weight: 'bold'
+              weight: 'bold',
             },
             bodyFont: {
-              size: 13
+              size: 13,
             },
             callbacks: {
               title: function (context) {
@@ -1763,14 +1800,16 @@ const crearGraficoUnificado = () => {
 
                 if (!rol) return 'Sin datos'
 
-                const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
-                const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+                const porcentajeProceso =
+                  rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                const porcentajeNoCumple =
+                  rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
 
                 return [
                   `${dataset.label}:`,
                   `✓ Cumple: ${rol.porcentaje.toFixed(1)}% (${rol.cumplidos})`,
                   `⚠ Proceso: ${porcentajeProceso}% (${rol.proceso || 0})`,
-                  `✗ No cumple: ${porcentajeNoCumple}% (${rol.noCumplen || 0})`
+                  `✗ No cumple: ${porcentajeNoCumple}% (${rol.noCumplen || 0})`,
                 ]
               },
             },
@@ -1849,9 +1888,9 @@ const crearGraficoUnificado = () => {
               padding: 15,
               font: {
                 size: 13,
-                weight: 'bold'
-              }
-            }
+                weight: 'bold',
+              },
+            },
           },
           tooltip: {
             enabled: true,
@@ -1864,10 +1903,10 @@ const crearGraficoUnificado = () => {
             displayColors: true,
             titleFont: {
               size: 14,
-              weight: 'bold'
+              weight: 'bold',
             },
             bodyFont: {
-              size: 13
+              size: 13,
             },
             callbacks: {
               title: function (context) {
@@ -1890,7 +1929,7 @@ const crearGraficoUnificado = () => {
 
                 return [
                   `✓ Cumple: ${porcentaje.toFixed(1)}% (${cumplidos})`,
-                  `✗ No cumple: ${porcentajeNoCumple}% (${noCumplidos})`
+                  `✗ No cumple: ${porcentajeNoCumple}% (${noCumplidos})`,
                 ]
               },
               afterLabel: function (context) {
@@ -1922,18 +1961,18 @@ const crearGraficoUnificado = () => {
                 },
               }
             : chartType === 'radar'
-            ? {
-                r: {
-                  beginAtZero: true,
-                  max: 100,
-                  ticks: {
-                    callback: function (value) {
-                      return value + '%'
+              ? {
+                  r: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: {
+                      callback: function (value) {
+                        return value + '%'
+                      },
                     },
                   },
-                },
-              }
-            : {},
+                }
+              : {},
       },
     })
   }
@@ -2026,7 +2065,7 @@ const exportarPDF = async () => {
       const canvas = document.createElement('canvas')
       canvas.width = img.width
       canvas.height = img.height
-      const ctx = canvas.getContext('2d')
+      const ctx = canvas.getContext('2d', { willReadFrequently: true })
       ctx.drawImage(img, 0, 0)
       logoData = canvas.toDataURL('image/png')
     } catch (error) {
@@ -2098,7 +2137,8 @@ const exportarPDF = async () => {
               porcentaje: `${rol.porcentaje}%`,
               cumplidos: rol.cumplidos,
               total: rol.total,
-              nivel: rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
+              nivel:
+                rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE',
             })
           })
         }
@@ -2111,7 +2151,7 @@ const exportarPDF = async () => {
         rol: 50,
         porcentaje: 25,
         usuarios: 30,
-        nivel: 35
+        nivel: 35,
       }
 
       // Header de tabla
@@ -2220,7 +2260,10 @@ const exportarPDF = async () => {
 
       // Tabla de KPIs con estilo similar
       const kpiData = [
-        { label: 'Total de Solicitudes', value: estadisticas.value.totalSolicitudes.toLocaleString() },
+        {
+          label: 'Total de Solicitudes',
+          value: estadisticas.value.totalSolicitudes.toLocaleString(),
+        },
         { label: 'Promedio SLA General', value: `${estadisticas.value.promedioSla}%` },
         { label: 'Roles Analizados', value: estadisticas.value.rolesAnalizados.toLocaleString() },
       ]
@@ -2270,7 +2313,7 @@ const exportarPDF = async () => {
           const colWidthsTop = {
             rank: 15,
             rol: 120,
-            incumplimientos: 50
+            incumplimientos: 50,
           }
 
           // Header
@@ -2300,7 +2343,8 @@ const exportarPDF = async () => {
             xPosTop = margin + 2
             pdf.text(String(index + 1), xPosTop, yPos + 4.5)
             xPosTop += colWidthsTop.rank
-            const rolText = rol.nombre.length > 45 ? rol.nombre.substring(0, 42) + '...' : rol.nombre
+            const rolText =
+              rol.nombre.length > 45 ? rol.nombre.substring(0, 42) + '...' : rol.nombre
             pdf.text(rolText, xPosTop, yPos + 4.5)
             xPosTop += colWidthsTop.rol
             pdf.text(String(rol.noCumplen), xPosTop, yPos + 4.5)
@@ -2355,7 +2399,7 @@ const exportarPDF = async () => {
             rol: 90,
             porcentaje: 35,
             usuarios: 40,
-            nivel: 40
+            nivel: 40,
           }
 
           // Header
@@ -2414,7 +2458,8 @@ const exportarPDF = async () => {
             pdf.setTextColor(0, 0, 0)
 
             xPosRol = margin + 2
-            const rolText = rol.nombre.length > 35 ? rol.nombre.substring(0, 32) + '...' : rol.nombre
+            const rolText =
+              rol.nombre.length > 35 ? rol.nombre.substring(0, 32) + '...' : rol.nombre
             pdf.text(rolText, xPosRol, yPos + 4.5)
             xPosRol += colWidthsRol.rol
             pdf.text(`${rol.porcentaje}%`, xPosRol, yPos + 4.5)
@@ -2422,7 +2467,8 @@ const exportarPDF = async () => {
             pdf.text(`${rol.cumplidos}/${rol.total}`, xPosRol, yPos + 4.5)
             xPosRol += colWidthsRol.usuarios
 
-            const nivel = rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
+            const nivel =
+              rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
             pdf.text(nivel, xPosRol, yPos + 4.5)
             yPos += 7
           })
@@ -2461,6 +2507,7 @@ const exportarPDF = async () => {
               backgroundColor: '#ffffff',
               logging: false,
               useCORS: true,
+              willReadFrequently: true,
             })
 
             const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
@@ -2517,8 +2564,8 @@ const exportarPDF = async () => {
       let procesoTotal = 0
       let noCumpleTotal = 0
 
-      graficos.value.forEach(grafico => {
-        grafico.datosRoles.forEach(rol => {
+      graficos.value.forEach((grafico) => {
+        grafico.datosRoles.forEach((rol) => {
           cumpleTotal += rol.cumplidos || 0
           procesoTotal += rol.proceso || 0
           noCumpleTotal += rol.noCumplen || 0
@@ -2529,9 +2576,27 @@ const exportarPDF = async () => {
 
       // Tabla de distribución
       const distData = [
-        { estado: 'Cumple', cantidad: cumpleTotal, porcentaje: totalSolicitudes > 0 ? ((cumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [76, 175, 80] },
-        { estado: 'En Proceso', cantidad: procesoTotal, porcentaje: totalSolicitudes > 0 ? ((procesoTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [255, 152, 0] },
-        { estado: 'No Cumple', cantidad: noCumpleTotal, porcentaje: totalSolicitudes > 0 ? ((noCumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [244, 67, 54] }
+        {
+          estado: 'Cumple',
+          cantidad: cumpleTotal,
+          porcentaje:
+            totalSolicitudes > 0 ? ((cumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0',
+          color: [76, 175, 80],
+        },
+        {
+          estado: 'En Proceso',
+          cantidad: procesoTotal,
+          porcentaje:
+            totalSolicitudes > 0 ? ((procesoTotal / totalSolicitudes) * 100).toFixed(1) : '0',
+          color: [255, 152, 0],
+        },
+        {
+          estado: 'No Cumple',
+          cantidad: noCumpleTotal,
+          porcentaje:
+            totalSolicitudes > 0 ? ((noCumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0',
+          color: [244, 67, 54],
+        },
       ]
 
       // Header
@@ -2569,12 +2634,13 @@ const exportarPDF = async () => {
             backgroundColor: '#ffffff',
             logging: false,
             useCORS: true,
+            willReadFrequently: true,
           })
 
           const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
           const imgWidth = (pageWidth - 2 * margin) * 0.7
           const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
-          const xOffset = margin + ((pageWidth - 2 * margin - imgWidth) / 2)
+          const xOffset = margin + (pageWidth - 2 * margin - imgWidth) / 2
 
           if (yPos + imgHeight > pageHeight - 30) {
             addFooter()
@@ -2624,12 +2690,12 @@ const exportarPDF = async () => {
 
       // Preparar datos de resumen
       const resumenData = []
-      graficos.value.forEach(grafico => {
+      graficos.value.forEach((grafico) => {
         let cumpleTotal = 0
         let procesoTotal = 0
         let noCumpleTotal = 0
 
-        grafico.datosRoles.forEach(rol => {
+        grafico.datosRoles.forEach((rol) => {
           cumpleTotal += rol.cumplidos || 0
           procesoTotal += rol.proceso || 0
           noCumpleTotal += rol.noCumplen || 0
@@ -2640,7 +2706,7 @@ const exportarPDF = async () => {
           cumple: cumpleTotal,
           proceso: procesoTotal,
           noCumple: noCumpleTotal,
-          total: cumpleTotal + procesoTotal + noCumpleTotal
+          total: cumpleTotal + procesoTotal + noCumpleTotal,
         })
       })
 
@@ -2711,6 +2777,7 @@ const exportarPDF = async () => {
             backgroundColor: '#ffffff',
             logging: false,
             useCORS: true,
+            willReadFrequently: true,
           })
 
           const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
@@ -2761,8 +2828,10 @@ const exportarPDF = async () => {
 
 // Gráfico distribución estados
 const crearGraficoDistribucionEstadosAnalytic = () => {
-  const ctx = document.getElementById('graficoDistribucionEstadosAnalytic')
-  if (!ctx) return
+  const canvas = document.getElementById('graficoDistribucionEstadosAnalytic')
+  if (!canvas) return
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
   if (graficoDistribucionEstadosAnalyticInstance) {
     graficoDistribucionEstadosAnalyticInstance.destroy()
@@ -2826,8 +2895,10 @@ const crearGraficoDistribucionEstadosAnalytic = () => {
 
 // Gráfico resumen incumplimientos
 const crearGraficoResumenIncumplimientosAnalytic = () => {
-  const ctx = document.getElementById('graficoResumenIncumplimientosAnalytic')
-  if (!ctx) return
+  const canvas = document.getElementById('graficoResumenIncumplimientosAnalytic')
+  if (!canvas) return
+
+  const ctx = canvas.getContext('2d', { willReadFrequently: true })
 
   if (graficoResumenIncumplimientosAnalyticInstance) {
     graficoResumenIncumplimientosAnalyticInstance.destroy()

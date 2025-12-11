@@ -23,11 +23,11 @@ export default defineBoot(({ _app, _router }) => {
   const sessionRestored = authStore.hydrateFromLocalStorage()
 
   if (sessionRestored) {
-    console.log('✅ Sesión restaurada desde localStorage')
-    console.log('👤 Usuario:', authStore.userName)
-    console.log('🔑 Token presente:', !!authStore.token)
-    console.log('🛡️ Permisos cargados:', authStore.permisos.length)
+    // console.log('✅ Sesión restaurada desde localStorage')
+    // console.log('👤 Usuario:', authStore.userName)
+    // console.log('🔑 Token presente:', !!authStore.token)
+    // console.log('🛡️ Permisos cargados:', authStore.permisos.length)
   } else {
-    console.log('ℹ️ No hay sesión previa en localStorage')
+    // console.log('ℹ️ No hay sesión previa en localStorage')
   }
 })

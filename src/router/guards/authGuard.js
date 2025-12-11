@@ -33,13 +33,13 @@ export async function authGuard(to, from, next, authStore) {
       const firstRoute = findFirstAccessibleRoute(authStore.permisos)
 
       if (firstRoute) {
-        console.log('✅ Usuario autenticado redirigido desde login a:', firstRoute)
+        // console.log('✅ Usuario autenticado redirigido desde login a:', firstRoute)
         next(firstRoute)
         return
       }
 
       // Si no tiene ninguna ruta accesible, enviarlo a no-autorizado
-      console.warn('⚠️ Usuario sin rutas accesibles')
+      // console.warn('⚠️ Usuario sin rutas accesibles')
       next('/no-autorizado')
       return
     }
@@ -51,8 +51,8 @@ export async function authGuard(to, from, next, authStore) {
 
   // 🔒 Rutas privadas: requieren autenticación
   if (!isAuthenticated) {
-    console.warn('🔒 Acceso denegado: No hay sesión activa. Redirigiendo a /login')
-    console.warn('📍 Ruta bloqueada:', to.fullPath)
+    // console.warn('🔒 Acceso denegado: No hay sesión activa. Redirigiendo a /login')
+    // console.warn('📍 Ruta bloqueada:', to.fullPath)
     next('/login')
     return
   }
