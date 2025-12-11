@@ -423,4 +423,82 @@ export default {
 .validation-item.valid .q-icon {
   color: #16a34a;
 }
+
+/* Responsivo: en tablets y móviles, el carrusel queda de fondo y el card se superpone centrado */
+@media (max-width: 1024px) {
+  /* ocultar textos sobre la imagen sombreada en pantallas pequeñas */
+  .slide-content {
+    display: none !important;
+  }
+
+  .left-section {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    height: 100vh;
+  }
+
+  /* asegurar alto completo del carrusel */
+  .left-section .full-height {
+    height: 100vh;
+  }
+
+  /* oscurecer ligeramente el fondo para mejorar contraste del card */
+  .left-section::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1;
+  }
+
+  /* quitar fondo sólido del panel derecho en overlay */
+  .bg-page {
+    background: transparent !important;
+  }
+
+  /* hacer que la columna derecha se superponga y centre el card */
+  .row > .col-5 {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    z-index: 2;
+    padding: 16px; /* respiración en bordes pequeños */
+  }
+
+  .login-card {
+    width: 90%;
+    max-width: 420px;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: saturate(120%) blur(6px);
+    -webkit-backdrop-filter: saturate(120%) blur(6px);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  /* opcional: ocultar flechas del carrusel en pantallas pequeñas para limpiar la vista */
+  :deep(.q-carousel__control) {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    width: 92%;
+    max-width: 360px;
+    padding: 20px;
+  }
+
+  /* ajustar separaciones verticales grandes dentro del card en móviles */
+  .login-card .q-mb-xl {
+    margin-bottom: 16px !important;
+  }
+}
 </style>
