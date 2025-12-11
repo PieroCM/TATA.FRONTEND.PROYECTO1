@@ -194,6 +194,14 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  estadosCumplimientoDisponibles: {
+    type: Array,
+    default: () => [],
+  },
+  estadosSolicitudDisponibles: {
+    type: Array,
+    default: () => [],
+  },
 })
 
 const emit = defineEmits(['update:modelValue', 'exportar'])
@@ -218,20 +226,43 @@ const filtrosExportacion = ref({
   rolesRegistro: [],
 })
 
-// Opciones de selectores
-const opcionesEstadoCumplimiento = [
-  { value: 'TODOS', label: 'Todos los estados SLA' },
-  { value: 'EN_PROCESO', label: 'En proceso' },
-  { value: 'CUMPLE', label: 'Cumple SLA' },
-  { value: 'NO_CUMPLE', label: 'No cumple SLA' },
-]
+// Mapeo de etiquetas para los estados
+const labelsCumplimiento = {
+  EN_PROCESO: 'En proceso',
+  CUMPLE: 'Cumple SLA',
+  NO_CUMPLE: 'No cumple SLA',
+}
 
-const opcionesEstadoSolicitud = [
-  { value: 'TODOS', label: 'Todos los estados' },
-  { value: 'ACTIVA', label: 'Activa' },
-  { value: 'INACTIVA', label: 'Inactiva' },
-  { value: 'VENCIDA', label: 'Vencida' },
-]
+const labelsSolicitud = {
+  ACTIVA: 'Activa',
+  INACTIVA: 'Inactiva',
+  VENCIDA: 'Vencida',
+  CERRADO: 'Cerrado',
+  EN_PROCESO: 'En proceso',
+}
+
+// Opciones dinámicas basadas en los estados disponibles recibidos desde el padre
+const opcionesEstadoCumplimiento = computed(() => {
+  const opciones = [{ value: 'TODOS', label: 'Todos los estados SLA' }]
+  props.estadosCumplimientoDisponibles.forEach((estado) => {
+    opciones.push({
+      value: estado,
+      label: labelsCumplimiento[estado] || estado,
+    })
+  })
+  return opciones
+})
+
+const opcionesEstadoSolicitud = computed(() => {
+  const opciones = [{ value: 'TODOS', label: 'Todos los estados' }]
+  props.estadosSolicitudDisponibles.forEach((estado) => {
+    opciones.push({
+      value: estado,
+      label: labelsSolicitud[estado] || estado,
+    })
+  })
+  return opciones
+})
 
 // Cargar roles de registro desde la API
 const loadRolesRegistro = async () => {

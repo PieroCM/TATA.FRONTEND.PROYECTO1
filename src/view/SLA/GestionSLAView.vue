@@ -32,6 +32,8 @@
       <!-- Barra de filtros -->
       <div class="gestion-sla-filters q-mb-lg">
         <SlaFilterBar
+          :estados-cumplimiento-disponibles="estadosCumplimientoDisponibles"
+          :estados-solicitud-disponibles="estadosSolicitudDisponibles"
           @filtrar="handleFiltrar"
           @exportar="handleExportar"
           @descargar-plantilla="handleDescargarPlantilla"
@@ -68,6 +70,8 @@
     <SlaExportDialog
       v-model="showExportDialog"
       :registros="registrosTabla"
+      :estados-cumplimiento-disponibles="estadosCumplimientoDisponibles"
+      :estados-solicitud-disponibles="estadosSolicitudDisponibles"
       @exportar="handleExportarPDF"
     />
   </q-page>
@@ -171,6 +175,34 @@ const registrosTabla = computed(() => {
       const fechaB = new Date(b.actualizadoEn || b.creadoEn)
       return fechaB - fechaA // Descendente (más reciente primero)
     })
+})
+
+/**
+ * Computed: Estados de cumplimiento SLA que realmente existen en los datos
+ */
+const estadosCumplimientoDisponibles = computed(() => {
+  const estados = new Set()
+  solicitudes.value.forEach((solicitud) => {
+    if (solicitud.estadoCumplimientoSla) {
+      // Extraer el tipo base (EN_PROCESO, CUMPLE, NO_CUMPLE)
+      const estadoBase = solicitud.estadoCumplimientoSla.split('_SLA')[0]
+      estados.add(estadoBase)
+    }
+  })
+  return Array.from(estados).sort()
+})
+
+/**
+ * Computed: Estados de solicitud que realmente existen en los datos
+ */
+const estadosSolicitudDisponibles = computed(() => {
+  const estados = new Set()
+  solicitudes.value.forEach((solicitud) => {
+    if (solicitud.estadoSolicitud) {
+      estados.add(solicitud.estadoSolicitud)
+    }
+  })
+  return Array.from(estados).sort()
 })
 
 /**

@@ -217,6 +217,17 @@ import { ref, watch, onMounted, computed } from 'vue'
 import { api } from 'boot/axios'
 import SlaSearchInput from './SlaSearchInput.vue'
 
+const props = defineProps({
+  estadosCumplimientoDisponibles: {
+    type: Array,
+    default: () => [],
+  },
+  estadosSolicitudDisponibles: {
+    type: Array,
+    default: () => [],
+  },
+})
+
 const emit = defineEmits(['filtrar', 'exportar', 'nuevo-registro', 'descargar-plantilla'])
 
 // Tab activo
@@ -234,20 +245,43 @@ const codigoSla = ref([])
 const opcionesCodigoSla = ref([])
 const loadingCodigos = ref(false)
 
-// Opciones para selectores
-const opcionesEstadoCumplimiento = [
-  { value: 'TODOS', label: 'Todos los estados SLA' },
-  { value: 'EN_PROCESO', label: 'En proceso' },
-  { value: 'CUMPLE', label: 'Cumple SLA' },
-  { value: 'NO_CUMPLE', label: 'No cumple SLA' },
-]
+// Mapeo de etiquetas para los estados
+const labelsCumplimiento = {
+  EN_PROCESO: 'En proceso',
+  CUMPLE: 'Cumple SLA',
+  NO_CUMPLE: 'No cumple SLA',
+}
 
-const opcionesEstadoSolicitud = [
-  { value: 'TODOS', label: 'Todos los estados' },
-  { value: 'ACTIVA', label: 'Activa' },
-  { value: 'INACTIVA', label: 'Inactiva' },
-  { value: 'VENCIDA', label: 'Vencida' },
-]
+const labelsSolicitud = {
+  ACTIVA: 'Activa',
+  INACTIVA: 'Inactiva',
+  VENCIDA: 'Vencida',
+  CERRADO: 'Cerrado',
+  EN_PROCESO: 'En proceso',
+}
+
+// Opciones dinámicas basadas en los estados disponibles
+const opcionesEstadoCumplimiento = computed(() => {
+  const opciones = [{ value: 'TODOS', label: 'Todos los estados SLA' }]
+  props.estadosCumplimientoDisponibles.forEach((estado) => {
+    opciones.push({
+      value: estado,
+      label: labelsCumplimiento[estado] || estado,
+    })
+  })
+  return opciones
+})
+
+const opcionesEstadoSolicitud = computed(() => {
+  const opciones = [{ value: 'TODOS', label: 'Todos los estados' }]
+  props.estadosSolicitudDisponibles.forEach((estado) => {
+    opciones.push({
+      value: estado,
+      label: labelsSolicitud[estado] || estado,
+    })
+  })
+  return opciones
+})
 
 // Computed: Contador de filtros activos
 const filtrosActivos = computed(() => {
