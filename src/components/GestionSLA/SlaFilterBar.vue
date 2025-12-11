@@ -3,277 +3,570 @@
   Emite eventos 'filtrar' y 'exportar'.
 -->
 <template>
-  <div class="sla-filter-bar">
-    <div class="sla-filter-bar__content">
-      <!-- Primera fila: Búsqueda + Botones -->
-      <div class="sla-filter-bar__top-row">
-        <div class="sla-filter-bar__search">
-          <SlaSearchInput v-model="searchText" />
+  <q-card flat bordered class="filtros-card">
+    <q-card-section>
+      <!-- Header con título y acciones -->
+      <div class="filtros-header q-mb-lg">
+        <div class="filtros-header__title">
+          <q-icon name="filter_list" color="primary" size="24px" class="q-mr-sm" />
+          <h2 class="text-h6 text-weight-semibold q-ma-none">Filtros y Búsqueda</h2>
         </div>
-
-        <div class="sla-filter-bar__actions">
-          <button class="sla-filter-bar__btn-export" @click="emitExportar">
-            <span class="sla-filter-bar__btn-icon">⬇</span>
-            Exportar
-          </button>
-          <button class="sla-filter-bar__btn-primary" @click="emitNuevoRegistro">
-            <span class="sla-filter-bar__btn-icon">+</span>
-            Nueva Solicitud
-          </button>
+        <div class="filtros-header__actions">
+          <q-btn
+            outline
+            color="primary"
+            icon="download"
+            label="Plantilla Excel"
+            @click="emitDescargarPlantilla"
+            unelevated
+            class="q-mr-sm"
+          />
+          <q-btn
+            outline
+            color="grey-7"
+            icon="file_download"
+            label="Exportar"
+            @click="emitExportar"
+            unelevated
+            class="q-mr-sm"
+          />
+          <q-btn
+            unelevated
+            color="primary"
+            icon="add"
+            label="Nueva Solicitud"
+            @click="emitNuevoRegistro"
+          />
         </div>
       </div>
 
-      <!-- Segunda fila: Filtros avanzados -->
-      <div class="sla-filter-bar__filters">
-        <!-- Fecha Solicitud -->
-        <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Fecha Solicitud</label>
-          <input
-            v-model="fechaInicio"
-            type="date"
-            class="sla-filter-bar__input"
-            placeholder="Fecha solicitud"
-          />
-        </div>
-
-        <!-- Fecha Ingreso -->
-        <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Fecha Ingreso</label>
-          <input
-            v-model="fechaFin"
-            type="date"
-            class="sla-filter-bar__input"
-            placeholder="Fecha ingreso"
-          />
-        </div>
-
-        <!-- Estado Solicitud -->
-        <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Estado Solicitud</label>
-          <select v-model="estado" class="sla-filter-bar__select">
-            <option value="">Todos los estados</option>
-            <option value="ACTIVO">Activo</option>
-            <option value="INACTIVO">Inactivo</option>
-            <option value="PREVENTIVO">Preventivo</option>
-          </select>
-        </div>
-
-        <!-- Código SLA -->
-        <div class="sla-filter-bar__filter">
-          <label class="sla-filter-bar__label">Código SLA</label>
-          <input
-            v-model="codigoSla"
-            type="text"
-            class="sla-filter-bar__input"
-            placeholder="Ej: SLA1"
-          />
-        </div>
-
-        <!-- Botón Limpiar Filtros -->
-        <button class="sla-filter-bar__btn-clear" @click="limpiarFiltros">Limpiar</button>
+      <!-- Barra de búsqueda global -->
+      <div class="filtros-search q-mb-lg">
+        <SlaSearchInput v-model="searchText" />
       </div>
-    </div>
-  </div>
+
+      <!-- Tabs de filtros -->
+      <div class="filtros-tabs-container q-mb-md">
+        <q-btn-toggle
+          v-model="tabActivo"
+          spread
+          no-caps
+          rounded
+          unelevated
+          toggle-color="primary"
+          color="grey-3"
+          text-color="grey-7"
+          :options="[
+            { label: 'Fechas', value: 'fechas', icon: 'event' },
+            { label: 'Estados', value: 'estados', icon: 'assignment' },
+            { label: 'Códigos SLA', value: 'codigos', icon: 'tag' },
+          ]"
+          class="filtros-tabs"
+        />
+      </div>
+
+      <!-- Contenido de cada tab -->
+      <transition name="fade" mode="out-in">
+        <!-- Tab: Fechas -->
+        <div v-if="tabActivo === 'fechas'" key="fechas" class="filtros-content">
+          <div class="filtros-grid">
+            <!-- Fecha Solicitud -->
+            <div class="filtros-group">
+              <label class="filtros-label">
+                <q-icon name="calendar_today" size="18px" class="q-mr-xs" />
+                Fecha Solicitud
+              </label>
+              <div class="filtros-date-range">
+                <q-input
+                  outlined
+                  dense
+                  v-model="fechaSolicitudDesde"
+                  type="date"
+                  label="Desde"
+                  stack-label
+                />
+                <q-input
+                  outlined
+                  dense
+                  v-model="fechaSolicitudHasta"
+                  type="date"
+                  label="Hasta"
+                  stack-label
+                />
+              </div>
+            </div>
+
+            <!-- Fecha Ingreso -->
+            <div class="filtros-group">
+              <label class="filtros-label">
+                <q-icon name="login" size="18px" class="q-mr-xs" />
+                Fecha Ingreso
+              </label>
+              <div class="filtros-date-range">
+                <q-input
+                  outlined
+                  dense
+                  v-model="fechaIngresoDesde"
+                  type="date"
+                  label="Desde"
+                  stack-label
+                />
+                <q-input
+                  outlined
+                  dense
+                  v-model="fechaIngresoHasta"
+                  type="date"
+                  label="Hasta"
+                  stack-label
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Estados -->
+        <div v-else-if="tabActivo === 'estados'" key="estados" class="filtros-content">
+          <div class="filtros-grid">
+            <!-- Estado SLA (Cumplimiento) -->
+            <div class="filtros-group">
+              <label class="filtros-label">
+                <q-icon name="trending_up" size="18px" class="q-mr-xs" />
+                Estado SLA (Cumplimiento)
+              </label>
+              <q-select
+                outlined
+                dense
+                v-model="estadoCumplimientoSla"
+                :options="opcionesEstadoCumplimiento"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+              />
+            </div>
+
+            <!-- Estado de la Solicitud -->
+            <div class="filtros-group">
+              <label class="filtros-label">
+                <q-icon name="assignment_turned_in" size="18px" class="q-mr-xs" />
+                Estado de la Solicitud
+              </label>
+              <q-select
+                outlined
+                dense
+                v-model="estadoSolicitud"
+                :options="opcionesEstadoSolicitud"
+                option-value="value"
+                option-label="label"
+                emit-value
+                map-options
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab: Códigos SLA -->
+        <div v-else-if="tabActivo === 'codigos'" key="codigos" class="filtros-content">
+          <div class="filtros-group">
+            <label class="filtros-label">
+              <q-icon name="tag" size="18px" class="q-mr-xs" />
+              Códigos SLA (Selección múltiple)
+            </label>
+            <q-select
+              outlined
+              dense
+              v-model="codigoSla"
+              :options="opcionesCodigoSla"
+              option-value="value"
+              option-label="label"
+              emit-value
+              map-options
+              multiple
+              clearable
+              use-chips
+              :loading="loadingCodigos"
+              placeholder="Seleccionar uno o más códigos"
+            />
+          </div>
+        </div>
+      </transition>
+
+      <!-- Resumen de filtros activos y botón limpiar -->
+      <div class="filtros-footer q-mt-lg">
+        <div class="filtros-summary">
+          <q-chip v-if="filtrosActivos > 0" color="primary" text-color="white" icon="filter_list">
+            {{ filtrosActivos }} filtro(s) activo(s)
+          </q-chip>
+        </div>
+        <q-btn
+          v-if="filtrosActivos > 0"
+          outline
+          color="grey-7"
+          icon="clear"
+          label="Limpiar filtros"
+          @click="limpiarFiltros"
+          size="sm"
+        />
+      </div>
+    </q-card-section>
+  </q-card>
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, watch, onMounted, computed } from 'vue'
+import { api } from 'boot/axios'
 import SlaSearchInput from './SlaSearchInput.vue'
 
-const emit = defineEmits(['filtrar', 'exportar', 'nuevo-registro'])
-
-const searchText = ref('')
-const fechaInicio = ref('')
-const fechaFin = ref('')
-const estado = ref('')
-const codigoSla = ref('')
-
-// Emitir cambios de filtros
-const emitirFiltros = () => {
-  emit('filtrar', {
-    searchText: searchText.value,
-    fechaInicio: fechaInicio.value,
-    fechaFin: fechaFin.value,
-    estado: estado.value,
-    codigoSla: codigoSla.value,
-  })
-}
-
-// Watchers para emitir cambios en tiempo real
-watch([searchText, fechaInicio, fechaFin, estado, codigoSla], () => {
-  emitirFiltros()
+const props = defineProps({
+  estadosCumplimientoDisponibles: {
+    type: Array,
+    default: () => [],
+  },
+  estadosSolicitudDisponibles: {
+    type: Array,
+    default: () => [],
+  },
 })
 
-const limpiarFiltros = () => {
-  searchText.value = ''
-  fechaInicio.value = ''
-  fechaFin.value = ''
-  estado.value = ''
-  codigoSla.value = ''
+const emit = defineEmits(['filtrar', 'exportar', 'nuevo-registro', 'descargar-plantilla'])
+
+// Tab activo
+const tabActivo = ref('fechas')
+
+// Filtros
+const searchText = ref('')
+const fechaSolicitudDesde = ref('')
+const fechaSolicitudHasta = ref('')
+const fechaIngresoDesde = ref('')
+const fechaIngresoHasta = ref('')
+const estadoCumplimientoSla = ref('TODOS')
+const estadoSolicitud = ref('TODOS')
+const codigoSla = ref([])
+const opcionesCodigoSla = ref([])
+const loadingCodigos = ref(false)
+
+// Mapeo de etiquetas para los estados
+const labelsCumplimiento = {
+  EN_PROCESO: 'En proceso',
+  CUMPLE: 'Cumple SLA',
+  NO_CUMPLE: 'No cumple SLA',
+}
+
+const labelsSolicitud = {
+  ACTIVA: 'Activa',
+  INACTIVA: 'Inactiva',
+  VENCIDA: 'Vencida',
+  CERRADO: 'Cerrado',
+  EN_PROCESO: 'En proceso',
+}
+
+// Opciones dinámicas basadas en los estados disponibles
+const opcionesEstadoCumplimiento = computed(() => {
+  const opciones = [{ value: 'TODOS', label: 'Todos los estados SLA' }]
+  props.estadosCumplimientoDisponibles.forEach((estado) => {
+    opciones.push({
+      value: estado,
+      label: labelsCumplimiento[estado] || estado,
+    })
+  })
+  return opciones
+})
+
+const opcionesEstadoSolicitud = computed(() => {
+  const opciones = [{ value: 'TODOS', label: 'Todos los estados' }]
+  props.estadosSolicitudDisponibles.forEach((estado) => {
+    opciones.push({
+      value: estado,
+      label: labelsSolicitud[estado] || estado,
+    })
+  })
+  return opciones
+})
+
+// Computed: Contador de filtros activos
+const filtrosActivos = computed(() => {
+  let count = 0
+  if (searchText.value.trim()) count++
+  if (fechaSolicitudDesde.value) count++
+  if (fechaSolicitudHasta.value) count++
+  if (fechaIngresoDesde.value) count++
+  if (fechaIngresoHasta.value) count++
+  if (estadoCumplimientoSla.value !== 'TODOS') count++
+  if (estadoSolicitud.value !== 'TODOS') count++
+  if (codigoSla.value.length > 0) count++
+  return count
+})
+
+// Cargar códigos SLA activos desde la API
+const loadCodigosSla = async () => {
+  loadingCodigos.value = true
+  try {
+    const { data } = await api.get('/api/ConfigSla')
+    opcionesCodigoSla.value = data
+      .filter((config) => config.esActivo === true)
+      .map((config) => ({
+        value: config.codigoSla,
+        label: `${config.codigoSla} - ${config.tipoSolicitud || 'Sin tipo'}`,
+      }))
+  } catch (error) {
+    console.error('Error al cargar códigos SLA:', error)
+  } finally {
+    loadingCodigos.value = false
+  }
+}
+
+// Watchers para emitir filtros en tiempo real
+watch(
+  [
+    searchText,
+    fechaSolicitudDesde,
+    fechaSolicitudHasta,
+    fechaIngresoDesde,
+    fechaIngresoHasta,
+    estadoCumplimientoSla,
+    estadoSolicitud,
+    codigoSla,
+  ],
+  () => {
+    emitFiltros()
+  },
+)
+
+const emitFiltros = () => {
+  emit('filtrar', {
+    texto: searchText.value,
+    fechaSolicitudDesde: fechaSolicitudDesde.value,
+    fechaSolicitudHasta: fechaSolicitudHasta.value,
+    fechaIngresoDesde: fechaIngresoDesde.value,
+    fechaIngresoHasta: fechaIngresoHasta.value,
+    estadoCumplimientoSla: estadoCumplimientoSla.value,
+    estadoSolicitud: estadoSolicitud.value,
+    codigoSla: codigoSla.value,
+  })
 }
 
 const emitExportar = () => {
   emit('exportar')
 }
 
+const emitDescargarPlantilla = () => {
+  emit('descargar-plantilla')
+}
+
 const emitNuevoRegistro = () => {
   emit('nuevo-registro')
 }
+
+const limpiarFiltros = () => {
+  searchText.value = ''
+  fechaSolicitudDesde.value = ''
+  fechaSolicitudHasta.value = ''
+  fechaIngresoDesde.value = ''
+  fechaIngresoHasta.value = ''
+  estadoCumplimientoSla.value = 'TODOS'
+  estadoSolicitud.value = 'TODOS'
+  codigoSla.value = []
+}
+
+onMounted(() => {
+  loadCodigosSla()
+})
 </script>
 
 <style scoped>
-.sla-filter-bar {
-  background-color: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 16px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+/* ===== CARD PRINCIPAL ===== */
+.filtros-card {
+  border-radius: 12px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: white;
 }
 
-.sla-filter-bar__content {
+/* ===== HEADER ===== */
+.filtros-header {
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
   gap: 16px;
 }
 
-.sla-filter-bar__top-row {
+.filtros-header__title {
   display: flex;
   align-items: center;
+}
+
+.filtros-header__actions {
+  display: flex;
   gap: 12px;
 }
 
-.sla-filter-bar__search {
+/* ===== BÚSQUEDA ===== */
+.filtros-search {
+  width: 100%;
+}
+
+/* ===== TABS ===== */
+.filtros-tabs-container {
+  max-width: 700px;
+}
+
+.filtros-tabs {
+  width: 100%;
+  height: 48px;
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.filtros-tabs :deep(.q-btn) {
+  font-weight: 500;
+  font-size: 15px;
+  letter-spacing: 0;
+}
+
+.filtros-tabs :deep(.q-btn__content) {
+  gap: 8px;
+}
+
+/* ===== CONTENIDO DE TABS ===== */
+.filtros-content {
+  padding: 16px 0;
+  min-height: 120px;
+}
+
+.filtros-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 24px;
+}
+
+.filtros-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.filtros-label {
+  font-weight: 600;
+  font-size: 14px;
+  color: #1e293b;
+  display: flex;
+  align-items: center;
+}
+
+.filtros-date-range {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+/* ===== FOOTER ===== */
+.filtros-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 16px;
+  border-top: 1px solid #e2e8f0;
+}
+
+.filtros-summary {
   flex: 1;
 }
 
-.sla-filter-bar__actions {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+/* ===== TRANSICIONES ===== */
+.fade-enter-active,
+.fade-leave-active {
+  transition: opacity 0.2s ease;
 }
 
-.sla-filter-bar__filters {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  align-items: end;
+.fade-enter-from,
+.fade-leave-to {
+  opacity: 0;
 }
 
-.sla-filter-bar__filter {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.sla-filter-bar__label {
-  font-size: 13px;
-  font-weight: 500;
-  color: #555;
-}
-
-.sla-filter-bar__input,
-.sla-filter-bar__select {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  font-size: 14px;
-  color: #333;
-  background-color: white;
-  transition: all 0.2s;
-}
-
-.sla-filter-bar__input:focus,
-.sla-filter-bar__select:focus {
-  outline: none;
-  border-color: #1976d2;
-  box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
-}
-
-.sla-filter-bar__select {
-  cursor: pointer;
-}
-
-.sla-filter-bar__btn-clear {
-  padding: 10px 16px;
-  background-color: #f5f5f5;
-  color: #666;
-  border: 1px solid #d0d0d0;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  height: 40px;
-}
-
-.sla-filter-bar__btn-clear:hover {
-  background-color: #e8e8e8;
-  border-color: #b0b0b0;
-}
-
-.sla-filter-bar__btn-export {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background-color: white;
-  color: #1976d2;
-  border: 1px solid #1976d2;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-  align-self: flex-end;
-}
-
-.sla-filter-bar__btn-export:hover {
-  background-color: #1976d2;
-  color: white;
-}
-
-.sla-filter-bar__btn-primary {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  padding: 10px 20px;
-  background-color: #1976d2;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  white-space: nowrap;
-}
-
-.sla-filter-bar__btn-primary:hover {
-  background-color: #1565c0;
-}
-
-.sla-filter-bar__btn-icon {
-  font-size: 16px;
-}
-
+/* ===== RESPONSIVE ===== */
 @media (max-width: 768px) {
-  .sla-filter-bar__top-row {
+  .filtros-header {
     flex-direction: column;
-    align-items: stretch;
+    align-items: flex-start;
   }
 
-  .sla-filter-bar__actions {
+  .filtros-header__title h2 {
+    font-size: 18px;
+  }
+
+  .filtros-header__actions {
+    width: 100%;
     flex-direction: column;
   }
 
-  .sla-filter-bar__filters {
+  .filtros-header__actions :deep(.q-btn) {
+    width: 100%;
+  }
+
+  .filtros-tabs-container {
+    max-width: 100%;
+  }
+
+  .filtros-tabs {
+    height: auto;
+  }
+
+  .filtros-tabs :deep(.q-btn) {
+    font-size: 13px;
+    padding: 8px 12px;
+  }
+
+  .filtros-grid {
     grid-template-columns: 1fr;
+  }
+
+  .filtros-date-range {
+    grid-template-columns: 1fr;
+  }
+
+  .filtros-footer {
+    flex-direction: column;
+    gap: 12px;
+    align-items: flex-start;
+  }
+
+  .filtros-card {
+    border-radius: 8px;
+  }
+
+  .filtros-content {
+    min-height: auto;
+  }
+}
+
+@media (max-width: 480px) {
+  .filtros-card :deep(.q-card-section) {
+    padding: 12px;
+  }
+
+  .filtros-header {
+    margin-bottom: 12px !important;
+  }
+
+  .filtros-search {
+    margin-bottom: 12px !important;
+  }
+
+  .filtros-tabs-container {
+    margin-bottom: 8px !important;
+  }
+
+  .filtros-label {
+    font-size: 13px;
+  }
+
+  .filtros-tabs :deep(.q-btn) {
+    font-size: 12px;
+    padding: 6px 8px;
+  }
+
+  .filtros-tabs :deep(.q-icon) {
+    font-size: 16px;
   }
 }
 </style>

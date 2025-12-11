@@ -43,6 +43,7 @@
                 label="Mes *"
                 outlined
                 dense
+                behavior="menu"
                 :rules="[(val) => !!val || 'El mes es obligatorio']"
               >
                 <template v-slot:prepend>
@@ -59,6 +60,8 @@
                 label="Año *"
                 outlined
                 dense
+                behavior="menu"
+                :disable="aniosDisponibles.length === 0"
                 :rules="[(val) => !!val || 'El año es obligatorio']"
               >
                 <template v-slot:prepend>
@@ -78,6 +81,8 @@
                 clearable
                 emit-value
                 map-options
+                behavior="menu"
+                :disable="tiposSlaDisponibles.length === 0"
               >
                 <template v-slot:prepend>
                   <q-icon name="category" color="primary" />
@@ -88,35 +93,31 @@
               </q-select>
             </div>
 
-            <!-- Dropdown Roles (Multi-selección) -->
+            <!-- Roles con Dialog (Multi-selección) -->
             <div class="col-12 col-md-3">
-              <q-select
-                v-model="filtros.roles"
-                :options="rolesDisponibles"
-                label="Roles/Áreas"
-                outlined
-                dense
-                multiple
-                use-chips
-                clearable
+              <q-btn
+                outline
+                :badge="selectedRoles.length > 0 ? selectedRoles.length : undefined"
+                @click="dialogRoles = true"
+                class="filter-button w-full"
+                :disable="rolesDisponibles.length === 0"
               >
-                <template v-slot:prepend>
-                  <q-icon name="people" color="primary" />
-                </template>
-                <template v-slot:hint> Opcional - Selecciona uno o varios </template>
-              </q-select>
+                <q-icon name="people" color="primary" class="q-mr-sm" />
+                <span>Roles/Áreas</span>
+              </q-btn>
             </div>
           </div>
 
           <!-- Chips de selección actual -->
-          <div v-if="filtrosActivos.length > 0" class="q-mt-md">
-            <div class="text-caption text-grey-7 q-mb-sm">Filtros aplicados:</div>
+          <div v-if="filtrosActivos.length > 0" class="q-mt-md filters-summary">
+            <div class="filters-summary-title text-caption q-mb-sm">Filtros aplicados:</div>
             <div class="row q-gutter-sm">
               <q-chip
                 v-for="chip in filtrosActivos"
                 :key="chip.key"
-                :color="chip.color"
+                color="grey-7"
                 text-color="white"
+                class="chip-padding"
                 :icon="chip.icon"
                 :removable="chip.removable"
                 @remove="removerFiltro(chip.key)"
@@ -136,7 +137,7 @@
               icon="search"
               @click="verReporte"
               :loading="loading"
-              :disable="!filtros.mes || !filtros.anio"
+              :disable="!filtros.mes || !filtros.anio || !filtros.codigoSla"
             />
             <q-btn
               outline
@@ -184,9 +185,9 @@
                   {{ tituloReporte }}
                 </div>
                 <div class="text-caption text-grey-7">
-                  Total recursos: <b>{{ resumen.totalRecursos }}</b> |
-                  SLA promedio: <b>{{ resumen.promedioSla }}%</b> |
-                  Roles incluidos: <b>{{ resumen.rolesIncluidos }}</b>
+                  Total recursos: <b>{{ resumen.totalRecursos }}</b> | SLA promedio:
+                  <b>{{ resumen.promedioSla }}%</b> | Roles incluidos:
+                  <b>{{ resumen.rolesIncluidos }}</b>
                 </div>
               </div>
 
@@ -197,26 +198,21 @@
                 row-key="rol"
                 flat
                 bordered
+                class="sla-report-table"
                 :pagination="{ rowsPerPage: 10 }"
               >
                 <!-- SLA -->
                 <template v-slot:body-cell-sla="props">
                   <q-td :props="props">
-                    <span v-if="props.row.numRecursos > 0">
-                      {{ props.row.sla.toFixed(2) }}%
-                    </span>
-                    <span v-else>NA</span>
+                    <span v-if="props.row.sla === 'NA'">NA</span>
+                    <span v-else>{{ props.row.sla }}%</span>
                   </q-td>
                 </template>
 
                 <!-- Indicador (círculo de color) -->
                 <template v-slot:body-cell-indicador="props">
                   <q-td :props="props">
-                    <q-icon
-                      name="circle"
-                      :color="getIndicadorColor(props.row)"
-                      size="18px"
-                    >
+                    <q-icon name="circle" :color="getIndicadorColor(props.row)" size="18px">
                       <q-tooltip>
                         {{ getIndicadorTexto(props.row) }}
                       </q-tooltip>
@@ -227,11 +223,102 @@
 
               <!-- Gráfico dinámico -->
               <div class="q-mt-xl">
-                <div class="text-subtitle1 text-weight-medium q-mb-sm">
-                  Gráfico de SLA por Rol
+                <div class="text-subtitle1 text-weight-medium q-mb-md">Gráfico de SLA por Rol</div>
+
+                <div
+                  class="text-caption text-grey-7 q-mb-sm"
+                  style="text-align: center; font-size: 14px"
+                >
+                  Etiqueta superior: SLA del rol (%).
                 </div>
-                <div class="chart-wrapper">
-                  <canvas ref="chartCanvas"></canvas>
+
+                <div class="chart-scroll">
+                  <div class="chart-wrapper">
+                    <canvas ref="chartCanvasRef" data-chart="sla" class="chart-canvas"></canvas>
+                  </div>
+                </div>
+
+                <!-- Leyenda del gráfico (vertical, izquierda, con borde fino) debajo del gráfico -->
+                <div class="legend-box q-mt-md">
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #1f60aa"></div>
+                    <span>Cumplen (solicitudes)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #35bdec"></div>
+                    <span>No cumplen (solicitudes)</span>
+                  </div>
+                  <div class="legend-item">
+                    <div class="legend-color" style="background-color: #9e9e9e"></div>
+                    <span>Sin recursos (NA)</span>
+                  </div>
+                </div>
+
+                <!-- Solicitudes en proceso (informativo, no incluidas en el cálculo) -->
+                <div v-if="solicitudesEnProceso.length" class="q-mt-lg">
+                  <div class="text-body1 q-mb-sm">
+                    Hay <b>{{ solicitudesEnProceso.length }}</b> solicitud(es) en proceso de SLA y
+                    no se toman en cuenta para este reporte.
+                  </div>
+                  <q-table
+                    :rows="solicitudesEnProceso"
+                    :columns="[
+                      {
+                        name: 'rol',
+                        label: 'ROL',
+                        field: (r) => r.rolRegistro?.nombreRol || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'resumen',
+                        label: 'RESUMEN',
+                        field: (r) => r.resumenSla || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'fecha',
+                        label: 'FECHA',
+                        field: (r) => r.fechaSolicitud || 'N/A',
+                        align: 'left',
+                      },
+                      {
+                        name: 'dias',
+                        label: 'DÍAS SLA',
+                        field: (r) => r.numDiasSla ?? 'N/A',
+                        align: 'center',
+                      },
+                    ]"
+                    row-key="idSolicitud"
+                    flat
+                    bordered
+                    :pagination="{ rowsPerPage: 5 }"
+                  />
+                  <div class="text-caption text-grey-7 q-mt-sm">
+                    Nota: estadoSolicitud = ACTIVA y estadoCumplimientoSla = EN_PROCESO_SLAX.
+                  </div>
+                </div>
+
+                <!-- Gráfico de torta (Resumen) -->
+                <div class="q-mt-lg" v-if="false">
+                  <div class="text-subtitle1 text-weight-medium q-mb-sm">Resumen del Reporte</div>
+                  <div
+                    class="chart-wrapper"
+                    style="
+                      position: relative;
+                      width: 100%;
+                      max-width: 480px;
+                      height: 260px;
+                      margin: 0 auto;
+                    "
+                  >
+                    <canvas ref="pieCanvasRef" data-chart="resumen" style="display: block"></canvas>
+                  </div>
+                  <div class="text-center text-body2 q-mt-sm">
+                    Total recursos: <b>{{ resumen.totalRecursos }}</b> | SLA promedio:
+                    <b>{{ resumen.promedioSla }}%</b> | Roles incluidos:
+                    <b>{{ resumen.rolesIncluidos }}</b> | Sin recursos (NA):
+                    <b>{{ conteoRolesNA }}</b>
+                  </div>
                 </div>
               </div>
             </div>
@@ -240,7 +327,7 @@
             <div class="row q-col-gutter-md q-mt-xl">
               <div class="col-12 col-md-auto">
                 <q-btn
-                  color="positive"
+                  color="primary"
                   icon="file_download"
                   label="Exportar a Excel"
                   :loading="exportandoExcel"
@@ -258,7 +345,6 @@
               </div>
               <div class="col-12 col-md-auto">
                 <q-btn
-                  outline
                   color="primary"
                   icon="email"
                   label="Enviar por correo"
@@ -277,22 +363,75 @@
         :loading="enviandoCorreo"
         @submit="enviarPorCorreo"
       />
+
+      <!-- Dialog para seleccionar Roles -->
+      <q-dialog v-model="dialogRoles">
+        <q-card style="min-width: 400px">
+          <q-card-section class="row items-center q-pb-none">
+            <div class="text-h6">Seleccionar Roles/Áreas</div>
+            <q-space />
+            <q-btn icon="close" flat round dense v-close-popup />
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-section class="q-pt-md">
+            <!-- Opción Todos -->
+            <div class="q-mb-md">
+              <q-checkbox
+                v-model="selectTodos"
+                label="Seleccionar todos"
+                @update:model-value="toggleTodos"
+              />
+            </div>
+
+            <q-separator class="q-mb-md" />
+
+            <!-- Lista de roles con scroll -->
+            <div
+              style="
+                max-height: 350px;
+                overflow-y: auto;
+                display: flex;
+                flex-direction: column;
+                gap: 8px;
+              "
+            >
+              <div v-for="rol in rolesDisponibles" :key="rol" class="role-checkbox-item">
+                <q-checkbox v-model="selectedRoles" :val="rol" :label="rol" />
+              </div>
+            </div>
+          </q-card-section>
+
+          <q-separator />
+
+          <q-card-actions align="right">
+            <q-btn flat label="Cancelar" v-close-popup />
+            <q-btn flat label="Aplicar" color="primary" v-close-popup />
+          </q-card-actions>
+        </q-card>
+      </q-dialog>
     </div>
   </q-page>
 </template>
 
 <script setup>
 // npm i jspdf html2canvas
-import { ref, computed, onMounted, onBeforeUnmount, nextTick } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount, nextTick, watch } from 'vue'
 import { useQuasar } from 'quasar'
 import { api } from 'boot/axios'
 import { Chart, registerables } from 'chart.js'
+import ChartDataLabels from 'chartjs-plugin-datalabels'
 import jsPDF from 'jspdf'
-import html2canvas from 'html2canvas'
+// import html2canvas from 'html2canvas'
+// Para Excel con estilos y gráficos embebidos
+import ExcelJS from 'exceljs'
+import autoTable from 'jspdf-autotable'
 import { useAppStore } from 'stores/app-store'
 import EnviarReporteDialog from 'components/Reportes/EnviarReporteDialog.vue'
+import LogoPng from 'src/assets/Tata_logo.png'
 
-Chart.register(...registerables)
+Chart.register(...registerables, ChartDataLabels)
 
 const $q = useQuasar()
 const appStore = useAppStore()
@@ -319,32 +458,38 @@ const mesesDisponibles = [
   'Septiembre',
   'Octubre',
   'Noviembre',
-  'Diciembre'
+  'Diciembre',
 ]
 
 const filtros = ref({
   mes: mesesDisponibles[new Date().getMonth()],
   anio: new Date().getFullYear(),
   codigoSla: null, // Código SLA: SLA1, SLA2, etc.
-  roles: []
+  roles: ['Todos los roles'],
 })
 
 const aniosDisponibles = ref([])
 const tiposSlaDisponibles = ref([]) // [{ label, value: codigoSla }]
 const rolesDisponibles = ref([]) // nombres de roles
+const selectedRoles = ref([]) // roles seleccionados en el popover
+const selectTodos = ref(false) // estado del checkbox "Seleccionar todos"
+const dialogRoles = ref(false) // control del dialog de roles
 
 // Datos del reporte
 const filasTabla = ref([]) // [{ rol, numRecursos, sla }]
 const resumen = ref({
   totalRecursos: 0,
   promedioSla: 0,
-  rolesIncluidos: 0
+  rolesIncluidos: 0,
 })
 const solicitudesFiltradas = ref([]) // para exportar (ids)
+const solicitudesEnProceso = ref([]) // ACTIVA + EN_PROCESO_SLAx (informativo)
 
 // Chart
-const chartCanvas = ref(null)
+const chartCanvasRef = ref(null)
 let chartInstance = null
+const pieCanvasRef = ref(null)
+let pieChartInstance = null
 
 // Para PDF
 const reporteRef = ref(null)
@@ -352,9 +497,37 @@ const reporteRef = ref(null)
 // Diálogo correo
 const dialogCorreo = ref(false)
 const enviandoCorreo = ref(false)
+// Cache PDF base64 (sin prefijo data:) para reutilizar en envío por correo
+const cachedPdfBase64 = ref(null)
 
 // Emit por compatibilidad
 const emit = defineEmits(['onFiltroChange'])
+
+// Utilidad para cargar imágenes como HTMLImageElement (para jsPDF.addImage)
+const loadImage = (src) =>
+  new Promise((resolve, reject) => {
+    const img = new Image()
+    img.crossOrigin = 'anonymous'
+    img.onload = () => resolve(img)
+    img.onerror = reject
+    img.src = src
+  })
+
+// Comprimir imagen: reescala y exporta como JPEG con calidad reducida
+const compressImage = (img, maxWidth = 400, quality = 0.6) => {
+  const ratio = img.naturalWidth / img.naturalHeight || 1
+  const targetW = Math.min(img.naturalWidth || maxWidth, maxWidth)
+  const targetH = Math.round(targetW / ratio)
+  const canvas = document.createElement('canvas')
+  canvas.width = targetW
+  canvas.height = targetH
+  const ctx = canvas.getContext('2d')
+  // Fondo blanco para evitar negro al convertir PNG con transparencia a JPEG
+  ctx.fillStyle = '#ffffff'
+  ctx.fillRect(0, 0, targetW, targetH)
+  ctx.drawImage(img, 0, 0, targetW, targetH)
+  return canvas.toDataURL('image/jpeg', quality)
+}
 
 // Columnas de la tabla
 const columnas = [
@@ -363,28 +536,28 @@ const columnas = [
     label: 'ROL',
     field: 'rol',
     align: 'left',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'numRecursos',
     label: 'NUM_RECURSOS',
     field: 'numRecursos',
     align: 'center',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'sla',
     label: 'SLA',
     field: 'sla',
     align: 'center',
-    sortable: true
+    sortable: true,
   },
   {
     name: 'indicador',
     label: 'INDICADOR',
     field: 'indicador',
-    align: 'center'
-  }
+    align: 'center',
+  },
 ]
 
 // Computeds
@@ -399,7 +572,7 @@ const filtrosActivos = computed(() => {
       label: `${filtros.value.mes} ${filtros.value.anio}`,
       icon: 'event',
       color: 'primary',
-      removable: false
+      removable: false,
     })
   }
 
@@ -409,17 +582,18 @@ const filtrosActivos = computed(() => {
       label: `SLA: ${filtros.value.codigoSla}`,
       icon: 'category',
       color: 'secondary',
-      removable: true
+      removable: true,
     })
   }
 
-  if (filtros.value.roles && filtros.value.roles.length > 0) {
+  if (selectedRoles.value && selectedRoles.value.length > 0) {
+    const esTodos = selectedRoles.value.length === rolesDisponibles.value.length
     activos.push({
       key: 'roles',
-      label: `Roles: ${filtros.value.roles.length}`,
+      label: esTodos ? 'Roles: Todos' : `Roles: ${selectedRoles.value.length}`,
       icon: 'people',
       color: 'accent',
-      removable: true
+      removable: false,
     })
   }
 
@@ -434,6 +608,9 @@ const tituloReporte = computed(() => {
   return `Reporte Indicadores ${codigo} - ${mes}-${anio}`
 })
 
+// Conteo de roles en estado NA (sin recursos)
+const conteoRolesNA = computed(() => filasTabla.value.filter((f) => f.sla === 'NA').length)
+
 // Auxiliares
 const getMesNumero = (nombreMes) => {
   const idx = mesesDisponibles.indexOf(nombreMes)
@@ -441,18 +618,39 @@ const getMesNumero = (nombreMes) => {
 }
 
 const getIndicadorColor = (row) => {
-  if (row.numRecursos === 0) return 'grey-5'
-  if (row.sla >= 90) return 'positive'
-  if (row.sla >= 70) return 'orange'
-  return 'negative'
+  // Gris cuando es NA (sin recursos)
+  if (row.sla === 'NA') return 'grey-5'
+  // Verde cuando es 100%
+  if (row.sla === 100) return 'green-custom'
+  // Rojo cuando es menor al 100%
+  return 'red-custom'
 }
 
 const getIndicadorTexto = (row) => {
-  if (row.numRecursos === 0) return 'Sin recursos (NA)'
-  if (row.sla >= 90) return 'Excelente (≥ 90%)'
-  if (row.sla >= 70) return 'Aceptable (≥ 70%)'
-  return 'Bajo (< 70%)'
+  if (row.sla === 'NA') return 'Sin recursos (NA)'
+  if (row.sla === 100) return 'Cumple 100%'
+  return `Incumplimiento (${row.sla}%)`
 }
+
+// Función para manejar seleccionar/deseleccionar todos
+const toggleTodos = (value) => {
+  if (value) {
+    // Si se marca "Todos", seleccionar todos los roles
+    selectedRoles.value = [...rolesDisponibles.value]
+  } else {
+    // Si se desmarca "Todos", deseleccionar todos
+    selectedRoles.value = []
+  }
+}
+
+// Actualizar selectTodos cuando cambian selectedRoles
+watch(
+  selectedRoles,
+  (newVal) => {
+    selectTodos.value = newVal.length === rolesDisponibles.value.length
+  },
+  { deep: true },
+)
 
 // Cargar combos iniciales
 const cargarConfiguracionesIniciales = async () => {
@@ -460,7 +658,7 @@ const cargarConfiguracionesIniciales = async () => {
     const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
       api.get('/api/Solicitud'),
       api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla')
+      api.get('/api/ConfigSla'),
     ])
 
     // Años disponibles desde Solicitud
@@ -469,22 +667,32 @@ const cargarConfiguracionesIniciales = async () => {
         ...new Set(
           solicitudesRes.data
             .filter((s) => s.fechaSolicitud)
-            .map((s) => new Date(s.fechaSolicitud).getFullYear())
-        )
+            .map((s) => new Date(s.fechaSolicitud).getFullYear()),
+        ),
       ].sort((a, b) => b - a)
 
-      aniosDisponibles.value =
-        aniosUnicos.length > 0 ? aniosUnicos : [new Date().getFullYear()]
+      aniosDisponibles.value = aniosUnicos
+      // Si el año actual en filtros no está en la lista, limpiarlo
+      if (!aniosDisponibles.value.includes(filtros.value.anio)) {
+        filtros.value.anio = null
+      }
     } else {
-      const currentYear = new Date().getFullYear()
-      aniosDisponibles.value = [currentYear - 2, currentYear - 1, currentYear, currentYear + 1]
+      // Sin datos: no mostrar años y limpiar selección
+      aniosDisponibles.value = []
+      filtros.value.anio = null
     }
 
     // Roles activos
     if (rolesRes.data) {
-      rolesDisponibles.value = rolesRes.data
-        .filter((r) => r.esActivo !== false)
-        .map((r) => r.nombreRol)
+      const nombresRoles = rolesRes.data.filter((r) => r.esActivo !== false).map((r) => r.nombreRol)
+      rolesDisponibles.value = nombresRoles
+      // Seleccionar todos solo si hay roles
+      selectedRoles.value = nombresRoles.length ? [...nombresRoles] : []
+      selectTodos.value = nombresRoles.length > 0
+    } else {
+      rolesDisponibles.value = []
+      selectedRoles.value = []
+      selectTodos.value = false
     }
 
     // Tipos SLA (código SLA)
@@ -495,18 +703,25 @@ const cargarConfiguracionesIniciales = async () => {
         if (!codigos.some((x) => x.value === c.codigoSla)) {
           codigos.push({
             label: `${c.codigoSla} - ${c.tipoSolicitud}`,
-            value: c.codigoSla
+            value: c.codigoSla,
           })
         }
       })
       tiposSlaDisponibles.value = codigos
+      // Validar código seleccionado contra opciones disponibles
+      if (!tiposSlaDisponibles.value.some((o) => o.value === filtros.value.codigoSla)) {
+        filtros.value.codigoSla = null
+      }
+    } else {
+      tiposSlaDisponibles.value = []
+      filtros.value.codigoSla = null
     }
   } catch (error) {
-    console.error('Error al cargar configuraciones iniciales:', error)
+    // console.error('Error al cargar configuraciones iniciales:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar configuraciones de filtros',
-      position: 'top-right'
+      position: 'top-right',
     })
   }
 }
@@ -517,7 +732,16 @@ const verReporte = async () => {
     $q.notify({
       type: 'warning',
       message: 'Mes y Año son obligatorios',
-      position: 'top-right'
+      position: 'top-right',
+    })
+    return
+  }
+
+  if (!filtros.value.codigoSla) {
+    $q.notify({
+      type: 'warning',
+      message: 'Tipo SLA es obligatorio',
+      position: 'top-right',
     })
     return
   }
@@ -530,7 +754,7 @@ const verReporte = async () => {
     const [solicitudesRes, rolesRes, configSlaRes] = await Promise.all([
       api.get('/api/Solicitud'),
       api.get('/api/RolRegistro'),
-      api.get('/api/ConfigSla')
+      api.get('/api/ConfigSla'),
     ])
 
     let solicitudes = solicitudesRes.data || []
@@ -538,85 +762,135 @@ const verReporte = async () => {
     const configsSla = configSlaRes.data || []
 
     // Filtrar por mes/año
+    // Nota: parseamos la fecha como "YYYY-MM-DD" para evitar problemas de zona horaria
     solicitudes = solicitudes.filter((s) => {
       if (!s.fechaSolicitud) return false
-      const fecha = new Date(s.fechaSolicitud)
-      return fecha.getFullYear() === filtros.value.anio && fecha.getMonth() + 1 === mesNumero
+      // Extraer año y mes directamente del string para evitar problemas de timezone
+      const [anioStr, mesStr] = s.fechaSolicitud.split('-')
+      const anioFecha = parseInt(anioStr, 10)
+      const mesFecha = parseInt(mesStr, 10)
+      return anioFecha === filtros.value.anio && mesFecha === mesNumero
     })
 
     // Filtrar por Código SLA
     if (filtros.value.codigoSla) {
-      const configsFiltradas = configsSla.filter(
-        (c) => c.codigoSla === filtros.value.codigoSla
-      )
+      const configsFiltradas = configsSla.filter((c) => c.codigoSla === filtros.value.codigoSla)
       const idsSla = configsFiltradas.map((c) => c.idSla)
       solicitudes = solicitudes.filter((s) => idsSla.includes(s.idSla))
     }
 
-    // Filtrar por roles
-    if (filtros.value.roles && filtros.value.roles.length > 0) {
+    // Filtrar por roles seleccionados
+    if (selectedRoles.value && selectedRoles.value.length > 0) {
       const rolesIds = todosRoles
-        .filter((r) => filtros.value.roles.includes(r.nombreRol))
+        .filter((r) => selectedRoles.value.includes(r.nombreRol))
         .map((r) => r.idRolRegistro)
       solicitudes = solicitudes.filter((s) => rolesIds.includes(s.idRolRegistro))
     }
 
-    // Calcular cumplimiento por solicitud
-    const solicitudesConSla = solicitudes.map((s) => {
-      const config = configsSla.find((c) => c.idSla === s.idSla)
-      const diasUmbral = config?.diasUmbral ?? 0
+    // Estados SLA válidos a considerar (soporta formatos con y sin guión bajo y diferentes números)
+    let estadosSlaValidos = []
+    if (filtros.value.codigoSla) {
+      // Intentar extraer el número del código SLA (e.g., SLA4 -> 4)
+      const match = String(filtros.value.codigoSla).match(/SLA(\d+)/i)
+      const n = match ? match[1] : ''
+      estadosSlaValidos = [
+        `CUMPLE SLA${n}`,
+        `NO CUMPLE SLA${n}`,
+        `CUMPLE_SLA${n}`,
+        `NO_CUMPLE_SLA${n}`,
+      ]
+    } else {
+      // Si no hay código SLA seleccionado, derivar los números desde ConfigSla
+      const nums = Array.from(
+        new Set(
+          (configsSla || [])
+            .map((c) => String(c.codigoSla || ''))
+            .map((code) => {
+              const m = code.match(/SLA(\d+)/i)
+              return m ? m[1] : null
+            })
+            .filter((x) => x),
+        ),
+      )
+      estadosSlaValidos = nums.flatMap((n) => [
+        `CUMPLE SLA${n}`,
+        `NO CUMPLE SLA${n}`,
+        `CUMPLE_SLA${n}`,
+        `NO_CUMPLE_SLA${n}`,
+      ])
+    }
 
-      let cumpleSla = false
-      if (s.fechaSolicitud && s.fechaIngreso) {
-        const fechaSol = new Date(s.fechaSolicitud)
-        const fechaIng = new Date(s.fechaIngreso)
-        const diffMs = fechaIng - fechaSol
-        const diasTranscurridos = Math.floor(diffMs / (1000 * 60 * 60 * 24))
-        cumpleSla = diasTranscurridos <= diasUmbral
+    // Filtrar solicitudes que tengan un estado SLA válido
+    const solicitudesConEstadoValido = solicitudes.filter(
+      (s) => s.estadoCumplimientoSla && estadosSlaValidos.includes(s.estadoCumplimientoSla),
+    )
+
+    solicitudesFiltradas.value = solicitudesConEstadoValido
+
+    // Solicitudes en proceso (no consideradas en el reporte)
+    const esEnProceso = (estado) => /^(EN_PROCESO_SLA\d+)$/i.test(String(estado || ''))
+    const solicitudesProceso = solicitudes.filter(
+      (s) => s.estadoSolicitud === 'ACTIVA' && esEnProceso(s.estadoCumplimientoSla),
+    )
+    solicitudesEnProceso.value = solicitudesProceso
+
+    // Determinar qué roles mostrar en la tabla
+    const rolesParaTabla = todosRoles.filter(
+      (r) => r.esActivo !== false && selectedRoles.value.includes(r.nombreRol),
+    )
+
+    // Construir tabla por rol (solo los roles seleccionados)
+    const filas = rolesParaTabla.map((rol) => {
+      const solicitudesRol = solicitudesConEstadoValido.filter(
+        (s) => s.idRolRegistro === rol.idRolRegistro,
+      )
+      const total = solicitudesRol.length
+      const cumplen = solicitudesRol.filter(
+        (s) =>
+          s.estadoCumplimientoSla &&
+          /^(CUMPLE SLA\d+|CUMPLE_SLA\d+)$/i.test(s.estadoCumplimientoSla),
+      ).length
+      const noCumplen = total - cumplen
+
+      let sla
+      if (total === 0) {
+        // NA cuando no hay solicitudes
+        sla = 'NA'
+      } else if (cumplen === total) {
+        // 100% cuando todas las solicitudes cumplen
+        sla = 100
+      } else {
+        // Calcular porcentaje
+        sla = parseFloat(((cumplen / total) * 100).toFixed(2))
       }
 
-      return { ...s, cumpleSla }
+      return {
+        rol: rol.nombreRol,
+        numRecursos: total,
+        sla: sla,
+        cumplen,
+        noCumplen,
+      }
     })
-
-    solicitudesFiltradas.value = solicitudesConSla
-
-    // Construir tabla por rol (incluyendo roles con 0 recursos)
-    const filas = (todosRoles || [])
-      .filter((r) => r.esActivo !== false)
-      .map((rol) => {
-        const solicitudesRol = solicitudesConSla.filter(
-          (s) => s.idRolRegistro === rol.idRolRegistro
-        )
-        const total = solicitudesRol.length
-        const cumplen = solicitudesRol.filter((s) => s.cumpleSla).length
-        const porcentaje = total > 0 ? (cumplen / total) * 100 : 0
-
-        return {
-          rol: rol.nombreRol,
-          numRecursos: total,
-          sla: total > 0 ? parseFloat(porcentaje.toFixed(2)) : 0
-        }
-      })
 
     filasTabla.value = filas
 
     // Resumen
-    const rolesConRecursos = filas.filter((f) => f.numRecursos > 0)
+    const rolesConRecursos = filas.filter((f) => f.numRecursos > 0 && f.sla !== 'NA')
     const totalRecursos = rolesConRecursos.reduce((acc, f) => acc + f.numRecursos, 0)
     const promedioSla =
       rolesConRecursos.length > 0
         ? parseFloat(
-            (
-              rolesConRecursos.reduce((acc, f) => acc + f.sla, 0) /
-              rolesConRecursos.length
-            ).toFixed(2)
+            (rolesConRecursos.reduce((acc, f) => acc + f.sla, 0) / rolesConRecursos.length).toFixed(
+              2,
+            ),
           )
         : 0
 
     resumen.value = {
       totalRecursos,
       promedioSla,
-      rolesIncluidos: filas.length
+      rolesIncluidos: filas.length,
     }
 
     // Persistir filtros
@@ -626,44 +900,91 @@ const verReporte = async () => {
     emit('onFiltroChange', {
       filtros: filtros.value,
       datos: filasTabla.value,
-      resumen: resumen.value
+      resumen: resumen.value,
     })
-
-    await nextTick()
-    crearGrafico()
   } catch (error) {
-    console.error('Error al calcular reporte:', error)
+    // console.error('Error al calcular reporte:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al calcular el reporte',
       position: 'top-right',
-      timeout: 3000
+      timeout: 3000,
     })
   } finally {
     loading.value = false
+
+    // Crear el gráfico después de que loading sea false y el DOM se actualice
+    await nextTick()
+    await nextTick()
+    try {
+      crearGrafico()
+      // crearGraficoResumen() // ocultado: no crear gráfico de resumen
+    } catch (graficoError) {
+      // console.error('Error al crear el gráfico:', graficoError)
+    }
   }
 }
 
 const crearGrafico = () => {
+  // console.log('=== INICIANDO crearGrafico ===')
+
+  // Buscar el canvas en el DOM
+  const canvasElement = document.querySelector('canvas[data-chart="sla"]')
+  // console.log('canvasElement encontrado:', !!canvasElement)
+
+  if (!canvasElement) {
+    // console.log('ERROR: No se encontró el canvas en el DOM')
+    return
+  }
+
   if (chartInstance) {
+    // console.log('Destruyendo gráfico anterior')
     chartInstance.destroy()
   }
 
-  if (!chartCanvas.value || !filasTabla.value.length) return
+  if (!filasTabla.value.length) {
+    // console.log('ERROR: filasTabla está vacía')
+    return
+  }
 
-  const ctx = chartCanvas.value.getContext('2d')
+  // console.log('Obteniendo contexto del canvas')
+  const ctx = canvasElement.getContext('2d')
+  // console.log('ctx:', !!ctx)
 
-  const filasConDatos = filasTabla.value.filter((f) => f.numRecursos > 0)
+  // Usar directamente todas las filas de la tabla (que ya contiene todos los roles seleccionados)
+  const filasConDatos = filasTabla.value
+
+  if (!filasConDatos.length) {
+    // console.log('ERROR: No hay filas con datos válidos')
+    return
+  }
 
   const labels = filasConDatos.map((f) => f.rol)
-  const data = filasConDatos.map((f) => f.sla)
-  const backgroundColors = filasConDatos.map((f) => {
-    const color = getIndicadorColor(f)
-    if (color === 'positive') return 'rgba(76, 175, 80, 0.8)'
-    if (color === 'orange') return 'rgba(255, 152, 0, 0.8)'
-    if (color === 'negative') return 'rgba(244, 67, 54, 0.8)'
-    return 'rgba(158, 158, 158, 0.8)'
+  // Para datos, mostrar el SLA o 0 si no hay recursos
+  const dataBruto = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
+  const numRecursos = filasConDatos.map((f) => f.numRecursos)
+
+  // Normalizar segmentos para que la altura total de la barra sea el SLA% del rol
+  // Segmento verde = sla * (cumplen/total), segmento rojo = sla * (noCumplen/total)
+  const dataCumple = dataBruto.map((val, idx) => {
+    const fila = filasConDatos[idx]
+    if (fila.numRecursos === 0 || val === 'NA') return 0
+    return parseFloat((val * (fila.cumplen / fila.numRecursos) || 0).toFixed(2))
   })
+
+  const dataNoCumple = dataBruto.map((val, idx) => {
+    const fila = filasConDatos[idx]
+    if (fila.numRecursos === 0 || val === 'NA') return 0
+    return parseFloat((val * (fila.noCumplen / fila.numRecursos) || 0).toFixed(2))
+  })
+
+  // console.log('Creando Chart con datos:', { labels, dataCumple, dataNoCumple, numRecursos })
+
+  // Determinar si se debe rotar los labels del eje X
+  // Si hay muchos roles (más de 5), rotar 45 grados
+  const debeRotar = labels.length > 5
+  const maxRotation = debeRotar ? 45 : 0
+  const minRotation = debeRotar ? 45 : 0
 
   chartInstance = new Chart(ctx, {
     type: 'bar',
@@ -671,37 +992,201 @@ const crearGrafico = () => {
       labels,
       datasets: [
         {
-          label: 'SLA (%)',
-          data,
-          backgroundColor: backgroundColors
-        }
-      ]
+          label: 'Cumplen (SLA%)',
+          data: dataCumple,
+          backgroundColor: '#1f60aa',
+          borderColor: '#1f60aa',
+          borderWidth: 2,
+          hoverBackgroundColor: '#1f60aa',
+          hoverBorderColor: '#1f60aa',
+          stack: 'sla',
+          datalabels: {
+            labels: {
+              inner: {
+                anchor: 'center',
+                align: 'center',
+                color: '#fff',
+                font: { weight: 'bold', size: 12 },
+                formatter: () => '', // Ocultar número interno
+              },
+            },
+          },
+        },
+        {
+          label: 'No cumplen (%)',
+          data: dataNoCumple,
+          backgroundColor: '#35bdec',
+          borderColor: '#35bdec',
+          borderWidth: 2,
+          hoverBackgroundColor: '#35bdec',
+          hoverBorderColor: '#35bdec',
+          stack: 'sla',
+          datalabels: {
+            labels: {
+              inner: {
+                anchor: 'center',
+                align: 'center',
+                color: '#fff',
+                font: { weight: 'bold', size: 12 },
+                formatter: () => '', // Ocultar número interno
+              },
+              top: {
+                anchor: 'end',
+                align: 'top',
+                offset: 5,
+                color: '#333',
+                font: { weight: 'bold', size: 15 },
+                formatter: (value, context) => {
+                  const idx = context.dataIndex
+                  const fila = filasConDatos[idx]
+                  if (!fila || fila.numRecursos === 0 || fila.sla === 'NA') return ''
+                  return `${fila.sla}%`
+                },
+              },
+            },
+          },
+        },
+        // Dataset fantasma para la etiqueta superior del SLA total
+      ],
     },
     options: {
       responsive: true,
       maintainAspectRatio: true,
-      aspectRatio: 2,
+      aspectRatio: 2.2,
       plugins: {
         legend: {
-          display: false
+          display: false,
         },
+        // Configuración base; las opciones específicas por dataset están definidas en cada dataset
+        datalabels: {},
         tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14 },
+          bodyFont: { size: 13 },
+          // Un solo tooltip por columna con resumen
+          mode: 'index',
+          intersect: false,
           callbacks: {
-            label: (context) => `${context.parsed.y}%`
-          }
-        }
+            title: (items) => `Rol: ${items[0].label}`,
+            // Ocultar líneas por-item para evitar múltiples entradas
+            label: () => '',
+            afterLabel: () => '',
+            footer: (items) => {
+              const idx = items[0].dataIndex
+              const fila = filasConDatos[idx]
+              const slaValue = fila.sla === 'NA' ? 0 : fila.sla
+              const total = numRecursos[idx]
+              const cumplenCant = fila.cumplen || 0
+              const noCumplenCant = fila.noCumplen || 0
+              const cumplenPct = dataCumple[idx] || 0
+              const noCumplenPct = dataNoCumple[idx] || 0
+              return [
+                `SLA del rol: ${slaValue}%`,
+                `Total solicitudes: ${total}`,
+                `Cumplen: ${cumplenCant} (${cumplenPct}%)`,
+                `No cumplen: ${noCumplenCant} (${noCumplenPct}%)`,
+              ]
+            },
+          },
+        },
+      },
+      layout: {
+        padding: {
+          top: 40,
+        },
       },
       scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Roles/Áreas',
+          },
+          ticks: {
+            maxRotation,
+            minRotation,
+          },
+          stacked: true,
+        },
         y: {
           beginAtZero: true,
           max: 100,
+          title: {
+            display: true,
+            text: 'SLA (%)',
+          },
           ticks: {
-            callback: (value) => `${value}%`
-          }
-        }
-      }
-    }
+            callback: (value) => `${value}%`,
+          },
+          stacked: true,
+        },
+      },
+    },
   })
+
+  // console.log('Chart creado exitosamente')
+}
+
+const _crearGraficoResumen = () => {
+  try {
+    const canvasElement = document.querySelector('canvas[data-chart="resumen"]')
+    if (!canvasElement) return
+
+    if (pieChartInstance) {
+      pieChartInstance.destroy()
+    }
+
+    const ctx = canvasElement.getContext('2d')
+
+    const promedio = typeof resumen.value.promedioSla === 'number' ? resumen.value.promedioSla : 0
+    const cumple = Math.max(0, Math.min(100, parseFloat(promedio.toFixed(2))))
+    const noCumple = parseFloat((100 - cumple).toFixed(2))
+
+    pieChartInstance = new Chart(ctx, {
+      type: 'doughnut',
+      data: {
+        labels: ['SLA promedio (cumple)', 'Resto hasta 100%'],
+        datasets: [
+          {
+            data: [cumple, noCumple],
+            backgroundColor: ['#21ba45', '#f60008'],
+            borderColor: ['#21ba45', '#f60008'],
+            borderWidth: 2,
+            hoverBackgroundColor: ['#21ba45', '#f60008'],
+            hoverBorderColor: ['#21ba45', '#f60008'],
+          },
+        ],
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: true,
+        aspectRatio: 1.6,
+        cutout: '60%',
+        plugins: {
+          legend: {
+            display: true,
+            position: 'bottom',
+          },
+          tooltip: {
+            callbacks: {
+              label: (context) => {
+                const value = context.parsed
+                const label = context.label || ''
+                return `${label}: ${value}%`
+              },
+            },
+          },
+          datalabels: {
+            color: '#333',
+            font: { weight: 'bold', size: 12 },
+            formatter: (value) => `${Math.round(value)}%`,
+          },
+        },
+      },
+    })
+  } catch (error) {
+    // console.error('Error en crearGraficoResumen:', error)
+  }
 }
 
 // Limpiar filtros y reporte
@@ -710,8 +1195,11 @@ const limpiarFiltros = () => {
     mes: mesesDisponibles[new Date().getMonth()],
     anio: new Date().getFullYear(),
     codigoSla: null,
-    roles: []
   }
+
+  // Restablecer roles a todos seleccionados
+  selectedRoles.value = [...rolesDisponibles.value]
+  selectTodos.value = true
 
   filasTabla.value = []
   resumen.value = { totalRecursos: 0, promedioSla: 0, rolesIncluidos: 0 }
@@ -727,7 +1215,7 @@ const limpiarFiltros = () => {
   $q.notify({
     type: 'info',
     message: 'Filtros y resultados restablecidos',
-    position: 'top-right'
+    position: 'top-right',
   })
 }
 
@@ -735,54 +1223,286 @@ const limpiarFiltros = () => {
 const removerFiltro = (key) => {
   if (key === 'codigoSla') {
     filtros.value.codigoSla = null
-  } else if (key === 'roles') {
-    filtros.value.roles = []
   }
 }
 
-// Exportar a Excel usando /api/reporte/generar
+// Exportar a Excel desde el frontend con estilos (ExcelJS)
 const exportarExcel = async () => {
-  if (!solicitudesFiltradas.value.length) {
+  if (!filasTabla.value.length) {
     $q.notify({
       type: 'warning',
       message: 'No hay datos para exportar',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
 
+  // Validar que existe un token antes de intentar la exportación
+  const token = localStorage.getItem('authToken')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.',
+      position: 'top-right',
+    })
+    // console.error('❌ exportarExcel: No hay token en localStorage')
+    return
+  }
+
+  // console.log('📊 Iniciando exportación Excel:', {
+  //   filasTabla: filasTabla.value.length,
+  //   solicitudesFiltradas: solicitudesFiltradas.value.length,
+  //   tokenExists: !!token,
+  //   tokenLength: token.length,
+  // })
+
+  $q.notify({
+    type: 'info',
+    message: 'Generando reporte Excel...',
+    caption: 'Procesando datos',
+    position: 'top-right',
+    timeout: 2000,
+    icon: 'description',
+  })
+
   exportandoExcel.value = true
 
   try {
+    // Registrar el reporte en el backend para que aparezca en el historial
     const ids = solicitudesFiltradas.value.map((s) => s.idSolicitud)
 
     const payload = {
       tipoReporte: 'SLA_MENSUAL',
-      formato: 'XLSX',
+      formato: 'EXCEL',
       idsSolicitudes: ids,
       filtrosJson: JSON.stringify({
-        CodigoSla: filtros.value.codigoSla,
-        Anio: filtros.value.anio,
-        Mes: getMesNumero(filtros.value.mes)
-      })
+        mes: filtros.value.mes,
+        anio: filtros.value.anio,
+        codigoSla: filtros.value.codigoSla,
+      }),
     }
 
-    const res = await api.post('/api/reporte/generar', payload)
-    const reporte = res.data
+    // console.log('📤 Enviando request a /api/reporte/generar:', {
+    //   payload,
+    //   headers: { Authorization: `Bearer ${token.substring(0, 20)}...` },
+    // })
 
-    const baseUrl = api.defaults.baseURL || ''
-    const normalizedPath = (reporte.rutaArchivo || '').replace(/\\/g, '/')
-    const urlDescarga = `${baseUrl}${normalizedPath}`
+    try {
+      const _res = await api.post('/api/reporte/generar', payload)
+      // console.log('✅ Reporte EXCEL registrado en backend:', _res.data)
+      $q.notify({
+        type: 'positive',
+        message: 'Reporte Excel registrado exitosamente',
+        position: 'top-right',
+        timeout: 3000,
+        icon: 'check_circle',
+      })
+    } catch (apiError) {
+      // console.error('❌ Error registrando reporte EXCEL en API:', {
+      //   error: apiError,
+      //   status: apiError.response?.status,
+      //   data: apiError.response?.data,
+      //   headers: apiError.config?.headers,
+      // })
 
-    window.open(urlDescarga, '_blank')
+      // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
+      const status = apiError.response?.status
+      const mensajeError =
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        apiError.response?.data ||
+        ''
+      const mensajeStr =
+        typeof mensajeError === 'string' ? mensajeError : JSON.stringify(mensajeError)
+
+      if (status === 401) {
+        // Distinguir entre diferentes tipos de error 401
+        const esFaltaClaim =
+          mensajeStr.toLowerCase().includes('claim') || mensajeStr.toLowerCase().includes('userid')
+
+        const esFaltaPermisos =
+          mensajeStr.toLowerCase().includes('permisos') ||
+          mensajeStr.toLowerCase().includes('permission') ||
+          mensajeStr.toLowerCase().includes('rol') ||
+          mensajeStr.toLowerCase().includes('role') ||
+          mensajeStr.toLowerCase().includes('forbidden')
+
+        if (esFaltaClaim) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'El servidor requiere configuración adicional para registrar reportes. Se generará el Excel localmente.',
+            caption: 'Nota técnica: Falta claim "UserId" en el token JWT',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        } else if (esFaltaPermisos) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'No tienes permisos para registrar reportes en el servidor. Se generará el Excel localmente.',
+            position: 'top-right',
+            timeout: 4000,
+          })
+        } else {
+          $q.notify({
+            type: 'warning',
+            message: 'Sesión expirada o sin autorización. Se generará el Excel localmente.',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        }
+      } else {
+        $q.notify({
+          type: 'warning',
+          message: 'No se pudo registrar el reporte en backend. Se generará el Excel localmente.',
+          position: 'top-right',
+        })
+      }
+    }
+
+    // Construir Excel estilizado (solo Resultados del Reporte)
+    const wb = new ExcelJS.Workbook()
+    wb.creator = 'TATA SLA'
+    wb.created = new Date()
+
+    const ws = wb.addWorksheet('Reporte')
+
+    // Título
+    const titulo = `Reporte SLA - ${filtros.value.codigoSla || 'TODOS'} - ${filtros.value.mes} ${
+      filtros.value.anio
+    }`
+    ws.mergeCells('A1:D1')
+    ws.getCell('A1').value = titulo
+    ws.getCell('A1').font = { size: 14, bold: true, color: { argb: 'FF1F60AA' } }
+    ws.getCell('A1').alignment = { vertical: 'middle', horizontal: 'center' }
+
+    // Encabezados
+    const headers = ['ROL', 'NUM_RECURSOS', 'SLA (%)', 'INDICADOR']
+    ws.addRow([]) // fila 2 vacía
+    ws.addRow(headers) // fila 3
+    const headerRow = ws.getRow(3)
+    headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } }
+    headerRow.alignment = { vertical: 'middle', horizontal: 'center' }
+    headerRow.height = 22
+    headerRow.eachCell((cell) => {
+      cell.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF1F60AA' },
+      }
+      cell.border = {
+        top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+        right: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+      }
+    })
+
+    // Datos
+    const datosTabla = filasTabla.value.map((fila) => [
+      fila.rol,
+      fila.numRecursos,
+      fila.sla === 'NA' ? 'NA' : fila.sla,
+      getIndicadorTexto(fila),
+    ])
+    datosTabla.forEach((row) => ws.addRow(row))
+
+    // Estilo de filas de datos
+    for (let r = 4; r <= ws.rowCount; r++) {
+      const row = ws.getRow(r)
+      row.height = 20
+      row.eachCell((cell, col) => {
+        cell.border = {
+          top: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          left: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          bottom: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+          right: { style: 'hair', color: { argb: 'FFDDDDDD' } },
+        }
+        if (col === 3) {
+          cell.alignment = { horizontal: 'center' }
+        }
+      })
+      // Bandas alternas
+      if (r % 2 === 0) {
+        ws.getRow(r).eachCell((cell) => {
+          cell.fill = {
+            type: 'pattern',
+            pattern: 'solid',
+            fgColor: { argb: 'FFF5F9FF' },
+          }
+        })
+      }
+    }
+
+    // Anchos de columna
+    ws.columns = [{ width: 26 }, { width: 14 }, { width: 10 }, { width: 30 }]
+
+    // Autofiltro y congelar encabezado
+    ws.autoFilter = {
+      from: 'A3',
+      to: `D${ws.rowCount}`,
+    }
+    ws.views = [{ state: 'frozen', ySplit: 3 }]
+
+    // Embeber gráfico como imagen (si existe instancia) optimizando tamaño
+    try {
+      if (chartInstance) {
+        const chartPng = chartInstance.toBase64Image('image/png', 1)
+        const tmpImg = new Image()
+        await new Promise((resolve) => {
+          tmpImg.onload = resolve
+          tmpImg.src = chartPng
+        })
+        const c = document.createElement('canvas')
+        const ctx = c.getContext('2d', { willReadFrequently: true })
+        const targetW = 1000
+        const ratio = (tmpImg.naturalWidth || 1000) / (tmpImg.naturalHeight || 600)
+        c.width = targetW
+        c.height = Math.round(targetW / ratio)
+        ctx.fillStyle = '#fff'
+        ctx.fillRect(0, 0, c.width, c.height)
+        ctx.drawImage(tmpImg, 0, 0, c.width, c.height)
+        const chartJpeg = c.toDataURL('image/jpeg', 0.7)
+        const imageId = wb.addImage({ base64: chartJpeg, extension: 'jpeg' })
+        // Posicionar imagen bajo la tabla
+        const startRow = ws.rowCount + 2
+        ws.addImage(imageId, {
+          tl: { col: 0, row: startRow },
+          ext: { width: 900, height: 420 },
+        })
+      }
+    } catch (e) {
+      // console.warn('No se pudo embeber la imagen del gráfico en Excel:', e)
+    }
+
+    // Generar archivo
+    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_$${
+      filtros.value.anio
+    }.xlsx`
+    const buffer = await wb.xlsx.writeBuffer()
+    const blob = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    })
+    const link = document.createElement('a')
+    link.href = URL.createObjectURL(blob)
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    $q.notify({
+      type: 'positive',
+      message: 'Excel exportado con estilos y gráfico',
+      position: 'top-right',
+    })
   } catch (error) {
-    console.error('Error al exportar a Excel:', error)
+    // console.error('Error al exportar a Excel:', error)
     $q.notify({
       type: 'negative',
-      message:
-        'Error al generar o descargar el Excel. Verifica el endpoint /api/reporte/generar y la publicación de /reports.',
+      message: 'Error al generar el archivo Excel',
       position: 'top-right',
-      timeout: 5000
+      timeout: 5000,
     })
   } finally {
     exportandoExcel.value = false
@@ -795,43 +1515,155 @@ const exportarPdf = async () => {
     $q.notify({
       type: 'warning',
       message: 'No hay contenido para exportar a PDF',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
 
+  // Validar que existe un token antes de intentar la exportación
+  const token = localStorage.getItem('authToken')
+  if (!token) {
+    $q.notify({
+      type: 'negative',
+      message: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.',
+      position: 'top-right',
+    })
+    // console.error('❌ exportarPdf: No hay token en localStorage')
+    return
+  }
+
+  // console.log('📄 Iniciando exportación PDF:', {
+  //   tokenExists: !!token,
+  //   tokenLength: token.length,
+  // })
+
+  $q.notify({
+    type: 'info',
+    message: 'Generando reporte PDF...',
+    caption: 'Preparando documento',
+    position: 'top-right',
+    timeout: 2000,
+    icon: 'picture_as_pdf',
+  })
+
   exportandoPdf.value = true
 
   try {
-    const elemento = reporteRef.value
+    // Primero, registrar el reporte en el backend
+    const ids = solicitudesFiltradas.value.map((s) => s.idSolicitud)
 
-    const canvas = await html2canvas(elemento, {
-      scale: 2
-    })
+    const payload = {
+      tipoReporte: 'SLA_MENSUAL',
+      formato: 'PDF',
+      idsSolicitudes: ids,
+      filtrosJson: JSON.stringify({
+        mes: filtros.value.mes,
+        anio: filtros.value.anio,
+        codigoSla: filtros.value.codigoSla,
+      }),
+    }
 
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF('l', 'mm', 'a4')
+    // console.log('📤 Enviando request a /api/reporte/generar (PDF):', payload)
 
-    const pageWidth = pdf.internal.pageSize.getWidth()
-    const pageHeight = pdf.internal.pageSize.getHeight()
+    try {
+      const _res = await api.post('/api/reporte/generar', payload)
+      // console.log('✅ Reporte PDF registrado en backend:', _res.data)
+      $q.notify({
+        type: 'positive',
+        message: 'Reporte PDF registrado exitosamente',
+        position: 'top-right',
+        timeout: 3000,
+        icon: 'check_circle',
+      })
+    } catch (apiError) {
+      // console.error('❌ Error registrando reporte PDF en API:', {
+      //   error: apiError,
+      //   status: apiError.response?.status,
+      //   data: apiError.response?.data,
+      // })
 
-    const imgWidth = pageWidth
-    const imgHeight = (canvas.height * imgWidth) / canvas.width
+      // Si falla el registro, continuar con generación local del PDF para no bloquear al usuario
+      const status = apiError.response?.status
+      const mensajeError =
+        apiError.response?.data?.message ||
+        apiError.response?.data?.error ||
+        apiError.response?.data ||
+        ''
+      const mensajeStr =
+        typeof mensajeError === 'string' ? mensajeError : JSON.stringify(mensajeError)
 
-    const y = imgHeight > pageHeight ? 0 : (pageHeight - imgHeight) / 2
+      if (status === 401) {
+        // Distinguir entre diferentes tipos de error 401
+        const esFaltaClaim =
+          mensajeStr.toLowerCase().includes('claim') || mensajeStr.toLowerCase().includes('userid')
 
-    pdf.addImage(imgData, 'PNG', 0, y, imgWidth, imgHeight)
+        const esFaltaPermisos =
+          mensajeStr.toLowerCase().includes('permisos') ||
+          mensajeStr.toLowerCase().includes('permission') ||
+          mensajeStr.toLowerCase().includes('rol') ||
+          mensajeStr.toLowerCase().includes('role') ||
+          mensajeStr.toLowerCase().includes('forbidden')
 
+        if (esFaltaClaim) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'El servidor requiere configuración adicional para registrar reportes. Se generará el PDF localmente.',
+            caption: 'Nota técnica: Falta claim "UserId" en el token JWT',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        } else if (esFaltaPermisos) {
+          $q.notify({
+            type: 'warning',
+            message:
+              'No tienes permisos para registrar reportes en el servidor. Se generará el PDF localmente.',
+            position: 'top-right',
+            timeout: 4000,
+          })
+        } else {
+          $q.notify({
+            type: 'warning',
+            message: 'Sesión expirada o sin autorización. Se generará el PDF localmente.',
+            position: 'top-right',
+            timeout: 5000,
+          })
+        }
+      } else {
+        $q.notify({
+          type: 'warning',
+          message: 'No se pudo registrar el reporte en backend. Se generará el PDF localmente.',
+          position: 'top-right',
+          timeout: 2500,
+        })
+      }
+    }
+    // Generar PDF optimizado y descargar
+    const base64 = await generarPdfBase64()
+    if (!base64) throw new Error('No se pudo generar el PDF')
+    cachedPdfBase64.value = base64
     const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
       filtros.value.anio
     }.pdf`
-    pdf.save(fileName)
+    const link = document.createElement('a')
+    link.href = 'data:application/pdf;base64,' + base64
+    link.download = fileName
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+
+    $q.notify({
+      type: 'positive',
+      message: 'PDF exportado exitosamente',
+      position: 'top-right',
+    })
   } catch (error) {
-    console.error('Error al exportar PDF:', error)
+    // console.error('Error al exportar PDF:', error)
+    // console.error('Detalles del error:', error.response?.data || error.message)
     $q.notify({
       type: 'negative',
-      message: 'Error al generar el PDF',
-      position: 'top-right'
+      message: `Error al generar o descargar el PDF: ${error.response?.data?.message || error.message}`,
+      position: 'top-right',
     })
   } finally {
     exportandoPdf.value = false
@@ -845,32 +1677,47 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
     $q.notify({
       type: 'warning',
       message: 'Ingresa al menos un correo destinatario',
-      position: 'top-right'
+      position: 'top-right',
     })
     return
   }
-
-  enviandoCorreo.value = true
   try {
-    // Aquí conectarás con tu futuro endpoint, por ejemplo:
-    // await api.post('/api/reporte/enviar', {
-    //   destinatarios: correos,
-    //   mensaje,
-    //   filtros: filtros.value
-    // })
+    // Generar (o reutilizar) PDF antes de activar loading para reducir tiempo de espera visible
+    let pdfBase64 = cachedPdfBase64.value
+    if (!pdfBase64) {
+      pdfBase64 = await generarPdfBase64()
+      cachedPdfBase64.value = pdfBase64
+    }
 
+    enviandoCorreo.value = true
+
+    const fileName = `Reporte_SLA_${filtros.value.codigoSla || 'TODOS'}_${filtros.value.mes}_${
+      filtros.value.anio
+    }.pdf`
+    const payload = {
+      tos: correos,
+      subject: `Reporte SLA - ${filtros.value.mes} ${filtros.value.anio}`,
+      message: `<p>Adjunto encontrará el reporte de indicadores SLA para ${filtros.value.mes} ${filtros.value.anio}.</p><p><strong>Código SLA:</strong> ${filtros.value.codigoSla}</p>`,
+      pdfBase64,
+      fileName,
+    }
+
+    const _res = await api.post('/api/reporte/enviar-correo', payload)
+    // console.log('Respuesta del envío de correos:', _res.data)
     $q.notify({
-      type: 'info',
-      message: 'Funcionalidad de envío por correo pendiente de implementación en el backend.',
+      type: 'positive',
+      message: `Reporte enviado exitosamente a ${correos.length} destinatario(s)`,
       position: 'top-right',
-      timeout: 4000
+      timeout: 4000,
     })
+    dialogCorreo.value = false
   } catch (error) {
-    console.error('Error al enviar correo:', error)
+    // console.error('Error al enviar correo:', error)
     $q.notify({
       type: 'negative',
-      message: 'Error al enviar correo',
-      position: 'top-right'
+      message: error.response?.data?.message || 'Error al enviar el reporte por correo',
+      position: 'top-right',
+      timeout: 5000,
     })
   } finally {
     enviandoCorreo.value = false
@@ -888,11 +1735,18 @@ onMounted(async () => {
       const parsed = JSON.parse(saved)
       filtros.value = {
         ...filtros.value,
-        ...parsed
+        ...parsed,
+      }
+      // Validar que los filtros restaurados existan en las opciones actuales
+      if (!aniosDisponibles.value.includes(filtros.value.anio)) {
+        filtros.value.anio = null
+      }
+      if (!tiposSlaDisponibles.value.some((o) => o.value === filtros.value.codigoSla)) {
+        filtros.value.codigoSla = null
       }
       await verReporte()
     } catch (e) {
-      console.warn('No se pudieron restaurar filtros guardados:', e)
+      // console.warn('No se pudieron restaurar filtros guardados:', e)
     }
   }
 
@@ -903,7 +1757,224 @@ onBeforeUnmount(() => {
   if (chartInstance) {
     chartInstance.destroy()
   }
+  if (pieChartInstance) {
+    pieChartInstance.destroy()
+  }
 })
+
+// Invalidate PDF cache when filters or selected roles change
+watch(
+  () => ({ ...filtros.value }),
+  () => {
+    cachedPdfBase64.value = null
+  },
+  { deep: true },
+)
+watch(selectedRoles, () => {
+  cachedPdfBase64.value = null
+})
+
+// Generar PDF (reutilizable) devolviendo base64 sin prefijo
+const generarPdfBase64 = async () => {
+  if (!reporteRef.value) return null
+  const pdf = new jsPDF('p', 'mm', 'a4')
+  const pageWidth = pdf.internal.pageSize.getWidth()
+  const pageHeight = pdf.internal.pageSize.getHeight()
+  let y = 10
+
+  // Logo
+  try {
+    const logoImg = await loadImage(LogoPng)
+    const logoW = 35
+    const logoH = (logoW * logoImg.naturalHeight) / logoImg.naturalWidth
+    const logoData = compressImage(logoImg, 320, 0.55)
+    pdf.addImage(logoData, 'JPEG', pageWidth - 10 - logoW, y, logoW, logoH)
+    y += logoH + 6
+  } catch (e) {
+    y += 4
+  }
+
+  // Títulos
+  pdf.setFontSize(14)
+  pdf.text('Reporte Indicadores SLA', 10, y)
+  y += 8
+  pdf.setFontSize(10)
+  pdf.text(`Período: ${filtros.value.mes} - ${filtros.value.anio}`, 10, y)
+  y += 5
+  pdf.text(`Código SLA: ${filtros.value.codigoSla || 'N/A'}`, 10, y)
+  y += 7
+
+  // Tabla: construir como texto con jsPDF-AutoTable (más liviano y nítido)
+  const headers = ['ROL', 'NUM_RECURSOS', 'SLA (%)', 'INDICADOR']
+  const rows = filasTabla.value.map((f) => [
+    f.rol,
+    f.numRecursos,
+    f.sla === 'NA' ? 'NA' : `${f.sla}%`,
+    '', // sin texto: dibujamos el círculo en didDrawCell
+  ])
+
+  autoTable(pdf, {
+    startY: y,
+    head: [headers],
+    body: rows,
+    headStyles: { fillColor: [25, 118, 210], textColor: [255, 255, 255], halign: 'center' },
+    styles: { fontSize: 9, cellPadding: 3, lineWidth: 0.1 },
+    columnStyles: { 1: { halign: 'center' }, 2: { halign: 'center' }, 3: { halign: 'center' } },
+    alternateRowStyles: { fillColor: [245, 245, 245] },
+    didDrawCell: (data) => {
+      // Dibujar indicador como círculo de color en la columna INDICADOR (index 3)
+      if (data.section === 'body' && data.column.index === 3) {
+        const rowIndex = data.row.index
+        const fila = filasTabla.value[rowIndex]
+        // Colores: verde si 100, rojo si <100, gris si NA
+        let color = [246, 0, 8] // rojo
+        if (fila?.sla === 'NA') {
+          color = [158, 158, 158]
+        } else if (fila?.sla === 100) {
+          color = [33, 186, 69]
+        }
+
+        const { x, y, width, height } = data.cell
+        const cx = x + width / 2
+        const cy = y + height / 2
+        const r = Math.min(width, height) / 5 // radio proporcional
+
+        pdf.setFillColor(color[0], color[1], color[2])
+        // jsPDF circle dibuja borde; usamos un pequeño círculo relleno
+        pdf.circle(cx, cy, r, 'F')
+      }
+    },
+  })
+  y = pdf.lastAutoTable.finalY + 8
+
+  // Título del gráfico
+  y += 10
+  pdf.setFontSize(11)
+  pdf.text('Gráfico de SLA por Rol', 10, y)
+  y += 6
+
+  // Gráfico principal (usar API ChartJS en lugar de html2canvas para performance)
+  if (chartInstance) {
+    // Ocultar tooltip/hover temporalmente para evitar el recuadro negro en la captura
+    const canvasEl = chartCanvasRef.value
+    const originalPointer = canvasEl?.style.pointerEvents
+
+    // Deshabilitar interacción del canvas temporalmente y forzar mouseleave
+    if (canvasEl) {
+      try {
+        canvasEl.style.pointerEvents = 'none'
+        const evt = new MouseEvent('mouseleave', { bubbles: true })
+        canvasEl.dispatchEvent(evt)
+      } catch (e) {
+        // console.warn('No se pudo forzar mouseleave del canvas:', e)
+      }
+    }
+
+    // Limpiar elementos activos del tooltip directamente (sin redibujar)
+    try {
+      if (chartInstance.tooltip) {
+        chartInstance.tooltip.setActiveElements([], { x: 0, y: 0 })
+        // Ocultar el tooltip directamente manipulando su estado interno
+        chartInstance.tooltip._active = []
+      }
+    } catch (e) {
+      // console.warn('No se pudo limpiar tooltip activo:', e)
+    }
+
+    // Pequeño retraso para asegurar que el navegador procese el mouseleave
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    // Redibujar solo el tooltip (no todo el gráfico) para limpiarlo
+    try {
+      chartInstance.tooltip?.draw(chartInstance.ctx)
+      // Forzar un render limpio sin animación
+      chartInstance.render()
+    } catch (e) {
+      // Si falla, intentar update silencioso como fallback
+      try {
+        chartInstance.update('none')
+      } catch (e2) {
+        // console.warn('No se pudo limpiar el gráfico:', e2)
+      }
+    }
+
+    // Pequeño retraso adicional
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const chartPng = chartInstance.toBase64Image('image/png', 1)
+
+    // Restaurar pointer-events del canvas
+    if (canvasEl) {
+      try {
+        canvasEl.style.pointerEvents = originalPointer ?? ''
+      } catch (e) {
+        // console.warn('No se pudo restaurar pointer-events del canvas:', e)
+      }
+    }
+    // Convertir PNG a JPEG optimizado para reducir peso en PDF
+    const tmp = new Image()
+    await new Promise((resolve) => {
+      tmp.onload = resolve
+      tmp.src = chartPng
+    })
+    const cnv = document.createElement('canvas')
+    const cctx = cnv.getContext('2d', { willReadFrequently: true })
+    // Aumentar resolución y calidad para mejor nitidez en PDF
+    const targetW = 1400
+    const ratio = (tmp.naturalWidth || 1400) / (tmp.naturalHeight || 700)
+    cnv.width = targetW
+    cnv.height = Math.round(targetW / ratio)
+    cctx.fillStyle = '#fff'
+    cctx.fillRect(0, 0, cnv.width, cnv.height)
+    cctx.drawImage(tmp, 0, 0, cnv.width, cnv.height)
+    const chartJpeg = cnv.toDataURL('image/jpeg', 0.85)
+
+    const chartW = pageWidth - 20
+    const chartH = chartW * 0.45
+    pdf.addImage(chartJpeg, 'JPEG', 10, y, chartW, chartH)
+    y += chartH + 6
+  }
+
+  // Leyenda debajo del gráfico (vertical, izquierda, sin borde)
+  pdf.setFontSize(9)
+  {
+    const boxX = 10
+    const boxY = y
+    const boxH = 36
+    let ly = boxY + 8
+    // Cumplen (azul oscuro)
+    pdf.setFillColor(31, 96, 170)
+    pdf.rect(boxX + 6, ly - 3, 4, 4, 'F')
+    pdf.text('Cumplen (solicitudes)', boxX + 12, ly)
+    ly += 12
+    // No cumplen (azul claro)
+    pdf.setFillColor(53, 189, 236)
+    pdf.rect(boxX + 6, ly - 3, 4, 4, 'F')
+    pdf.text('No cumplen (solicitudes)', boxX + 12, ly)
+    ly += 12
+    // Sin recursos (gris)
+    pdf.setFillColor(158, 158, 158)
+    pdf.rect(boxX + 6, ly - 3, 4, 4, 'F')
+    pdf.text('Sin recursos (NA)', boxX + 12, ly)
+    y = boxY + boxH + 6
+  }
+
+  // Donut resumen (si existe)
+  if (pieChartInstance) {
+    const pieImg = pieChartInstance.toBase64Image('image/png', 1)
+    const pieW = (pageWidth - 20) * 0.5
+    const pieH = pieW * 0.65
+    if (y + pieH + 10 < pageHeight) {
+      pdf.setFontSize(11)
+      pdf.text('Resumen SLA Promedio', 10, y)
+      y += 6
+      pdf.addImage(pieImg, 'PNG', 10, y, pieW, pieH)
+    }
+  }
+
+  const dataUriString = pdf.output('datauristring')
+  return dataUriString.split(',')[1] // base64 sin prefijo
+}
 </script>
 
 <style scoped>
@@ -922,10 +1993,42 @@ onBeforeUnmount(() => {
   background: white;
 }
 
+.roles-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.role-checkbox-item {
+  padding: 10px 12px;
+  border: 1px solid #e0e0e0;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+}
+
+.role-checkbox-item:hover {
+  background-color: #f5f5f5;
+  border-color: #d0d0d0;
+}
+
 .chart-wrapper {
   position: relative;
   width: 100%;
   min-height: 320px;
+  height: 500px; /* altura estable para evitar estiramiento vertical */
+  min-width: 1000px; /* ancho mínimo del contenedor para activar scroll y evitar deformación */
+}
+
+.chart-scroll {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chart-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
 }
 
 .fullscreen-loading {
@@ -946,5 +2049,114 @@ onBeforeUnmount(() => {
   display: flex;
   flex-direction: column;
   align-items: center;
+}
+
+.legend-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  border: 1px solid #d9d9d9;
+  border-radius: 6px;
+  padding: 14px 16px;
+  width: max-content;
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+
+.legend-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+}
+
+:deep(.q-table__card) {
+  font-size: 14px;
+}
+
+:deep(.q-table th),
+:deep(.q-table td) {
+  font-size: 14px;
+}
+
+:deep(.text-red-custom) {
+  color: #f60008 !important;
+}
+
+:deep(.bg-red-custom) {
+  background-color: #f60008 !important;
+}
+
+:deep(.text-green-custom) {
+  color: #21ba45 !important;
+}
+
+:deep(.bg-green-custom) {
+  background-color: #21ba45 !important;
+}
+
+.filter-button {
+  height: 40px !important;
+  padding: 0 12px !important;
+  border-radius: 6px !important;
+  font-size: 14px !important;
+  text-transform: none !important;
+  font-weight: 400 !important;
+  transition: all 0.3s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+.filter-button:hover {
+  background-color: rgba(33, 150, 243, 0.08) !important;
+}
+
+.w-full {
+  width: 100% !important;
+}
+
+/* Encabezado de la tabla del reporte: fondo azul muy claro */
+:deep(.sla-report-table thead tr th) {
+  background-color: #eeeeee !important;
+}
+
+/* Color de texto específico solo para la etiqueta del botón Roles/Áreas (sin afectar el ícono) */
+:deep(.filter-button .q-btn__content span) {
+  color: rgba(0, 0, 0, 0.87) !important;
+}
+
+/* Borde gris consistente con selects outlined */
+:deep(.filter-button.q-btn--outline) {
+  border: 0.5px solid #b6b6b6 !important;
+  background-color: #ffffff !important;
+  box-shadow: none !important;
+}
+
+/* Controlar el borde real que Quasar dibuja con el pseudo-elemento :before */
+:deep(.filter-button.q-btn--outline:before) {
+  border: 0px solid #434343 !important; /* gris neutro en lugar de negro */
+}
+
+:deep(.filter-button.q-btn--outline:hover:before),
+:deep(.filter-button.q-btn--outline:focus:before),
+:deep(.filter-button.q-btn--outline:active:before) {
+  border-color: #ab4545 !important;
+  border: 0px solid !important;
+}
+.chip-padding {
+  padding: 17px 20px !important; /* vertical | horizontal */
+}
+
+/* Ajuste general de botones: borde 6px y sin sombra */
+:deep(.q-btn) {
+  border-radius: 6px !important;
+  box-shadow: none !important;
 }
 </style>

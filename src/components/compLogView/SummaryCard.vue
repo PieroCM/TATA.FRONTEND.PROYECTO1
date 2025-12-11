@@ -2,7 +2,7 @@
   <div :class="['summary-card', type]">
     <div class="summary-content">
       <!-- Icono -->
-      <q-icon :name="icon" :class="['summary-icon', type]" size="20px" />
+      <q-icon :name="icon" :class="['summary-icon', type]" size="32px" />
 
       <!-- Texto -->
       <div class="summary-text">
@@ -55,15 +55,15 @@ const icon = computed(() => current.value.icon)
 
 <style scoped>
 .summary-card {
-  width: 220px;
-  height: 96px;
+  min-width: 260px;
+  min-height: 120px;
   border-radius: 14px;
   background: #f9fbff;
   display: flex;
   align-items: center;
-  padding: 18px 22px;
+  padding: 24px 30px;
   box-sizing: border-box;
-  font-family: 'Segoe UI', system-ui, sans-serif;
+  font-family: 'Inter', 'Segoe UI', system-ui, sans-serif;
   transition:
     background 0.25s ease,
     box-shadow 0.25s ease;
@@ -101,7 +101,7 @@ const icon = computed(() => current.value.icon)
 .summary-content {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 16px;
 }
 
 /* Iconos por tipo */
@@ -124,17 +124,20 @@ const icon = computed(() => current.value.icon)
 .summary-text {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 6px;
 }
 
 .label {
-  font-size: 14px;
-  color: #4b5563;
+  font-size: 18px;
+  color: #374151;
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
 .count {
-  font-size: 18px;
+  font-size: 32px;
   font-weight: 700;
   color: #111827;
+  line-height: 1;
 }
 </style>

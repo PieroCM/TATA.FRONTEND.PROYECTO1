@@ -73,7 +73,7 @@
 
         <!-- OLVIDASTE -->
         <div class="text-right q-mb-lg">
-          <a class="text-primary cursor-pointer" @click="showResetDialog = true">
+          <a class="text-primary cursor-pointer" @click="$router.push('/forgot-password')">
             ¿Olvidaste tu contraseña?
           </a>
         </div>
@@ -86,14 +86,6 @@
           class="full-width q-mb-md"
           @click="login"
         />
-
-        <!-- REGISTRARSE -->
-        <div class="text-center text-caption text-grey-7 q-mt-sm">
-          ¿No tienes una cuenta?
-          <span class="text-primary cursor-pointer" @click="$router.push('/register')">
-            Regístrate aquí
-          </span>
-        </div>
 
         <div class="text-center text-grey-7 text-caption q-mt-md">
           Credenciales demo:<br />
@@ -168,25 +160,54 @@ export default {
 
       try {
         const response = await this.$api.post('/api/usuario/signin', {
-          correo: this.correo,
+          email: this.correo,
           password: this.password,
         })
 
-        localStorage.setItem('token', response.data.token)
+        // Validar que la respuesta contenga el token
+        if (!response.data?.token) {
+          // console.error('La respuesta del backend no contiene token:', response.data)
+          throw new Error('El servidor no devolvió un token válido')
+        }
+
+        // Importar el store y guardar toda la información de autenticación
+        const { useAuthStore } = await import('src/stores/useAuthStore')
+        const authStore = useAuthStore()
+
+        // Guardar token, usuario y permisos usando el nuevo método setAuth
+        authStore.setAuth(response.data)
+
+        // console.log('✅ Sesión iniciada exitosamente')
+        // console.log('Usuario:', response.data.username)
+        // console.log('Rol:', response.data.rolNombre)
+        // console.log('Permisos:', response.data.permisos)
 
         this.$q.notify({
           type: 'positive',
           message: 'Inicio de sesión exitoso',
+          caption: `Bienvenido ${response.data.nombres} ${response.data.apellidos}`,
           position: 'bottom',
-          timeout: 1500,
+          timeout: 2000,
         })
 
-        // Redirigir al sistema (MainLayout)
-        this.$router.push('/sistema')
+        // Redirigir al sistema usando REPLACE (no queda en historial)
+        // Esto evita que el botón "Atrás" permita volver al login
+        this.$router.replace('/sistema/dashboard')
       } catch (error) {
+        // console.error('Error en login:', error)
+        // console.error('Detalles del error:', {
+        //   status: error.response?.status,
+        //   data: error.response?.data,
+        //   enviado: {
+        //     email: this.correo,
+        //   },
+        // })
         this.$q.notify({
           type: 'negative',
-          message: error.response?.data?.message || 'Error al iniciar sesión',
+          message: error.response?.data?.message || error.message || 'Error al iniciar sesión',
+          caption: error.response?.data?.errors
+            ? Object.values(error.response.data.errors).flat().join(', ')
+            : 'Verifica tus credenciales e intenta nuevamente',
           position: 'bottom',
         })
       }
@@ -246,5 +267,88 @@ export default {
 
 .full-width {
   width: 100%;
+}
+
+/* Ocultar bloque de credenciales demo sin tocar el template */
+.login-card > .text-center.text-grey-7.text-caption.q-mt-md {
+  display: none;
+}
+
+/* Responsivo: en tablets y móviles, el carrusel queda de fondo y el login se superpone centrado */
+@media (max-width: 1024px) {
+  /* ocultar textos sobre la imagen sombreada en pantallas pequeñas */
+  .slide-content {
+    display: none !important;
+  }
+
+  .left-section {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    height: 100vh;
+  }
+
+  /* asegurar alto completo del carrusel */
+  .left-section .full-height {
+    height: 100vh;
+  }
+
+  /* oscurecer ligeramente el fondo para mejorar contraste del card */
+  .left-section::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1;
+  }
+
+  /* quitar fondo sólido del panel derecho en overlay */
+  .bg-page {
+    background: transparent !important;
+  }
+
+  /* hacer que la columna derecha se superponga y centre el card */
+  .row > .col-5 {
+    position: absolute !important;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: 0 0 100% !important;
+    z-index: 2;
+    padding: 16px; /* respiración en bordes pequeños */
+  }
+
+  .login-card {
+    width: 90%;
+    max-width: 420px;
+    background: rgba(255, 255, 255, 0.92) !important;
+    backdrop-filter: saturate(120%) blur(6px);
+    -webkit-backdrop-filter: saturate(120%) blur(6px);
+    border-radius: 16px;
+    padding: 24px;
+  }
+
+  /* opcional: ocultar flechas del carrusel en pantallas pequeñas para limpiar la vista */
+  :deep(.q-carousel__control) {
+    display: none;
+  }
+}
+
+@media (max-width: 600px) {
+  .login-card {
+    width: 92%;
+    max-width: 360px;
+    padding: 20px;
+  }
+
+  /* ajustar separaciones verticales grandes dentro del card en móviles */
+  .login-card .q-mb-xl {
+    margin-bottom: 16px !important;
+  }
 }
 </style>
