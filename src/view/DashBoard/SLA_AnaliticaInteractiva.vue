@@ -91,132 +91,130 @@
           </div>
         </div>
 
-        <!-- Fila 2: Filtros de Datos -->
-        <div class="row q-col-gutter-md q-mb-md">
-          <!-- Tipos SLA -->
-          <div class="col-12 col-sm-6 col-md-4">
-            <q-select
-              v-model="filtros.tiposSla"
-              :options="tiposSlaDisponibles"
-              label="Tipos SLA"
-              outlined
-              dense
-              multiple
-              use-chips
-              clearable
-            >
-              <template v-slot:prepend>
-                <q-icon name="category" color="primary" />
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Roles -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <q-select
-              v-model="filtros.roles"
-              :options="rolesDisponibles"
-              label="Roles/Áreas"
-              outlined
-              dense
-              multiple
-              use-chips
-              clearable
-            >
-              <template v-slot:prepend>
-                <q-icon name="people" color="primary" />
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Estado SLA -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <q-select
-              v-model="filtros.estado"
-              :options="estadosDisponibles"
-              label="Estado de Cumplimiento"
-              outlined
-              dense
-              clearable
-              emit-value
-              map-options
-            >
-              <template v-slot:prepend>
-                <q-icon name="track_changes" color="primary" />
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Tipo de Gráfico -->
-          <div class="col-12 col-sm-6 col-md-2">
-            <q-select
-              v-model="tipoGrafico"
-              :options="tiposGraficoDisponibles"
-              label="Tipo Gráfico"
-              outlined
-              dense
-            >
-              <template v-slot:prepend>
-                <q-icon name="show_chart" color="primary" />
-              </template>
-            </q-select>
-          </div>
+      <!-- Fila 2: Filtros de Datos -->
+      <div class="row q-col-gutter-md q-mb-md">
+        <!-- Tipos SLA -->
+        <div class="col-12 col-sm-6 col-md-4">
+          <q-select
+            v-model="filtros.tiposSla"
+            :options="tiposSlaDisponibles"
+            label="Tipos SLA"
+            outlined
+            dense
+            multiple
+            use-chips
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="category" color="primary" />
+            </template>
+          </q-select>
         </div>
 
-        <!-- Fila 3: Opciones de Visualización -->
-        <div class="row q-col-gutter-md q-mb-md">
-          <!-- Modo de Visualización (Eje Y) -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <q-select
-              v-model="modoVisualizacion"
-              :options="opcionesVisualizacion"
-              label="Modo de Visualización (Eje Y)"
-              outlined
-              dense
-            >
-              <template v-slot:prepend>
-                <q-icon name="analytics" color="orange" />
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Agrupar Gráficos (Eje X) -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <q-select
-              v-model="agruparPor"
-              :options="opcionesAgrupacion"
-              label="Agrupar Gráficos (Eje X)"
-              outlined
-              dense
-            >
-              <template v-slot:prepend>
-                <q-icon name="swap_horiz" color="purple" />
-              </template>
-            </q-select>
-          </div>
-
-          <!-- Vista de Gráficos -->
-          <div class="col-12 col-sm-6 col-md-3">
-            <q-field outlined dense stack-label label="Vista de Gráficos">
-              <template v-slot:prepend>
-                <q-icon name="view_module" color="primary" />
-              </template>
-              <template v-slot:control>
-                <div class="self-center full-width no-outline q-px-sm">
-                  <q-toggle
-                    v-model="vistaUnificada"
-                    color="primary"
-                    size="sm"
-                    :label="vistaUnificada ? 'Unificado' : 'Separado'"
-                    dense
-                  />
-                </div>
-              </template>
-            </q-field>
-          </div>
+        <!-- Roles -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select
+            v-model="filtros.roles"
+            :options="rolesDisponibles"
+            label="Roles/Áreas"
+            outlined
+            dense
+            multiple
+            use-chips
+            clearable
+          >
+            <template v-slot:prepend>
+              <q-icon name="people" color="primary" />
+            </template>
+          </q-select>
         </div>
 
-        <!-- Botones de acción -->
+        <!-- Estado SLA -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select
+            v-model="filtros.estado"
+            :options="estadosDisponibles"
+            label="Estado de Cumplimiento"
+            outlined
+            dense
+            clearable
+            emit-value
+            map-options
+          >
+            <template v-slot:prepend>
+              <q-icon name="track_changes" color="primary" />
+            </template>
+          </q-select>
+        </div>
+
+        <!-- Tipo de Gráfico -->
+        <div class="col-12 col-sm-6 col-md-2">
+          <q-select
+            v-model="tipoGrafico"
+            :options="tiposGraficoDisponibles"
+            label="Tipo Gráfico"
+            outlined
+            dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="show_chart" color="primary" />
+            </template>
+          </q-select>
+        </div>
+      </div>
+
+      <!-- Fila 3: Opciones de Visualización Interactiva -->
+      <div class="row q-col-gutter-md q-mb-md">
+        <!-- Modo de Visualización (Eje Y) -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select
+            v-model="modoVisualizacion"
+            :options="opcionesVisualizacion"
+            label="Modo Visualización"
+            outlined
+            dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="analytics" color="orange" />
+            </template>
+          </q-select>
+        </div>
+
+        <!-- Agrupar Gráficos (Eje X) -->
+        <div class="col-12 col-sm-6 col-md-3">
+          <q-select
+            v-model="agruparPor"
+            :options="opcionesAgrupacion"
+            label="Agrupar Por"
+            outlined
+            dense
+          >
+            <template v-slot:prepend>
+              <q-icon name="swap_horiz" color="purple" />
+            </template>
+          </q-select>
+        </div>
+
+        <!-- Vista de Gráficos (Toggle) -->
+        <div class="col-12 col-sm-6 col-md-2">
+          <q-field outlined dense stack-label label="Vista de Gráficos">
+            <template v-slot:prepend>
+              <q-icon name="view_module" color="primary" />
+            </template>
+            <template v-slot:control>
+              <div class="self-center full-width no-outline q-px-sm">
+                <q-toggle
+                  v-model="vistaUnificada"
+                  color="primary"
+                  size="sm"
+                  :label="vistaUnificada ? 'Unificado' : 'Separado'"
+                  dense
+                />
+              </div>
+            </template>
+          </q-field>
+        </div>
+      </div>        <!-- Botones de acción -->
         <div class="row q-col-gutter-sm q-mt-sm">
           <div class="col-12 col-sm-4 col-md-auto">
             <q-btn
@@ -619,6 +617,7 @@ import { Chart, registerables } from 'chart.js'
 import { useAppStore } from 'stores/app-store'
 import { useSlaStore } from 'stores/useSlaStore'
 import { jsPDF } from 'jspdf'
+import html2canvas from 'html2canvas'
 import { getPorcentajeColorHex } from 'src/utils/slaMappers'
 
 Chart.register(...registerables)
@@ -684,19 +683,18 @@ const estadosDisponibles = [
 ]
 
 const tipoGrafico = ref({ label: 'Barras', value: 'bar' })
-const vistaUnificada = ref(false) // false = separado, true = unificado
+const vistaUnificada = ref(false) // false = separado (vista por defecto)
 const aniosDisponibles = ref([])
 const tiposSlaDisponibles = ref([])
 const rolesDisponibles = ref([])
 
-// Filtro de SLA con chips
+// Filtros de visualización
 const modoVisualizacion = ref({ label: 'Porcentaje (%)', value: 'porcentaje' })
 const opcionesVisualizacion = [
   { label: 'Porcentaje (%)', value: 'porcentaje' },
   { label: 'Cantidad (#)', value: 'cantidad' },
 ]
 
-// Control de eje X (agrupar por SLA o por Rol)
 const agruparPor = ref({ label: 'Por SLA', value: 'sla' })
 const opcionesAgrupacion = [
   { label: 'Por SLA', value: 'sla' },
@@ -755,8 +753,9 @@ const construirTitulo = (codigoSla) => {
 }
 
 // Watchers
-watch(tipoGrafico, () => {
+watch(tipoGrafico, async () => {
   if (graficos.value.length > 0) {
+    await nextTick()
     if (vistaUnificada.value) {
       crearGraficoUnificado()
     } else {
@@ -765,15 +764,15 @@ watch(tipoGrafico, () => {
   }
 })
 
-watch(modoVisualizacion, () => {
+watch(modoVisualizacion, async () => {
   if (graficos.value.length > 0) {
-    aplicarFiltros()
+    await aplicarFiltros()
   }
 })
 
-watch(agruparPor, () => {
+watch(agruparPor, async () => {
   if (graficos.value.length > 0) {
-    aplicarFiltros()
+    await aplicarFiltros()
   }
 })
 
@@ -941,7 +940,7 @@ const procesarGraficosPorRol = async (solicitudes, tiposSlaProcesar, configsSla,
           {
             label: 'Proceso',
             data: cumplimientoPorSla.map((s) =>
-              usarPorcentaje ? ((s.proceso / s.total) * 100).toFixed(1) : s.proceso || 0,
+              usarPorcentaje ? parseFloat(((s.proceso / s.total) * 100).toFixed(1)) : s.proceso || 0,
             ),
             backgroundColor: esArea || esLinea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
             borderColor: '#FF9800',
@@ -953,7 +952,7 @@ const procesarGraficosPorRol = async (solicitudes, tiposSlaProcesar, configsSla,
           {
             label: 'No cumple',
             data: cumplimientoPorSla.map((s) =>
-              usarPorcentaje ? ((s.noCumplen / s.total) * 100).toFixed(1) : s.noCumplen || 0,
+              usarPorcentaje ? parseFloat(((s.noCumplen / s.total) * 100).toFixed(1)) : s.noCumplen || 0,
             ),
             backgroundColor: esArea || esLinea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
             borderColor: '#F44336',
@@ -1191,7 +1190,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'Proceso',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? ((r.proceso / r.total) * 100).toFixed(1) : r.proceso || 0,
+                    usarPorcentaje ? parseFloat(((r.proceso / r.total) * 100).toFixed(1)) : r.proceso || 0,
                   ),
                   borderColor: '#FF9800',
                   backgroundColor: 'rgba(255, 152, 0, 0.1)',
@@ -1206,7 +1205,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'No_cumple',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? ((r.noCumplen / r.total) * 100).toFixed(1) : r.noCumplen || 0,
+                    usarPorcentaje ? parseFloat(((r.noCumplen / r.total) * 100).toFixed(1)) : r.noCumplen || 0,
                   ),
                   borderColor: '#F44336',
                   backgroundColor: 'rgba(244, 67, 54, 0.1)',
@@ -1260,7 +1259,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'Proceso',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? ((r.proceso / r.total) * 100).toFixed(1) : r.proceso || 0,
+                    usarPorcentaje ? parseFloat(((r.proceso / r.total) * 100).toFixed(1)) : r.proceso || 0,
                   ),
                   backgroundColor: esArea ? 'rgba(255, 152, 0, 0.5)' : '#FF9800',
                   borderColor: '#FF9800',
@@ -1272,7 +1271,7 @@ const aplicarFiltros = async () => {
                 {
                   label: 'No cumple',
                   data: cumplimientoPorRol.map((r) =>
-                    usarPorcentaje ? ((r.noCumplen / r.total) * 100).toFixed(1) : r.noCumplen || 0,
+                    usarPorcentaje ? parseFloat(((r.noCumplen / r.total) * 100).toFixed(1)) : r.noCumplen || 0,
                   ),
                   backgroundColor: esArea ? 'rgba(244, 67, 54, 0.5)' : '#F44336',
                   borderColor: '#F44336',
@@ -1340,11 +1339,15 @@ const aplicarFiltros = async () => {
 }
 
 const crearGraficos = () => {
+  // Limpiar instancias anteriores
   chartInstances.value.forEach((chart) => {
-    if (chart) chart.destroy()
+    if (chart) {
+      chart.destroy()
+    }
   })
   chartInstances.value = []
 
+  // Recrear gráficos
   graficos.value.forEach((grafico, index) => {
     const canvas = chartCanvasRefs.value[index]
     if (!canvas || !grafico.datos.labels.length) return
@@ -1361,68 +1364,94 @@ const crearGraficos = () => {
         aspectRatio: 2,
         plugins: {
           legend: {
-            display: tipoGrafico.value.value === 'doughnut' || tipoGrafico.value.value === 'line',
+            display: true,
             position: 'bottom',
+            labels: {
+              usePointStyle: true,
+              padding: 15,
+              font: {
+                size: 12,
+                weight: 'bold'
+              }
+            }
           },
           tooltip: {
             enabled: true,
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            borderColor: '#2196F3',
+            borderWidth: 2,
+            padding: 15,
+            displayColors: false,
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
             callbacks: {
               title: function (context) {
                 const idx = context[0].dataIndex
                 const rol = grafico.datosRoles[idx]
-                return rol ? rol.nombre : ''
+                const datasetLabel = context[0].dataset.label
+                return rol ? `📊 ${rol.nombre} - ${datasetLabel}` : ''
+              },
+              beforeBody: function (context) {
+                const idx = context[0].dataIndex
+                const rol = grafico.datosRoles[idx]
+                if (!rol) return ''
+                return `📋 Total: ${rol.total} solicitudes`
               },
               label: function (context) {
                 const idx = context.dataIndex
                 const datasetLabel = context.dataset.label
-                const valor = context.parsed.y
                 const rol = grafico.datosRoles[idx]
 
                 if (!rol) return ''
 
-                if (modoVisualizacion.value.value === 'porcentaje') {
-                  if (datasetLabel === 'Cumple') {
-                    return `${datasetLabel}: ${rol.porcentaje}%`
-                  } else if (datasetLabel === 'Proceso') {
-                    const porcentajeProceso =
-                      rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
-                    return `${datasetLabel}: ${porcentajeProceso}%`
-                  } else if (datasetLabel === 'No cumple' || datasetLabel === 'No_cumple') {
-                    const porcentajeNoCumple =
-                      rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
-                    return `${datasetLabel}: ${porcentajeNoCumple}%`
+                const esModoPorcentaje = modoVisualizacion.value.value === 'porcentaje'
+
+                if (datasetLabel === 'Cumple') {
+                  if (esModoPorcentaje) {
+                    return `✓ Cumple: ${rol.porcentaje.toFixed(1)}%`
+                  } else {
+                    return `✓ Cumple: ${rol.cumplidos} solicitudes`
                   }
-                  return `${datasetLabel}: ${valor}%`
-                } else {
-                  if (datasetLabel === 'Cumple') {
-                    return `${datasetLabel}: ${rol.cumplidos} solicitudes`
-                  } else if (datasetLabel === 'Proceso') {
-                    return `${datasetLabel}: ${rol.proceso || 0} solicitudes`
-                  } else if (datasetLabel === 'No cumple' || datasetLabel === 'No_cumple') {
-                    return `${datasetLabel}: ${rol.noCumplen || 0} solicitudes`
+                } else if (datasetLabel === 'Proceso') {
+                  const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                  if (esModoPorcentaje) {
+                    return `⚠ Proceso: ${porcentajeProceso}%`
+                  } else {
+                    return `⚠ Proceso: ${rol.proceso || 0} solicitudes`
                   }
-                  return `${datasetLabel}: ${Math.floor(valor)} solicitudes`
+                } else if (datasetLabel === 'No cumple' || datasetLabel === 'No_cumple') {
+                  const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+                  if (esModoPorcentaje) {
+                    return `✗ No cumple: ${porcentajeNoCumple}%`
+                  } else {
+                    return `✗ No cumple: ${rol.noCumplen || 0} solicitudes`
+                  }
                 }
-              },
-              afterLabel: function (context) {
-                const idx = context.dataIndex
-                const rol = grafico.datosRoles[idx]
-                if (!rol) return ''
 
-                const lineas = [
-                  `Total: ${rol.total} solicitudes`,
-                  `Cumplimiento: ${rol.porcentaje}%`,
-                  `✓ Cumple: ${rol.cumplidos}`,
-                  `⏳ Proceso: ${rol.proceso || 0}`,
-                  `✗ No cumple: ${rol.noCumplen || 0}`,
-                ]
-                return lineas
+                return `${datasetLabel}`
               },
             },
           },
         },
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        hover: {
+          mode: 'index',
+          intersect: false,
+        },
         scales:
-          tipoGrafico.value.value !== 'doughnut'
+          tipoGrafico.value.value !== 'doughnut' && tipoGrafico.value.value !== 'radar'
             ? {
                 x: {
                   ticks: {
@@ -1459,6 +1488,21 @@ const crearGraficos = () => {
                       modoVisualizacion.value.value === 'porcentaje'
                         ? 'Porcentaje de Cumplimiento'
                         : 'Cantidad de Solicitudes',
+                  },
+                },
+              }
+            : tipoGrafico.value.value === 'radar'
+            ? {
+                r: {
+                  beginAtZero: true,
+                  max: modoVisualizacion.value.value === 'porcentaje' ? 100 : undefined,
+                  ticks: {
+                    callback: function (value) {
+                      if (modoVisualizacion.value.value === 'porcentaje') {
+                        return value + '%'
+                      }
+                      return Math.floor(value)
+                    },
                   },
                 },
               }
@@ -1547,25 +1591,61 @@ const crearGraficoUnificado = () => {
             enabled: true,
             mode: 'index',
             intersect: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            borderColor: '#2196F3',
+            borderWidth: 2,
+            padding: 15,
+            displayColors: false,
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
             callbacks: {
+              title: function (context) {
+                const rolNombre = rolesUnicos[context[0].dataIndex]
+                return `👤 ${rolNombre}`
+              },
+              beforeBody: function (context) {
+                const dataset = context[0].dataset
+                const dataIndex = context[0].dataIndex
+                const rolNombre = rolesUnicos[dataIndex]
+                const rol = dataset.datosRoles.find((r) => r.nombre === rolNombre)
+                if (!rol) return ''
+                return `📋 Total: ${rol.total} solicitudes`
+              },
               label: function (context) {
                 const dataset = context.dataset
                 const dataIndex = context.dataIndex
                 const rolNombre = rolesUnicos[dataIndex]
                 const rol = dataset.datosRoles.find((r) => r.nombre === rolNombre)
 
-                if (!rol) return `${dataset.label}: Sin datos`
-                return `${dataset.label}: ${rol.porcentaje}% (${rol.cumplidos}/${rol.total} usuarios)`
-              },
-              afterLabel: function (context) {
-                const porcentaje = context.parsed.y
-                if (porcentaje >= 90) return '✓ Cumple (≥90%)'
-                if (porcentaje >= 70) return '⚠ Proceso (≥70%)'
-                if (porcentaje > 0) return '✗ No cumple (<70%)'
-                return ''
+                if (!rol) return 'Sin datos'
+
+                const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+
+                return [
+                  `${dataset.label}:`,
+                  `✓ Cumple: ${rol.porcentaje.toFixed(1)}% (${rol.cumplidos})`,
+                  `⚠ Proceso: ${porcentajeProceso}% (${rol.proceso || 0})`,
+                  `✗ No cumple: ${porcentajeNoCumple}% (${rol.noCumplen || 0})`
+                ]
               },
             },
           },
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        hover: {
+          mode: 'index',
+          intersect: false,
         },
         scales: {
           x: {
@@ -1635,30 +1715,74 @@ const crearGraficoUnificado = () => {
           legend: {
             display: true,
             position: 'bottom',
+            labels: {
+              usePointStyle: false,
+              padding: 15,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            }
           },
           tooltip: {
             enabled: true,
-            mode: 'index',
-            intersect: false,
+            mode: 'point',
+            intersect: true,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            borderColor: '#2196F3',
+            borderWidth: 2,
+            padding: 15,
+            displayColors: true,
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
             callbacks: {
+              title: function (context) {
+                const rolNombre = rolesUnicos[context[0].dataIndex]
+                return `👤 ${rolNombre}`
+              },
+              beforeBody: function (context) {
+                const dataset = context[0].dataset
+                const dataIndex = context[0].dataIndex
+                const rolNombre = rolesUnicos[dataIndex]
+                const rol = dataset.datosRoles.find((r) => r.nombre === rolNombre)
+                if (!rol) return ''
+                return `📋 Total: ${rol.total} solicitudes`
+              },
               label: function (context) {
                 const dataset = context.dataset
                 const dataIndex = context.dataIndex
                 const rolNombre = rolesUnicos[dataIndex]
                 const rol = dataset.datosRoles.find((r) => r.nombre === rolNombre)
 
-                if (!rol) return `${dataset.label}: Sin datos`
-                return `${dataset.label}: ${rol.porcentaje}% (${rol.cumplidos}/${rol.total} usuarios)`
-              },
-              afterLabel: function (context) {
-                const porcentaje = context.parsed.y
-                if (porcentaje >= 90) return '✓ Cumple'
-                if (porcentaje >= 70) return '⚠ Proceso'
-                if (porcentaje > 0) return '✗ No cumple'
-                return ''
+                if (!rol) return 'Sin datos'
+
+                const porcentajeProceso = rol.total > 0 ? ((rol.proceso / rol.total) * 100).toFixed(1) : 0
+                const porcentajeNoCumple = rol.total > 0 ? ((rol.noCumplen / rol.total) * 100).toFixed(1) : 0
+
+                return [
+                  `${dataset.label}:`,
+                  `✓ Cumple: ${rol.porcentaje.toFixed(1)}% (${rol.cumplidos})`,
+                  `⚠ Proceso: ${porcentajeProceso}% (${rol.proceso || 0})`,
+                  `✗ No cumple: ${porcentajeNoCumple}% (${rol.noCumplen || 0})`
+                ]
               },
             },
           },
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        hover: {
+          mode: 'index',
+          intersect: false,
         },
         scales: {
           x: {
@@ -1720,16 +1844,54 @@ const crearGraficoUnificado = () => {
           legend: {
             display: true,
             position: 'bottom',
+            labels: {
+              usePointStyle: chartType === 'radar',
+              padding: 15,
+              font: {
+                size: 13,
+                weight: 'bold'
+              }
+            }
           },
           tooltip: {
+            enabled: true,
+            backgroundColor: 'rgba(0, 0, 0, 0.9)',
+            titleColor: '#fff',
+            bodyColor: '#fff',
+            borderColor: '#2196F3',
+            borderWidth: 2,
+            padding: 15,
+            displayColors: true,
+            titleFont: {
+              size: 14,
+              weight: 'bold'
+            },
+            bodyFont: {
+              size: 13
+            },
             callbacks: {
+              title: function (context) {
+                return `📏 ${context[0].label}`
+              },
+              beforeBody: function (context) {
+                const dataset = context[0].dataset
+                const index = context[0].dataIndex
+                const total = dataset.usuariosTotales[index]
+                return `📋 Total: ${total} solicitudes`
+              },
               label: function (context) {
                 const dataset = context.dataset
                 const index = context.dataIndex
                 const porcentaje = context.parsed.y || context.parsed
-                const total = dataset.usuariosTotales[index]
                 const cumplidos = dataset.usuariosCumplidos[index]
-                return `${context.label}: ${porcentaje}% (${cumplidos}/${total} usuarios)`
+                const total = dataset.usuariosTotales[index]
+                const noCumplidos = total - cumplidos
+                const porcentajeNoCumple = total > 0 ? ((noCumplidos / total) * 100).toFixed(1) : 0
+
+                return [
+                  `✓ Cumple: ${porcentaje.toFixed(1)}% (${cumplidos})`,
+                  `✗ No cumple: ${porcentajeNoCumple}% (${noCumplidos})`
+                ]
               },
               afterLabel: function (context) {
                 const porcentaje = context.parsed.y || context.parsed
@@ -1741,7 +1903,25 @@ const crearGraficoUnificado = () => {
           },
         },
         scales:
-          chartType !== 'doughnut'
+          chartType !== 'doughnut' && chartType !== 'radar'
+            ? {
+                x: {
+                  ticks: {
+                    maxRotation: 45,
+                    minRotation: 0,
+                  },
+                },
+                y: {
+                  beginAtZero: true,
+                  max: 100,
+                  ticks: {
+                    callback: function (value) {
+                      return value + '%'
+                    },
+                  },
+                },
+              }
+            : chartType === 'radar'
             ? {
                 r: {
                   beginAtZero: true,
@@ -1802,9 +1982,9 @@ const confirmarExportacion = () => {
   exportarPDF()
 }
 
-// --- exportarPDF (idéntico al tuyo, solo sin conflictos) ---
 const exportarPDF = async () => {
   try {
+    // Validar que haya gráficos para exportar
     if (!graficos.value || graficos.value.length === 0) {
       $q.notify({
         type: 'warning',
@@ -1814,6 +1994,7 @@ const exportarPDF = async () => {
       return
     }
 
+    // Validar que al menos una sección esté seleccionada
     if (!algunaSeccionSeleccionada.value) {
       $q.notify({
         type: 'warning',
@@ -1829,9 +2010,10 @@ const exportarPDF = async () => {
     const pageWidth = pdf.internal.pageSize.getWidth()
     const pageHeight = pdf.internal.pageSize.getHeight()
     const margin = 15
-    let _yPos = margin
+    let yPos = margin
     let currentPage = 1
 
+    // Cargar logo
     const logoUrl = '/src/assets/Tata_logo.png'
     let logoData = null
     try {
@@ -1851,20 +2033,24 @@ const exportarPDF = async () => {
       console.warn('No se pudo cargar el logo:', error)
     }
 
-    const _addHeader = () => {
+    // Función para agregar header con logo
+    const addHeader = () => {
+      // Logo (esquina superior derecha)
       if (logoData) {
         const logoWidth = 40
         const logoHeight = 20
         pdf.addImage(logoData, 'PNG', pageWidth - margin - logoWidth, margin, logoWidth, logoHeight)
       }
 
+      // Título
       pdf.setFontSize(16)
       pdf.setTextColor(0, 0, 0)
-      pdf.setFont(undefined, 'bold')
+      pdf.setFont('helvetica', 'bold')
       pdf.text('Reporte de Análisis SLA', margin, margin + 7)
 
+      // Subtítulo con información
       pdf.setFontSize(9)
-      pdf.setFont(undefined, 'normal')
+      pdf.setFont('helvetica', 'normal')
       pdf.setTextColor(80, 80, 80)
 
       let infoText = ''
@@ -1881,28 +2067,677 @@ const exportarPDF = async () => {
       return margin + 20
     }
 
-    const _addFooter = () => {
+    // Función para agregar footer
+    const addFooter = () => {
       pdf.setFontSize(8)
       pdf.setTextColor(128, 128, 128)
-      pdf.text(`Página ${currentPage}`, pageWidth / 2, pageHeight - 10, { align: 'center' })
+      const pageText = `Página ${currentPage}`
+      const pageTextWidth = pdf.getTextWidth(pageText)
+      pdf.text(pageText, (pageWidth - pageTextWidth) / 2, pageHeight - 10)
     }
 
-    let _primeraSeccionAgregada = false
+    // Variable para controlar si ya se agregó la primera página
+    let primeraSeccionAgregada = false
 
-    // Aquí sigue exactamente toda tu lógica de armado del PDF:
-    // - Tabla de top roles
-    // - KPIs de resumen
-    // - Top 5 incumplidores por SLA
-    // - Tablas por SLA
-    // - Capturas de gráficos con html2canvas
-    // - Distribución de estados
-    // - Resumen de incumplimientos
-    //
-    // (No la recorto por tokens para no saturar; pero en tu archivo original esa parte NO tenía conflictos.
-    // Puedes mantenerla tal cual, copiando desde tu versión actual, solo asegurándote de que arriba
-    // ya no existen `<<<<<<<` ni `>>>>>>>`.)
+    // SECCIÓN 1: TOP DE ROLES - Tabla de datos
+    if (seccionesExportar.value.topRoles) {
+      yPos = addHeader()
+      yPos += 5
+      primeraSeccionAgregada = true
 
-    // Cierro con el save y notificación:
+      // Preparar datos para tabla estilo logs
+      const tableData = []
+
+      graficos.value.forEach((grafico, idx) => {
+        if (grafico.datosRoles && grafico.datosRoles.length > 0) {
+          grafico.datosRoles.forEach((rol) => {
+            tableData.push({
+              id: idx + 1,
+              codigoSla: grafico.codigoSla,
+              rol: rol.nombre,
+              porcentaje: `${rol.porcentaje}%`,
+              cumplidos: rol.cumplidos,
+              total: rol.total,
+              nivel: rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
+            })
+          })
+        }
+      })
+
+      // Dibujar tabla
+      const colWidths = {
+        id: 15,
+        codigoSla: 25,
+        rol: 50,
+        porcentaje: 25,
+        usuarios: 30,
+        nivel: 35
+      }
+
+      // Header de tabla
+      pdf.setFillColor(66, 139, 202) // Color azul del header
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 10, 'F')
+
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'bold')
+
+      let xPos = margin + 2
+      pdf.text('ID', xPos, yPos + 6.5)
+      xPos += colWidths.id
+      pdf.text('Código SLA', xPos, yPos + 6.5)
+      xPos += colWidths.codigoSla
+      pdf.text('Rol', xPos, yPos + 6.5)
+      xPos += colWidths.rol
+      pdf.text('SLA %', xPos, yPos + 6.5)
+      xPos += colWidths.porcentaje
+      pdf.text('Usuarios', xPos, yPos + 6.5)
+      xPos += colWidths.usuarios
+      pdf.text('Nivel', xPos, yPos + 6.5)
+
+      yPos += 10
+
+      // Filas de datos
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(8)
+
+      tableData.forEach((row, index) => {
+        // Verificar si hay espacio, si no, crear nueva página con header de tabla
+        if (yPos + 8 > pageHeight - 20) {
+          addFooter()
+          pdf.addPage()
+          currentPage++
+          yPos = addHeader()
+          yPos += 5
+
+          // Redibujar header de tabla en nueva página
+          pdf.setFillColor(66, 139, 202)
+          pdf.rect(margin, yPos, pageWidth - 2 * margin, 10, 'F')
+          pdf.setTextColor(255, 255, 255)
+          pdf.setFontSize(9)
+          pdf.setFont('helvetica', 'bold')
+
+          let xPosHeader = margin + 2
+          pdf.text('ID', xPosHeader, yPos + 6.5)
+          xPosHeader += colWidths.id
+          pdf.text('Código SLA', xPosHeader, yPos + 6.5)
+          xPosHeader += colWidths.codigoSla
+          pdf.text('Rol', xPosHeader, yPos + 6.5)
+          xPosHeader += colWidths.rol
+          pdf.text('SLA %', xPosHeader, yPos + 6.5)
+          xPosHeader += colWidths.porcentaje
+          pdf.text('Usuarios', xPosHeader, yPos + 6.5)
+          xPosHeader += colWidths.usuarios
+          pdf.text('Nivel', xPosHeader, yPos + 6.5)
+
+          yPos += 10
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(8)
+        }
+
+        // Fila alternada
+        const fillColor = index % 2 === 0 ? 255 : 245
+        pdf.setFillColor(fillColor, fillColor, fillColor)
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+
+        pdf.setTextColor(0, 0, 0)
+
+        xPos = margin + 2
+        pdf.text(String(row.id), xPos, yPos + 5.5)
+        xPos += colWidths.id
+        pdf.text(row.codigoSla, xPos, yPos + 5.5)
+        xPos += colWidths.codigoSla
+
+        // Truncar rol si es muy largo
+        const rolText = row.rol.length > 25 ? row.rol.substring(0, 22) + '...' : row.rol
+        pdf.text(rolText, xPos, yPos + 5.5)
+        xPos += colWidths.rol
+        pdf.text(row.porcentaje, xPos, yPos + 5.5)
+        xPos += colWidths.porcentaje
+        pdf.text(`${row.cumplidos}/${row.total}`, xPos, yPos + 5.5)
+        xPos += colWidths.usuarios
+        pdf.text(row.nivel, xPos, yPos + 5.5)
+
+        yPos += 8
+      })
+
+      yPos += 10
+
+      // Resumen de KPIs - Verificar si hay espacio, si no crear nueva página
+      if (yPos + 60 > pageHeight - 20) {
+        addFooter()
+        pdf.addPage()
+        currentPage++
+        yPos = addHeader()
+        yPos += 5
+      }
+
+      pdf.setFontSize(11)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(0, 0, 0)
+      pdf.text('Resumen Ejecutivo', margin, yPos)
+      yPos += 8
+
+      // Tabla de KPIs con estilo similar
+      const kpiData = [
+        { label: 'Total de Solicitudes', value: estadisticas.value.totalSolicitudes.toLocaleString() },
+        { label: 'Promedio SLA General', value: `${estadisticas.value.promedioSla}%` },
+        { label: 'Roles Analizados', value: estadisticas.value.rolesAnalizados.toLocaleString() },
+      ]
+
+      // Header KPI
+      pdf.setFillColor(66, 139, 202)
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('Indicador', margin + 2, yPos + 5.5)
+      pdf.text('Valor', margin + (pageWidth - 2 * margin) * 0.65, yPos + 5.5)
+      yPos += 8
+
+      // Datos KPI
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(8)
+      kpiData.forEach((kpi, index) => {
+        const fillColor = index % 2 === 0 ? 255 : 245
+        pdf.setFillColor(fillColor, fillColor, fillColor)
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 7, 'F')
+        pdf.setTextColor(0, 0, 0)
+        pdf.text(kpi.label, margin + 2, yPos + 4.5)
+        pdf.text(kpi.value, margin + (pageWidth - 2 * margin) * 0.65, yPos + 4.5)
+        yPos += 7
+      })
+
+      addFooter()
+
+      // Agregar tabla visual de Top 5 Incumplidores por SLA
+      graficos.value.forEach((grafico) => {
+        if (grafico.topIncumplidores && grafico.topIncumplidores.length > 0) {
+          // Nueva página para cada Top 5
+          pdf.addPage()
+          currentPage++
+          yPos = addHeader()
+          yPos += 5
+
+          // Título del Top 5
+          pdf.setFontSize(11)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(66, 139, 202)
+          pdf.text(`Top 5 Roles con Mayor Incumplimiento - ${grafico.codigoSla}`, margin, yPos)
+          yPos += 10
+
+          // Tabla de incumplidores
+          const colWidthsTop = {
+            rank: 15,
+            rol: 120,
+            incumplimientos: 50
+          }
+
+          // Header
+          pdf.setFillColor(239, 83, 80) // Rojo para incumplimientos
+          pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+          pdf.setTextColor(255, 255, 255)
+          pdf.setFontSize(9)
+          pdf.setFont('helvetica', 'bold')
+
+          let xPosTop = margin + 2
+          pdf.text('#', xPosTop, yPos + 5.5)
+          xPosTop += colWidthsTop.rank
+          pdf.text('Rol', xPosTop, yPos + 5.5)
+          xPosTop += colWidthsTop.rol
+          pdf.text('Incumplimientos', xPosTop, yPos + 5.5)
+          yPos += 8
+
+          // Filas de datos
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(8)
+          grafico.topIncumplidores.slice(0, 5).forEach((rol, index) => {
+            const fillColor = index % 2 === 0 ? 255 : 250
+            pdf.setFillColor(fillColor, fillColor - 5, fillColor - 5)
+            pdf.rect(margin, yPos, pageWidth - 2 * margin, 7, 'F')
+            pdf.setTextColor(0, 0, 0)
+
+            xPosTop = margin + 2
+            pdf.text(String(index + 1), xPosTop, yPos + 4.5)
+            xPosTop += colWidthsTop.rank
+            const rolText = rol.nombre.length > 45 ? rol.nombre.substring(0, 42) + '...' : rol.nombre
+            pdf.text(rolText, xPosTop, yPos + 4.5)
+            xPosTop += colWidthsTop.rol
+            pdf.text(String(rol.noCumplen), xPosTop, yPos + 4.5)
+            yPos += 7
+          })
+
+          addFooter()
+        }
+      })
+    }
+
+    // SECCIÓN 2: ANÁLISIS DE SLA - Gráficos individuales
+    if (seccionesExportar.value.graficos) {
+      const graficosOrdenados = [...graficos.value].sort((a, b) => {
+        const indexA = filtros.value.tiposSla.indexOf(a.codigoSla)
+        const indexB = filtros.value.tiposSla.indexOf(b.codigoSla)
+        if (indexA === -1 && indexB === -1) {
+          return a.codigoSla.localeCompare(b.codigoSla)
+        }
+        if (indexA === -1) return 1
+        if (indexB === -1) return -1
+        return indexA - indexB
+      })
+
+      for (const grafico of graficosOrdenados) {
+        if (primeraSeccionAgregada) {
+          pdf.addPage()
+          currentPage++
+        } else {
+          primeraSeccionAgregada = true
+        }
+        yPos = addHeader()
+        yPos += 5
+
+        // Título del gráfico
+        pdf.setFontSize(12)
+        pdf.setFont('helvetica', 'bold')
+        pdf.setTextColor(66, 139, 202)
+        pdf.text(grafico.titulo, margin, yPos)
+        yPos += 10
+
+        // Agregar tabla de datos del SLA antes del gráfico
+        if (grafico.datosRoles && grafico.datosRoles.length > 0) {
+          pdf.setFontSize(10)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(0, 0, 0)
+          pdf.text('Detalle por Rol', margin, yPos)
+          yPos += 8
+
+          // Tabla de roles
+          const colWidthsRol = {
+            rol: 90,
+            porcentaje: 35,
+            usuarios: 40,
+            nivel: 40
+          }
+
+          // Header
+          pdf.setFillColor(66, 139, 202)
+          pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+          pdf.setTextColor(255, 255, 255)
+          pdf.setFontSize(9)
+          pdf.setFont('helvetica', 'bold')
+
+          let xPosRol = margin + 2
+          pdf.text('Rol', xPosRol, yPos + 5.5)
+          xPosRol += colWidthsRol.rol
+          pdf.text('SLA %', xPosRol, yPos + 5.5)
+          xPosRol += colWidthsRol.porcentaje
+          pdf.text('Usuarios', xPosRol, yPos + 5.5)
+          xPosRol += colWidthsRol.usuarios
+          pdf.text('Nivel', xPosRol, yPos + 5.5)
+          yPos += 8
+
+          // Datos
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(8)
+          grafico.datosRoles.forEach((rol, index) => {
+            // Verificar espacio
+            if (yPos + 7 > pageHeight - 20) {
+              addFooter()
+              pdf.addPage()
+              currentPage++
+              yPos = addHeader()
+              yPos += 5
+
+              // Redibujar header
+              pdf.setFillColor(66, 139, 202)
+              pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+              pdf.setTextColor(255, 255, 255)
+              pdf.setFontSize(9)
+              pdf.setFont('helvetica', 'bold')
+
+              xPosRol = margin + 2
+              pdf.text('Rol', xPosRol, yPos + 5.5)
+              xPosRol += colWidthsRol.rol
+              pdf.text('SLA %', xPosRol, yPos + 5.5)
+              xPosRol += colWidthsRol.porcentaje
+              pdf.text('Usuarios', xPosRol, yPos + 5.5)
+              xPosRol += colWidthsRol.usuarios
+              pdf.text('Nivel', xPosRol, yPos + 5.5)
+              yPos += 8
+
+              pdf.setFont('helvetica', 'normal')
+              pdf.setFontSize(8)
+            }
+
+            const fillColor = index % 2 === 0 ? 255 : 245
+            pdf.setFillColor(fillColor, fillColor, fillColor)
+            pdf.rect(margin, yPos, pageWidth - 2 * margin, 7, 'F')
+            pdf.setTextColor(0, 0, 0)
+
+            xPosRol = margin + 2
+            const rolText = rol.nombre.length > 35 ? rol.nombre.substring(0, 32) + '...' : rol.nombre
+            pdf.text(rolText, xPosRol, yPos + 4.5)
+            xPosRol += colWidthsRol.rol
+            pdf.text(`${rol.porcentaje}%`, xPosRol, yPos + 4.5)
+            xPosRol += colWidthsRol.porcentaje
+            pdf.text(`${rol.cumplidos}/${rol.total}`, xPosRol, yPos + 4.5)
+            xPosRol += colWidthsRol.usuarios
+
+            const nivel = rol.porcentaje >= 90 ? 'CUMPLE' : rol.porcentaje >= 70 ? 'PROCESO' : 'NO CUMPLE'
+            pdf.text(nivel, xPosRol, yPos + 4.5)
+            yPos += 7
+          })
+
+          yPos += 10
+        }
+
+        // Agregar nueva página para el gráfico si hay tabla
+        if (grafico.datosRoles && grafico.datosRoles.length > 0) {
+          addFooter()
+          pdf.addPage()
+          currentPage++
+          yPos = addHeader()
+          yPos += 5
+
+          pdf.setFontSize(12)
+          pdf.setFont('helvetica', 'bold')
+          pdf.setTextColor(66, 139, 202)
+          pdf.text(`${grafico.titulo} - Gráfico`, margin, yPos)
+          yPos += 10
+        }
+
+        // Buscar el canvas del gráfico
+        let canvas = null
+        if (vistaUnificada.value) {
+          canvas = document.getElementById('chartUnificadoCanvas')
+        } else {
+          const canvasId = `chartCanvas_${grafico.codigoSla}`
+          canvas = document.getElementById(canvasId)
+        }
+
+        if (canvas) {
+          try {
+            const canvasImage = await html2canvas(canvas, {
+              scale: 2,
+              backgroundColor: '#ffffff',
+              logging: false,
+              useCORS: true,
+            })
+
+            const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
+            const imgWidth = pageWidth - 2 * margin
+            const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
+            const maxHeight = pageHeight - yPos - 30
+            const finalHeight = Math.min(imgHeight, maxHeight)
+            const finalWidth = (finalHeight * canvasImage.width) / canvasImage.height
+
+            pdf.addImage(imgData, 'JPEG', margin, yPos, finalWidth, finalHeight)
+            yPos += finalHeight + 5
+          } catch (error) {
+            console.error('Error al capturar gráfico:', error)
+            pdf.setFontSize(9)
+            pdf.setTextColor(200, 0, 0)
+            pdf.text('Error al capturar gráfico', margin, yPos)
+            yPos += 10
+          }
+        }
+
+        addFooter()
+
+        if (vistaUnificada.value) break
+      }
+    }
+
+    // SECCIÓN 3: DISTRIBUCIÓN DE ESTADOS POR SOLICITUD
+    if (seccionesExportar.value.distribucion) {
+      if (primeraSeccionAgregada) {
+        pdf.addPage()
+        currentPage++
+      } else {
+        primeraSeccionAgregada = true
+      }
+      yPos = addHeader()
+      yPos += 5
+
+      // Título de la sección
+      pdf.setFontSize(12)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(66, 139, 202)
+      pdf.text('Distribución de Estados por Solicitud', margin, yPos)
+      yPos += 10
+
+      // Agregar tabla de estadísticas de distribución
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(0, 0, 0)
+      pdf.text('Estadísticas de Distribución', margin, yPos)
+      yPos += 8
+
+      // Calcular totales
+      let cumpleTotal = 0
+      let procesoTotal = 0
+      let noCumpleTotal = 0
+
+      graficos.value.forEach(grafico => {
+        grafico.datosRoles.forEach(rol => {
+          cumpleTotal += rol.cumplidos || 0
+          procesoTotal += rol.proceso || 0
+          noCumpleTotal += rol.noCumplen || 0
+        })
+      })
+
+      const totalSolicitudes = cumpleTotal + procesoTotal + noCumpleTotal
+
+      // Tabla de distribución
+      const distData = [
+        { estado: 'Cumple', cantidad: cumpleTotal, porcentaje: totalSolicitudes > 0 ? ((cumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [76, 175, 80] },
+        { estado: 'En Proceso', cantidad: procesoTotal, porcentaje: totalSolicitudes > 0 ? ((procesoTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [255, 152, 0] },
+        { estado: 'No Cumple', cantidad: noCumpleTotal, porcentaje: totalSolicitudes > 0 ? ((noCumpleTotal / totalSolicitudes) * 100).toFixed(1) : '0', color: [244, 67, 54] }
+      ]
+
+      // Header
+      pdf.setFillColor(66, 139, 202)
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('Estado', margin + 2, yPos + 5.5)
+      pdf.text('Cantidad', margin + 70, yPos + 5.5)
+      pdf.text('Porcentaje', margin + 120, yPos + 5.5)
+      yPos += 8
+
+      // Datos
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(8)
+      distData.forEach((item) => {
+        pdf.setFillColor(item.color[0], item.color[1], item.color[2], 0.1)
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 7, 'F')
+        pdf.setTextColor(0, 0, 0)
+        pdf.text(item.estado, margin + 2, yPos + 4.5)
+        pdf.text(String(item.cantidad), margin + 70, yPos + 4.5)
+        pdf.text(`${item.porcentaje}%`, margin + 120, yPos + 4.5)
+        yPos += 7
+      })
+
+      yPos += 10
+
+      // Capturar el gráfico de distribución
+      const canvasDistribucion = document.getElementById('graficoDistribucionEstadosAnalytic')
+      if (canvasDistribucion) {
+        try {
+          const canvasImage = await html2canvas(canvasDistribucion, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true,
+          })
+
+          const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
+          const imgWidth = (pageWidth - 2 * margin) * 0.7
+          const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
+          const xOffset = margin + ((pageWidth - 2 * margin - imgWidth) / 2)
+
+          if (yPos + imgHeight > pageHeight - 30) {
+            addFooter()
+            pdf.addPage()
+            currentPage++
+            yPos = addHeader()
+            yPos += 5
+          }
+
+          pdf.addImage(imgData, 'JPEG', xOffset, yPos, imgWidth, imgHeight)
+          yPos += imgHeight + 5
+        } catch (error) {
+          console.error('Error al capturar gráfico de distribución:', error)
+          pdf.setFontSize(9)
+          pdf.setTextColor(200, 0, 0)
+          pdf.text('Error al capturar gráfico de distribución', margin, yPos)
+        }
+      }
+
+      addFooter()
+    }
+
+    // SECCIÓN 4: RESUMEN DE INCUMPLIMIENTOS POR TIPO SLA
+    if (seccionesExportar.value.resumen) {
+      if (primeraSeccionAgregada) {
+        pdf.addPage()
+        currentPage++
+      } else {
+        primeraSeccionAgregada = true
+      }
+      yPos = addHeader()
+      yPos += 5
+
+      // Título de la sección
+      pdf.setFontSize(12)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(66, 139, 202)
+      pdf.text('Resumen de Incumplimientos por Tipo SLA', margin, yPos)
+      yPos += 10
+
+      // Agregar tabla de resumen de incumplimientos
+      pdf.setFontSize(10)
+      pdf.setFont('helvetica', 'bold')
+      pdf.setTextColor(0, 0, 0)
+      pdf.text('Detalle de Incumplimientos por Tipo SLA', margin, yPos)
+      yPos += 8
+
+      // Preparar datos de resumen
+      const resumenData = []
+      graficos.value.forEach(grafico => {
+        let cumpleTotal = 0
+        let procesoTotal = 0
+        let noCumpleTotal = 0
+
+        grafico.datosRoles.forEach(rol => {
+          cumpleTotal += rol.cumplidos || 0
+          procesoTotal += rol.proceso || 0
+          noCumpleTotal += rol.noCumplen || 0
+        })
+
+        resumenData.push({
+          codigo: grafico.codigoSla,
+          cumple: cumpleTotal,
+          proceso: procesoTotal,
+          noCumple: noCumpleTotal,
+          total: cumpleTotal + procesoTotal + noCumpleTotal
+        })
+      })
+
+      // Header
+      pdf.setFillColor(66, 139, 202)
+      pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+      pdf.setTextColor(255, 255, 255)
+      pdf.setFontSize(9)
+      pdf.setFont('helvetica', 'bold')
+      pdf.text('Tipo SLA', margin + 2, yPos + 5.5)
+      pdf.text('Cumple', margin + 50, yPos + 5.5)
+      pdf.text('Proceso', margin + 90, yPos + 5.5)
+      pdf.text('No Cumple', margin + 130, yPos + 5.5)
+      pdf.text('Total', margin + 175, yPos + 5.5)
+      yPos += 8
+
+      // Datos
+      pdf.setFont('helvetica', 'normal')
+      pdf.setFontSize(8)
+      resumenData.forEach((item, index) => {
+        if (yPos + 7 > pageHeight - 20) {
+          addFooter()
+          pdf.addPage()
+          currentPage++
+          yPos = addHeader()
+          yPos += 5
+
+          // Redibujar header
+          pdf.setFillColor(66, 139, 202)
+          pdf.rect(margin, yPos, pageWidth - 2 * margin, 8, 'F')
+          pdf.setTextColor(255, 255, 255)
+          pdf.setFontSize(9)
+          pdf.setFont('helvetica', 'bold')
+          pdf.text('Tipo SLA', margin + 2, yPos + 5.5)
+          pdf.text('Cumple', margin + 50, yPos + 5.5)
+          pdf.text('Proceso', margin + 90, yPos + 5.5)
+          pdf.text('No Cumple', margin + 130, yPos + 5.5)
+          pdf.text('Total', margin + 175, yPos + 5.5)
+          yPos += 8
+          pdf.setFont('helvetica', 'normal')
+          pdf.setFontSize(8)
+        }
+
+        const fillColor = index % 2 === 0 ? 255 : 245
+        pdf.setFillColor(fillColor, fillColor, fillColor)
+        pdf.rect(margin, yPos, pageWidth - 2 * margin, 7, 'F')
+        pdf.setTextColor(0, 0, 0)
+        pdf.text(item.codigo, margin + 2, yPos + 4.5)
+        pdf.setTextColor(76, 175, 80)
+        pdf.text(String(item.cumple), margin + 50, yPos + 4.5)
+        pdf.setTextColor(255, 152, 0)
+        pdf.text(String(item.proceso), margin + 90, yPos + 4.5)
+        pdf.setTextColor(244, 67, 54)
+        pdf.text(String(item.noCumple), margin + 130, yPos + 4.5)
+        pdf.setTextColor(0, 0, 0)
+        pdf.text(String(item.total), margin + 175, yPos + 4.5)
+        yPos += 7
+      })
+
+      yPos += 10
+
+      // Capturar el gráfico de resumen
+      const canvasResumen = document.getElementById('graficoResumenIncumplimientosAnalytic')
+      if (canvasResumen) {
+        try {
+          const canvasImage = await html2canvas(canvasResumen, {
+            scale: 2,
+            backgroundColor: '#ffffff',
+            logging: false,
+            useCORS: true,
+          })
+
+          const imgData = canvasImage.toDataURL('image/jpeg', 0.7)
+          const imgWidth = pageWidth - 2 * margin
+          const imgHeight = (canvasImage.height * imgWidth) / canvasImage.width
+
+          if (yPos + imgHeight > pageHeight - 30) {
+            addFooter()
+            pdf.addPage()
+            currentPage++
+            yPos = addHeader()
+            yPos += 5
+          }
+
+          pdf.addImage(imgData, 'JPEG', margin, yPos, imgWidth, imgHeight)
+        } catch (error) {
+          console.error('Error al capturar gráfico de resumen:', error)
+          pdf.setFontSize(9)
+          pdf.setTextColor(200, 0, 0)
+          pdf.text('Error al capturar gráfico de resumen', margin, yPos)
+        }
+      }
+
+      addFooter()
+    }
+
+    // Guardar PDF
     const fileName = `Analisis_SLA_${new Date().getTime()}.pdf`
     pdf.save(fileName)
 
