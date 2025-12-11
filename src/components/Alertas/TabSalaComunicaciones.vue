@@ -49,7 +49,7 @@ const opcionesRoles = ref([])
 // --- 1. CARGA INICIAL DE SELECTORES ---
 const cargarSelectores = async () => {
   try {
-    console.log('📋 Iniciando carga de selectores...')
+    // console.log('📋 Iniciando carga de selectores...')
 
     // Cargar roles y SLAs en paralelo
     const [resSlas, resRoles] = await Promise.all([
@@ -57,8 +57,8 @@ const cargarSelectores = async () => {
       api.get('/api/email/roles'),
     ])
 
-    console.log('📦 Respuesta SLAs:', resSlas.data)
-    console.log('📦 Respuesta Roles:', resRoles.data)
+    // console.log('📦 Respuesta SLAs:', resSlas.data)
+    // console.log('📦 Respuesta Roles:', resRoles.data)
 
     // Mapear respuestas - el backend devuelve { total: n, slas: [...], roles: [...] }
     const slas = resSlas.data.slas || []
@@ -80,11 +80,11 @@ const cargarSelectores = async () => {
       })),
     ]
 
-    console.log('✅ SLAs procesados:', opcionesSlas.value)
-    console.log('✅ Roles procesados:', opcionesRoles.value)
+    // console.log('✅ SLAs procesados:', opcionesSlas.value)
+    // console.log('✅ Roles procesados:', opcionesRoles.value)
   } catch (error) {
-    console.error('❌ Error cargando selectores:', error)
-    console.error('❌ Detalles:', error.response?.data)
+    // console.error('❌ Error cargando selectores:', error)
+    // console.error('❌ Detalles:', error.response?.data)
     $q.notify({
       type: 'warning',
       message: 'No se pudieron cargar los filtros',
@@ -98,7 +98,7 @@ const cargarSelectores = async () => {
 
 // --- 2. VISTA PREVIA DE DESTINATARIOS ---
 const aplicarFiltros = ({ idSla, idRol }) => {
-  console.log('🔍 Filtros recibidos:', { idSla, idRol })
+  // console.log('🔍 Filtros recibidos:', { idSla, idRol })
   filtros.value.idSla = idSla === 'Todos' || idSla === null ? null : idSla
   filtros.value.idRol = idRol === 'Todos' || idRol === null ? null : idRol
 }
@@ -110,11 +110,11 @@ const cargarVistaPrevia = async () => {
     if (filtros.value.idSla) params.idSla = filtros.value.idSla
     if (filtros.value.idRol) params.idRol = filtros.value.idRol
 
-    console.log('📋 Cargando preview con params:', params)
+    // console.log('📋 Cargando preview con params:', params)
 
     const { data } = await api.get('/api/email/preview-destinatarios', { params })
 
-    console.log('📦 Respuesta preview-destinatarios:', data)
+    // console.log('📦 Respuesta preview-destinatarios:', data)
 
     // Mapear destinatarios - verificar estructura
     const destinatarios = data.destinatarios || data.data || data || []
@@ -133,10 +133,10 @@ const cargarVistaPrevia = async () => {
       email: usuario.email || usuario.correo || '',
     }))
 
-    console.log(`✅ ${usuariosPreview.value.length} destinatarios en preview`)
+    // console.log(`✅ ${usuariosPreview.value.length} destinatarios en preview`)
   } catch (error) {
-    console.error('❌ Error en vista previa:', error)
-    console.error('❌ Response:', error.response?.data)
+    // console.error('❌ Error en vista previa:', error)
+    // console.error('❌ Response:', error.response?.data)
     usuariosPreview.value = []
     $q.notify({
       type: 'warning',
@@ -208,7 +208,7 @@ const enviarPrueba = (comunicado) => {
         emailPrueba: emailPrueba,
       }
 
-      console.log('📤 Enviando prueba:', payload)
+      // console.log('📤 Enviando prueba:', payload)
 
       const { data } = await api.post('/api/email/broadcast', payload)
 
@@ -219,7 +219,7 @@ const enviarPrueba = (comunicado) => {
         position: 'top-right',
       })
     } catch (error) {
-      console.error('❌ Error al enviar prueba:', error)
+      // console.error('❌ Error al enviar prueba:', error)
       $q.notify({
         type: 'negative',
         message: error.response?.data?.mensaje || 'Error al enviar prueba',
@@ -270,7 +270,7 @@ const enviarComunicado = (comunicado) => {
         emailPrueba: null,
       }
 
-      console.log('📤 Enviando comunicado masivo:', payload)
+      // console.log('📤 Enviando comunicado masivo:', payload)
 
       const { data } = await api.post('/api/email/broadcast', payload)
 
@@ -284,7 +284,7 @@ const enviarComunicado = (comunicado) => {
         timeout: 3000,
       })
     } catch (error) {
-      console.error('❌ Error al enviar comunicado:', error)
+      // console.error('❌ Error al enviar comunicado:', error)
       $q.notify({
         type: 'negative',
         message: error.response?.data?.mensaje || 'Error al enviar comunicado',

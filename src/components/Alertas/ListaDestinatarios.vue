@@ -130,12 +130,12 @@ const filtros = ref({
  * Opciones de filtros desde props del backend
  */
 const opcionesTipoSla = computed(() => {
-  console.log('🔍 Opciones SLA recibidas:', props.opcionesSlas)
+  // console.log('🔍 Opciones SLA recibidas:', props.opcionesSlas)
   return props.opcionesSlas
 })
 
 const opcionesRol = computed(() => {
-  console.log('🔍 Opciones Rol recibidas:', props.opcionesRoles)
+  // console.log('🔍 Opciones Rol recibidas:', props.opcionesRoles)
   return props.opcionesRoles
 })
 
@@ -143,10 +143,10 @@ const opcionesRol = computed(() => {
  * Emite evento de filtrado con IDs
  */
 const emitirFiltros = () => {
-  console.log('📤 Emitiendo filtros:', {
-    idSla: filtros.value.sla,
-    idRol: filtros.value.rol,
-  })
+  // console.log('📤 Emitiendo filtros:', {
+  //   idSla: filtros.value.sla,
+  //   idRol: filtros.value.rol,
+  // })
   emit('filtrar', {
     idSla: filtros.value.sla,
     idRol: filtros.value.rol,
@@ -159,7 +159,7 @@ watch(
   (newSlas) => {
     if (newSlas.length > 0 && filtros.value.sla === undefined) {
       filtros.value.sla = null
-      console.log('🔄 Filtro SLA inicializado')
+      // console.log('🔄 Filtro SLA inicializado')
     }
   },
   { immediate: true },
@@ -170,7 +170,7 @@ watch(
   (newRoles) => {
     if (newRoles.length > 0 && filtros.value.rol === undefined) {
       filtros.value.rol = null
-      console.log('🔄 Filtro Rol inicializado')
+      // console.log('🔄 Filtro Rol inicializado')
     }
   },
   { immediate: true },
@@ -178,12 +178,12 @@ watch(
 
 // Emitir filtros iniciales al montar
 onMounted(() => {
-  console.log('🚀 ListaDestinatarios montado')
-  console.log('Props recibidas:', {
-    usuarios: props.usuarios.length,
-    slas: props.opcionesSlas.length,
-    roles: props.opcionesRoles.length,
-  })
+  // console.log('🚀 ListaDestinatarios montado')
+  // console.log('Props recibidas:', {
+  //   usuarios: props.usuarios.length,
+  //   slas: props.opcionesSlas.length,
+  //   roles: props.opcionesRoles.length,
+  // })
   emitirFiltros()
 })
 </script>

@@ -707,7 +707,7 @@ const exportarDatos = () => {
       icon: 'file_download',
     })
   } catch (error) {
-    console.error('Error al exportar:', error)
+    // console.error('Error al exportar:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al exportar datos',
@@ -721,23 +721,23 @@ const exportarDatos = () => {
  * CRÍTICO: Pre-llena el campo destinatario con emailResponsable
  */
 const abrirModalEmail = (alerta) => {
-  console.log('📧 Abrir modal email para:', alerta)
-  console.log('📧 codigoSolicitud:', alerta.codigoSolicitud)
-  console.log('📧 emailResponsable:', alerta.emailResponsable)
-  console.log('📧 nombreResponsable:', alerta.nombreResponsable)
+  // console.log('📧 Abrir modal email para:', alerta)
+  // console.log('📧 codigoSolicitud:', alerta.codigoSolicitud)
+  // console.log('📧 emailResponsable:', alerta.emailResponsable)
+  // console.log('📧 nombreResponsable:', alerta.nombreResponsable)
 
   alertaSeleccionada.value = alerta
   modalEmailVisible.value = true
 
-  console.log('📧 Modal visible:', modalEmailVisible.value)
-  console.log('📧 Alerta seleccionada:', alertaSeleccionada.value)
+  // console.log('📧 Modal visible:', modalEmailVisible.value)
+  // console.log('📧 Alerta seleccionada:', alertaSeleccionada.value)
 }
 
 /**
  * Maneja evento de notificación enviada
  */
-const handleNotificacionEnviada = (data) => {
-  console.log('✅ Notificación enviada exitosamente:', data)
+const handleNotificacionEnviada = (_data) => {
+  // console.log('✅ Notificación enviada exitosamente:', _data)
 
   // Recargar datos para reflejar cambios
   cargarAlertas()
@@ -748,7 +748,7 @@ const handleNotificacionEnviada = (data) => {
  * Muestra el mensaje de la alerta y la marca como leída usando PUT /api/alertas/{id}
  */
 const verDetalle = async (alerta) => {
-  console.log('👁️ Ver detalle:', alerta.codigoSolicitud)
+  // console.log('👁️ Ver detalle:', alerta.codigoSolicitud)
 
   // Mostrar mensaje en dialog
   $q.dialog({
@@ -764,8 +764,8 @@ const verDetalle = async (alerta) => {
   // Marcar como LEÍDA (si no está ya leída)
   if (!alerta.esLeida) {
     try {
-      console.log('📝 Marcando alerta como LEÍDA...')
-      console.log('📋 ID Alerta:', alerta.idAlerta)
+      // console.log('📝 Marcando alerta como LEÍDA...')
+      // console.log('📋 ID Alerta:', alerta.idAlerta)
 
       // Llamar al endpoint PUT /api/alertas/{id} con el formato que espera el backend
       await api.put(`/api/alertas/${alerta.idAlerta}`, {
@@ -784,10 +784,10 @@ const verDetalle = async (alerta) => {
         timeout: 1500,
       })
 
-      console.log('✅ Alerta marcada como leída exitosamente')
+      // console.log('✅ Alerta marcada como leída exitosamente')
     } catch (error) {
-      console.error('❌ Error al marcar como leída:', error)
-      console.error('❌ Detalles:', error.response?.data)
+      // console.error('❌ Error al marcar como leída:', error)
+      // console.error('❌ Detalles:', error.response?.data)
 
       $q.notify({
         type: 'negative',
@@ -796,7 +796,7 @@ const verDetalle = async (alerta) => {
       })
     }
   } else {
-    console.log('ℹ️ Alerta ya está marcada como leída')
+    // console.log('ℹ️ Alerta ya está marcada como leída')
   }
 }
 
@@ -804,7 +804,7 @@ const verDetalle = async (alerta) => {
  * Acción Eliminar con confirmación
  */
 const eliminarAlerta = (idAlerta) => {
-  console.log('🗑️ Solicitud de eliminación, ID:', idAlerta)
+  // console.log('🗑️ Solicitud de eliminación, ID:', idAlerta)
 
   $q.dialog({
     title: 'Confirmar eliminación',
@@ -822,7 +822,7 @@ const eliminarAlerta = (idAlerta) => {
     persistent: true,
   })
     .onOk(async () => {
-      console.log('✅ Usuario confirmó eliminación')
+      // console.log('✅ Usuario confirmó eliminación')
 
       // Mostrar loading
       const loading = $q.loading.show({
@@ -847,7 +847,7 @@ const eliminarAlerta = (idAlerta) => {
           timeout: 2000,
         })
       } catch (error) {
-        console.error('❌ Error al eliminar:', error)
+        // console.error('❌ Error al eliminar:', error)
 
         $q.notify({
           type: 'negative',
@@ -860,7 +860,7 @@ const eliminarAlerta = (idAlerta) => {
       }
     })
     .onCancel(() => {
-      console.log('❌ Usuario canceló eliminación')
+      // console.log('❌ Usuario canceló eliminación')
     })
 }
 
@@ -869,7 +869,7 @@ const eliminarAlerta = (idAlerta) => {
  */
 const cargarSelectores = async () => {
   try {
-    console.log('📋 Iniciando carga de selectores...')
+    // console.log('📋 Iniciando carga de selectores...')
 
     // Cargar roles y SLAs en paralelo
     const [resSlas, resRoles] = await Promise.all([
@@ -877,8 +877,8 @@ const cargarSelectores = async () => {
       api.get('/api/email/roles'),
     ])
 
-    console.log('📦 Respuesta SLAs:', resSlas.data)
-    console.log('📦 Respuesta Roles:', resRoles.data)
+    // console.log('📦 Respuesta SLAs:', resSlas.data)
+    // console.log('📦 Respuesta Roles:', resRoles.data)
 
     // Mapear respuestas - el backend devuelve { total: n, slas: [...], roles: [...] }
     const slas = resSlas.data.slas || []
@@ -900,11 +900,11 @@ const cargarSelectores = async () => {
       })),
     ]
 
-    console.log('✅ SLAs procesados:', opcionesSlas.value)
-    console.log('✅ Roles procesados:', opcionesRoles.value)
+    // console.log('✅ SLAs procesados:', opcionesSlas.value)
+    // console.log('✅ Roles procesados:', opcionesRoles.value)
   } catch (error) {
-    console.error('❌ Error cargando selectores:', error)
-    console.error('❌ Detalles:', error.response?.data)
+    // console.error('❌ Error cargando selectores:', error)
+    // console.error('❌ Detalles:', error.response?.data)
     $q.notify({
       type: 'warning',
       message: 'No se pudieron cargar los filtros de SLA y Roles',
@@ -964,27 +964,36 @@ const cargarAlertas = async () => {
     const queryString = params.toString()
     const url = queryString ? `/api/alertas/dashboard?${queryString}` : '/api/alertas/dashboard'
 
-    console.log('📊 Cargando dashboard con filtros:', url)
-    console.log('📋 Parámetros:', Object.fromEntries(params))
-    console.log('📋 Parámetros:', Object.fromEntries(params))
+    // console.log('📊 Cargando dashboard con filtros:', url)
+    // console.log('📋 Parámetros:', Object.fromEntries(params))
+    // console.log('📋 Parámetros:', Object.fromEntries(params))
 
     const response = await api.get(url)
 
     if (response.data && Array.isArray(response.data)) {
       alertas.value = response.data
-      console.log(`✅ ${alertas.value.length} alertas cargadas`)
+      // console.log(`✅ ${alertas.value.length} alertas cargadas`)
+
+      $q.notify({
+        type: 'positive',
+        message: 'Alertas cargadas correctamente',
+        caption: `Total: ${alertas.value.length} alertas`,
+        position: 'top-right',
+        timeout: 2000,
+        icon: 'check_circle',
+      })
     } else {
-      console.warn('⚠️ Respuesta inválida del backend')
+      // console.warn('⚠️ Respuesta inválida del backend')
       alertas.value = []
     }
   } catch (error) {
-    console.error('❌ Error al cargar alertas:', error)
-    console.error('Detalles:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      message: error.message,
-      url: error.config?.url,
-    })
+    // console.error('❌ Error al cargar alertas:', error)
+    // console.error('Detalles:', {
+    //   status: error.response?.status,
+    //   statusText: error.response?.statusText,
+    //   message: error.message,
+    //   url: error.config?.url,
+    // })
 
     $q.notify({
       type: 'negative',

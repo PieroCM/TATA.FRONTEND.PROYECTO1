@@ -210,7 +210,7 @@ const cargarEjecuciones = async () => {
   loading.value = true
 
   try {
-    console.log('📋 Cargando logs de ejecuciones...')
+    // console.log('📋 Cargando logs de ejecuciones...')
 
     // Llamar a GET /api/email/logs
     const response = await api.get('/api/email/logs')
@@ -218,17 +218,17 @@ const cargarEjecuciones = async () => {
     // Backend devuelve { total: number, logs: array }
     if (response.data && response.data.logs && Array.isArray(response.data.logs)) {
       ejecuciones.value = response.data.logs
-      console.log(`✅ ${ejecuciones.value.length} de ${response.data.total} ejecuciones cargadas`)
+      // console.log(`✅ ${ejecuciones.value.length} de ${response.data.total} ejecuciones cargadas`)
     } else if (response.data && Array.isArray(response.data)) {
       // Fallback si backend devuelve array directo
       ejecuciones.value = response.data
-      console.log(`✅ ${ejecuciones.value.length} ejecuciones cargadas`)
+      // console.log(`✅ ${ejecuciones.value.length} ejecuciones cargadas`)
     } else {
-      console.warn('⚠️ Respuesta inválida del backend')
+      // console.warn('⚠️ Respuesta inválida del backend')
       ejecuciones.value = []
     }
   } catch (error) {
-    console.error('❌ Error al cargar ejecuciones:', error)
+    // console.error('❌ Error al cargar ejecuciones:', error)
 
     $q.notify({
       type: 'warning',

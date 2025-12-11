@@ -182,15 +182,15 @@ const getColorDiasRestantes = (dias) => {
 watch(
   () => props.alerta,
   (newAlerta) => {
-    console.log('👀 Watch alerta triggered:', newAlerta)
+    // console.log('👀 Watch alerta triggered:', newAlerta)
 
     if (newAlerta) {
-      console.log('📝 Inicializando formulario con:', {
-        codigoSolicitud: newAlerta.codigoSolicitud,
-        emailResponsable: newAlerta.emailResponsable,
-        nombreResponsable: newAlerta.nombreResponsable,
-        diasRestantes: newAlerta.diasRestantes,
-      })
+      // console.log('📝 Inicializando formulario con:', {
+      //   codigoSolicitud: newAlerta.codigoSolicitud,
+      //   emailResponsable: newAlerta.emailResponsable,
+      //   nombreResponsable: newAlerta.nombreResponsable,
+      //   diasRestantes: newAlerta.diasRestantes,
+      // })
 
       // Obtener datos del usuario logueado (Store o LocalStorage)
       const storedUser = JSON.parse(localStorage.getItem('usuario') || '{}')
@@ -224,7 +224,7 @@ Saludos,
 ${formulario.value.remitenteNombre}
 ${formulario.value.remitenteEmail}`
 
-      console.log('✅ Formulario inicializado:', formulario.value)
+      // console.log('✅ Formulario inicializado:', formulario.value)
     }
   },
   { immediate: true },
@@ -298,12 +298,12 @@ const enviarNotificacion = async () => {
       cuerpoHtml: cuerpoHtml,
     }
 
-    console.log('📧 Enviando notificación con payload:', payload)
+    // console.log('📧 Enviando notificación con payload:', payload)
 
     // Llamar al endpoint de email
-    const response = await api.post('/api/email/notify', payload)
+    const _response = await api.post('/api/email/notify', payload)
 
-    console.log('✅ Respuesta del backend:', response.data)
+    // console.log('✅ Respuesta del backend:', _response.data)
 
     $q.notify({
       type: 'positive',
@@ -323,7 +323,7 @@ const enviarNotificacion = async () => {
     // Cerrar modal
     isOpen.value = false
   } catch (error) {
-    console.error('❌ Error al enviar notificación:', error)
+    // console.error('❌ Error al enviar notificación:', error)
 
     $q.notify({
       type: 'negative',

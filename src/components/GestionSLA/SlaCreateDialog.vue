@@ -565,12 +565,22 @@ const onSubmit = async () => {
       estadoSolicitud: null, // El backend lo calcula automáticamente
     }
 
-    console.log(
-      '[SlaCreateDialog] Creando solicitudes para',
-      selectedPersonalIds.value.length,
-      'personales',
-    )
-    console.log('[SlaCreateDialog] Payload base:', basePayload)
+    // Notificar inicio de creación
+    $q.notify({
+      type: 'info',
+      message: 'Creando solicitudes...',
+      caption: `Procesando ${selectedPersonalIds.value.length} registro(s)`,
+      position: 'top-right',
+      timeout: 2000,
+      icon: 'schedule',
+    })
+
+    // console.log(
+    //   '[SlaCreateDialog] Creando solicitudes para',
+    //   selectedPersonalIds.value.length,
+    //   'personales',
+    // )
+    // console.log('[SlaCreateDialog] Payload base:', basePayload)
 
     // Crear todas las solicitudes en paralelo
     const promises = selectedPersonalIds.value.map((idPersonal) => {
@@ -588,10 +598,10 @@ const onSubmit = async () => {
     const successful = results.filter((r) => r.status === 'fulfilled')
     const failed = results.filter((r) => r.status === 'rejected')
 
-    console.log('[SlaCreateDialog] Resultados:', {
-      exitosas: successful.length,
-      fallidas: failed.length,
-    })
+    // console.log('[SlaCreateDialog] Resultados:', {
+    //   exitosas: successful.length,
+    //   fallidas: failed.length,
+    // })
 
     // Notificar resultados
     if (successful.length > 0) {
@@ -605,7 +615,7 @@ const onSubmit = async () => {
     }
 
     if (failed.length > 0) {
-      console.error('[SlaCreateDialog] Errores al crear solicitudes:', failed)
+      // console.error('[SlaCreateDialog] Errores al crear solicitudes:', failed)
       $q.notify({
         type: 'negative',
         message: `${failed.length} solicitud(es) no pudieron procesarse`,

@@ -265,17 +265,17 @@ const cargarDashboard = async () => {
       params.esLeida = String(filtros.value.esLeida)
     }
 
-    console.log('📊 Cargando dashboard con parámetros:', params)
+    // console.log('📊 Cargando dashboard con parámetros:', params)
 
     // 2. Llamada al API con parámetros limpios
     const response = await api.get('/api/alertas/dashboard', { params })
 
-    console.log(`✅ ${response.data?.length || 0} alertas cargadas`)
+    // console.log(`✅ ${response.data?.length || 0} alertas cargadas`)
 
     // 3. Emitir datos a componente padre
     emit('alertas-cargadas', response.data || [])
   } catch (error) {
-    console.error('❌ Error al cargar dashboard:', error)
+    // console.error('❌ Error al cargar dashboard:', error)
 
     // Notificación de error
     $q.notify({
@@ -301,7 +301,7 @@ const cargarDashboard = async () => {
 // FUNCIÓN: limpiarFiltros
 // ========================================
 const limpiarFiltros = () => {
-  console.log('🧹 Limpiando filtros...')
+  // console.log('🧹 Limpiando filtros...')
 
   // Resetear a valores por defecto
   filtros.value = {
@@ -328,7 +328,7 @@ const limpiarFiltros = () => {
 // FUNCIÓN: exportarDatos
 // ========================================
 const exportarDatos = () => {
-  console.log('📤 Exportando datos...')
+  // console.log('📤 Exportando datos...')
   emit('exportar')
 }
 
@@ -337,7 +337,7 @@ const exportarDatos = () => {
 // ========================================
 const cargarSelectores = async () => {
   try {
-    console.log('📋 Cargando selectores dinámicos...')
+    // console.log('📋 Cargando selectores dinámicos...')
 
     // Cargar SLAs y Roles en paralelo
     const [resSlas, resRoles] = await Promise.all([
@@ -359,12 +359,12 @@ const cargarSelectores = async () => {
       nombre: r.descripcion || r.nombre,
     }))
 
-    console.log('✅ Selectores cargados:', {
-      slas: opcionesSlas.value.length,
-      roles: opcionesRoles.value.length,
-    })
+    // console.log('✅ Selectores cargados:', {
+    //   slas: opcionesSlas.value.length,
+    //   roles: opcionesRoles.value.length,
+    // })
   } catch (error) {
-    console.error('❌ Error cargando selectores:', error)
+    // console.error('❌ Error cargando selectores:', error)
 
     $q.notify({
       type: 'warning',
@@ -382,7 +382,7 @@ const cargarSelectores = async () => {
 // LIFECYCLE: onMounted
 // ========================================
 onMounted(async () => {
-  console.log('🚀 Componente FiltrosAvanzados montado')
+  // console.log('🚀 Componente FiltrosAvanzados montado')
 
   // 1. Cargar opciones dinámicas
   await cargarSelectores()

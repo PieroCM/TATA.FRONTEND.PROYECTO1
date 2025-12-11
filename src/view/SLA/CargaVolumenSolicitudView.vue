@@ -389,7 +389,7 @@ const handleFile = (file) => {
         position: 'top-right',
       })
     } catch (error) {
-      console.error('Error al procesar archivo:', error)
+      // console.error('Error al procesar archivo:', error)
       $q.notify({
         type: 'negative',
         message: 'Error al procesar el archivo',
@@ -443,7 +443,7 @@ const procesarArchivo = async () => {
   const idUsuario = getUserId()
 
   if (!idUsuario) {
-    console.error('❌ No se pudo obtener el ID del usuario')
+    // console.error('❌ No se pudo obtener el ID del usuario')
     $q.notify({
       type: 'negative',
       message: 'Error de autenticación',
@@ -454,13 +454,24 @@ const procesarArchivo = async () => {
   }
 
   isProcessing.value = true
+
+  // Notificar inicio de procesamiento
+  $q.notify({
+    type: 'info',
+    message: 'Procesando archivo...',
+    caption: `Enviando ${allRows.value.length} filas al servidor`,
+    position: 'top-right',
+    timeout: 2000,
+    icon: 'upload',
+  })
+
   try {
-    console.log('📤 Enviando datos al backend:', {
-      idUsuarioCreador: idUsuario,
-      totalFilas: allRows.value.length,
-      primeraFila: allRows.value[0],
-      columnas: Object.keys(allRows.value[0] || {}),
-    })
+    // console.log('📤 Enviando datos al backend:', {
+    //   idUsuarioCreador: idUsuario,
+    //   totalFilas: allRows.value.length,
+    //   primeraFila: allRows.value[0],
+    //   columnas: Object.keys(allRows.value[0] || {}),
+    // })
 
     // Llamar al backend con el nuevo endpoint que requiere idUsuarioCreador en query string
     const response = await api.post(
@@ -489,13 +500,13 @@ const procesarArchivo = async () => {
       timeout: 6000,
     })
   } catch (error) {
-    console.error('❌ Error al procesar carga masiva:', error)
-    console.error('📋 Detalles del error:', {
-      status: error.response?.status,
-      statusText: error.response?.statusText,
-      data: error.response?.data,
-      headers: error.response?.headers,
-    })
+    // console.error('❌ Error al procesar carga masiva:', error)
+    // console.error('📋 Detalles del error:', {
+    //   status: error.response?.status,
+    //   statusText: error.response?.statusText,
+    //   data: error.response?.data,
+    //   headers: error.response?.headers,
+    // })
 
     let caption = 'Revisa los datos del archivo o el log del servidor.'
     let detailMessage = ''

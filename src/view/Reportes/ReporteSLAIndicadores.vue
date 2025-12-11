@@ -717,7 +717,7 @@ const cargarConfiguracionesIniciales = async () => {
       filtros.value.codigoSla = null
     }
   } catch (error) {
-    console.error('Error al cargar configuraciones iniciales:', error)
+    // console.error('Error al cargar configuraciones iniciales:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar configuraciones de filtros',
@@ -903,7 +903,7 @@ const verReporte = async () => {
       resumen: resumen.value,
     })
   } catch (error) {
-    console.error('Error al calcular reporte:', error)
+    // console.error('Error al calcular reporte:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al calcular el reporte',
@@ -920,216 +920,211 @@ const verReporte = async () => {
       crearGrafico()
       // crearGraficoResumen() // ocultado: no crear gráfico de resumen
     } catch (graficoError) {
-      console.error('Error al crear el gráfico:', graficoError)
+      // console.error('Error al crear el gráfico:', graficoError)
     }
   }
 }
 
 const crearGrafico = () => {
-  try {
-    console.log('=== INICIANDO crearGrafico ===')
+  // console.log('=== INICIANDO crearGrafico ===')
 
-    // Buscar el canvas en el DOM
-    const canvasElement = document.querySelector('canvas[data-chart="sla"]')
-    console.log('canvasElement encontrado:', !!canvasElement)
+  // Buscar el canvas en el DOM
+  const canvasElement = document.querySelector('canvas[data-chart="sla"]')
+  // console.log('canvasElement encontrado:', !!canvasElement)
 
-    if (!canvasElement) {
-      console.log('ERROR: No se encontró el canvas en el DOM')
-      return
-    }
-
-    if (chartInstance) {
-      console.log('Destruyendo gráfico anterior')
-      chartInstance.destroy()
-    }
-
-    if (!filasTabla.value.length) {
-      console.log('ERROR: filasTabla está vacía')
-      return
-    }
-
-    console.log('Obteniendo contexto del canvas')
-    const ctx = canvasElement.getContext('2d')
-    console.log('ctx:', !!ctx)
-
-    // Usar directamente todas las filas de la tabla (que ya contiene todos los roles seleccionados)
-    const filasConDatos = filasTabla.value
-
-    if (!filasConDatos.length) {
-      console.log('ERROR: No hay filas con datos válidos')
-      return
-    }
-
-    const labels = filasConDatos.map((f) => f.rol)
-    // Para datos, mostrar el SLA o 0 si no hay recursos
-    const dataBruto = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
-    const numRecursos = filasConDatos.map((f) => f.numRecursos)
-
-    // Normalizar segmentos para que la altura total de la barra sea el SLA% del rol
-    // Segmento verde = sla * (cumplen/total), segmento rojo = sla * (noCumplen/total)
-    const dataCumple = dataBruto.map((val, idx) => {
-      const fila = filasConDatos[idx]
-      if (fila.numRecursos === 0 || val === 'NA') return 0
-      return parseFloat((val * (fila.cumplen / fila.numRecursos) || 0).toFixed(2))
-    })
-
-    const dataNoCumple = dataBruto.map((val, idx) => {
-      const fila = filasConDatos[idx]
-      if (fila.numRecursos === 0 || val === 'NA') return 0
-      return parseFloat((val * (fila.noCumplen / fila.numRecursos) || 0).toFixed(2))
-    })
-
-    console.log('Creando Chart con datos:', { labels, dataCumple, dataNoCumple, numRecursos })
-
-    // Determinar si se debe rotar los labels del eje X
-    // Si hay muchos roles (más de 5), rotar 45 grados
-    const debeRotar = labels.length > 5
-    const maxRotation = debeRotar ? 45 : 0
-    const minRotation = debeRotar ? 45 : 0
-
-    chartInstance = new Chart(ctx, {
-      type: 'bar',
-      data: {
-        labels,
-        datasets: [
-          {
-            label: 'Cumplen (SLA%)',
-            data: dataCumple,
-            backgroundColor: '#1f60aa',
-            borderColor: '#1f60aa',
-            borderWidth: 2,
-            hoverBackgroundColor: '#1f60aa',
-            hoverBorderColor: '#1f60aa',
-            stack: 'sla',
-            datalabels: {
-              labels: {
-                inner: {
-                  anchor: 'center',
-                  align: 'center',
-                  color: '#fff',
-                  font: { weight: 'bold', size: 12 },
-                  formatter: () => '', // Ocultar número interno
-                },
-              },
-            },
-          },
-          {
-            label: 'No cumplen (%)',
-            data: dataNoCumple,
-            backgroundColor: '#35bdec',
-            borderColor: '#35bdec',
-            borderWidth: 2,
-            hoverBackgroundColor: '#35bdec',
-            hoverBorderColor: '#35bdec',
-            stack: 'sla',
-            datalabels: {
-              labels: {
-                inner: {
-                  anchor: 'center',
-                  align: 'center',
-                  color: '#fff',
-                  font: { weight: 'bold', size: 12 },
-                  formatter: () => '', // Ocultar número interno
-                },
-                top: {
-                  anchor: 'end',
-                  align: 'top',
-                  offset: 5,
-                  color: '#333',
-                  font: { weight: 'bold', size: 15 },
-                  formatter: (value, context) => {
-                    const idx = context.dataIndex
-                    const fila = filasConDatos[idx]
-                    if (!fila || fila.numRecursos === 0 || fila.sla === 'NA') return ''
-                    return `${fila.sla}%`
-                  },
-                },
-              },
-            },
-          },
-          // Dataset fantasma para la etiqueta superior del SLA total
-        ],
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2.2,
-        plugins: {
-          legend: {
-            display: false,
-          },
-          // Configuración base; las opciones específicas por dataset están definidas en cada dataset
-          datalabels: {},
-          tooltip: {
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            padding: 12,
-            titleFont: { size: 14 },
-            bodyFont: { size: 13 },
-            // Un solo tooltip por columna con resumen
-            mode: 'index',
-            intersect: false,
-            callbacks: {
-              title: (items) => `Rol: ${items[0].label}`,
-              // Ocultar líneas por-item para evitar múltiples entradas
-              label: () => '',
-              afterLabel: () => '',
-              footer: (items) => {
-                const idx = items[0].dataIndex
-                const fila = filasConDatos[idx]
-                const slaValue = fila.sla === 'NA' ? 0 : fila.sla
-                const total = numRecursos[idx]
-                const cumplenCant = fila.cumplen || 0
-                const noCumplenCant = fila.noCumplen || 0
-                const cumplenPct = dataCumple[idx] || 0
-                const noCumplenPct = dataNoCumple[idx] || 0
-                return [
-                  `SLA del rol: ${slaValue}%`,
-                  `Total solicitudes: ${total}`,
-                  `Cumplen: ${cumplenCant} (${cumplenPct}%)`,
-                  `No cumplen: ${noCumplenCant} (${noCumplenPct}%)`,
-                ]
-              },
-            },
-          },
-        },
-        layout: {
-          padding: {
-            top: 40,
-          },
-        },
-        scales: {
-          x: {
-            title: {
-              display: true,
-              text: 'Roles/Áreas',
-            },
-            ticks: {
-              maxRotation,
-              minRotation,
-            },
-            stacked: true,
-          },
-          y: {
-            beginAtZero: true,
-            max: 100,
-            title: {
-              display: true,
-              text: 'SLA (%)',
-            },
-            ticks: {
-              callback: (value) => `${value}%`,
-            },
-            stacked: true,
-          },
-        },
-      },
-    })
-
-    console.log('Chart creado exitosamente')
-  } catch (error) {
-    console.error('Error en crearGrafico:', error)
-    throw error
+  if (!canvasElement) {
+    // console.log('ERROR: No se encontró el canvas en el DOM')
+    return
   }
+
+  if (chartInstance) {
+    // console.log('Destruyendo gráfico anterior')
+    chartInstance.destroy()
+  }
+
+  if (!filasTabla.value.length) {
+    // console.log('ERROR: filasTabla está vacía')
+    return
+  }
+
+  // console.log('Obteniendo contexto del canvas')
+  const ctx = canvasElement.getContext('2d')
+  // console.log('ctx:', !!ctx)
+
+  // Usar directamente todas las filas de la tabla (que ya contiene todos los roles seleccionados)
+  const filasConDatos = filasTabla.value
+
+  if (!filasConDatos.length) {
+    // console.log('ERROR: No hay filas con datos válidos')
+    return
+  }
+
+  const labels = filasConDatos.map((f) => f.rol)
+  // Para datos, mostrar el SLA o 0 si no hay recursos
+  const dataBruto = filasConDatos.map((f) => (f.numRecursos > 0 ? f.sla : 0))
+  const numRecursos = filasConDatos.map((f) => f.numRecursos)
+
+  // Normalizar segmentos para que la altura total de la barra sea el SLA% del rol
+  // Segmento verde = sla * (cumplen/total), segmento rojo = sla * (noCumplen/total)
+  const dataCumple = dataBruto.map((val, idx) => {
+    const fila = filasConDatos[idx]
+    if (fila.numRecursos === 0 || val === 'NA') return 0
+    return parseFloat((val * (fila.cumplen / fila.numRecursos) || 0).toFixed(2))
+  })
+
+  const dataNoCumple = dataBruto.map((val, idx) => {
+    const fila = filasConDatos[idx]
+    if (fila.numRecursos === 0 || val === 'NA') return 0
+    return parseFloat((val * (fila.noCumplen / fila.numRecursos) || 0).toFixed(2))
+  })
+
+  // console.log('Creando Chart con datos:', { labels, dataCumple, dataNoCumple, numRecursos })
+
+  // Determinar si se debe rotar los labels del eje X
+  // Si hay muchos roles (más de 5), rotar 45 grados
+  const debeRotar = labels.length > 5
+  const maxRotation = debeRotar ? 45 : 0
+  const minRotation = debeRotar ? 45 : 0
+
+  chartInstance = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [
+        {
+          label: 'Cumplen (SLA%)',
+          data: dataCumple,
+          backgroundColor: '#1f60aa',
+          borderColor: '#1f60aa',
+          borderWidth: 2,
+          hoverBackgroundColor: '#1f60aa',
+          hoverBorderColor: '#1f60aa',
+          stack: 'sla',
+          datalabels: {
+            labels: {
+              inner: {
+                anchor: 'center',
+                align: 'center',
+                color: '#fff',
+                font: { weight: 'bold', size: 12 },
+                formatter: () => '', // Ocultar número interno
+              },
+            },
+          },
+        },
+        {
+          label: 'No cumplen (%)',
+          data: dataNoCumple,
+          backgroundColor: '#35bdec',
+          borderColor: '#35bdec',
+          borderWidth: 2,
+          hoverBackgroundColor: '#35bdec',
+          hoverBorderColor: '#35bdec',
+          stack: 'sla',
+          datalabels: {
+            labels: {
+              inner: {
+                anchor: 'center',
+                align: 'center',
+                color: '#fff',
+                font: { weight: 'bold', size: 12 },
+                formatter: () => '', // Ocultar número interno
+              },
+              top: {
+                anchor: 'end',
+                align: 'top',
+                offset: 5,
+                color: '#333',
+                font: { weight: 'bold', size: 15 },
+                formatter: (value, context) => {
+                  const idx = context.dataIndex
+                  const fila = filasConDatos[idx]
+                  if (!fila || fila.numRecursos === 0 || fila.sla === 'NA') return ''
+                  return `${fila.sla}%`
+                },
+              },
+            },
+          },
+        },
+        // Dataset fantasma para la etiqueta superior del SLA total
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 2.2,
+      plugins: {
+        legend: {
+          display: false,
+        },
+        // Configuración base; las opciones específicas por dataset están definidas en cada dataset
+        datalabels: {},
+        tooltip: {
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          padding: 12,
+          titleFont: { size: 14 },
+          bodyFont: { size: 13 },
+          // Un solo tooltip por columna con resumen
+          mode: 'index',
+          intersect: false,
+          callbacks: {
+            title: (items) => `Rol: ${items[0].label}`,
+            // Ocultar líneas por-item para evitar múltiples entradas
+            label: () => '',
+            afterLabel: () => '',
+            footer: (items) => {
+              const idx = items[0].dataIndex
+              const fila = filasConDatos[idx]
+              const slaValue = fila.sla === 'NA' ? 0 : fila.sla
+              const total = numRecursos[idx]
+              const cumplenCant = fila.cumplen || 0
+              const noCumplenCant = fila.noCumplen || 0
+              const cumplenPct = dataCumple[idx] || 0
+              const noCumplenPct = dataNoCumple[idx] || 0
+              return [
+                `SLA del rol: ${slaValue}%`,
+                `Total solicitudes: ${total}`,
+                `Cumplen: ${cumplenCant} (${cumplenPct}%)`,
+                `No cumplen: ${noCumplenCant} (${noCumplenPct}%)`,
+              ]
+            },
+          },
+        },
+      },
+      layout: {
+        padding: {
+          top: 40,
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Roles/Áreas',
+          },
+          ticks: {
+            maxRotation,
+            minRotation,
+          },
+          stacked: true,
+        },
+        y: {
+          beginAtZero: true,
+          max: 100,
+          title: {
+            display: true,
+            text: 'SLA (%)',
+          },
+          ticks: {
+            callback: (value) => `${value}%`,
+          },
+          stacked: true,
+        },
+      },
+    },
+  })
+
+  // console.log('Chart creado exitosamente')
 }
 
 const _crearGraficoResumen = () => {
@@ -1190,7 +1185,7 @@ const _crearGraficoResumen = () => {
       },
     })
   } catch (error) {
-    console.error('Error en crearGraficoResumen:', error)
+    // console.error('Error en crearGraficoResumen:', error)
   }
 }
 
@@ -1250,15 +1245,24 @@ const exportarExcel = async () => {
       message: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.',
       position: 'top-right',
     })
-    console.error('❌ exportarExcel: No hay token en localStorage')
+    // console.error('❌ exportarExcel: No hay token en localStorage')
     return
   }
 
-  console.log('📊 Iniciando exportación Excel:', {
-    filasTabla: filasTabla.value.length,
-    solicitudesFiltradas: solicitudesFiltradas.value.length,
-    tokenExists: !!token,
-    tokenLength: token.length,
+  // console.log('📊 Iniciando exportación Excel:', {
+  //   filasTabla: filasTabla.value.length,
+  //   solicitudesFiltradas: solicitudesFiltradas.value.length,
+  //   tokenExists: !!token,
+  //   tokenLength: token.length,
+  // })
+
+  $q.notify({
+    type: 'info',
+    message: 'Generando reporte Excel...',
+    caption: 'Procesando datos',
+    position: 'top-right',
+    timeout: 2000,
+    icon: 'description',
   })
 
   exportandoExcel.value = true
@@ -1278,21 +1282,28 @@ const exportarExcel = async () => {
       }),
     }
 
-    console.log('📤 Enviando request a /api/reporte/generar:', {
-      payload,
-      headers: { Authorization: `Bearer ${token.substring(0, 20)}...` },
-    })
+    // console.log('📤 Enviando request a /api/reporte/generar:', {
+    //   payload,
+    //   headers: { Authorization: `Bearer ${token.substring(0, 20)}...` },
+    // })
 
     try {
-      const res = await api.post('/api/reporte/generar', payload)
-      console.log('✅ Reporte EXCEL registrado en backend:', res.data)
-    } catch (apiError) {
-      console.error('❌ Error registrando reporte EXCEL en API:', {
-        error: apiError,
-        status: apiError.response?.status,
-        data: apiError.response?.data,
-        headers: apiError.config?.headers,
+      const _res = await api.post('/api/reporte/generar', payload)
+      // console.log('✅ Reporte EXCEL registrado en backend:', _res.data)
+      $q.notify({
+        type: 'positive',
+        message: 'Reporte Excel registrado exitosamente',
+        position: 'top-right',
+        timeout: 3000,
+        icon: 'check_circle',
       })
+    } catch (apiError) {
+      // console.error('❌ Error registrando reporte EXCEL en API:', {
+      //   error: apiError,
+      //   status: apiError.response?.status,
+      //   data: apiError.response?.data,
+      //   headers: apiError.config?.headers,
+      // })
 
       // Si falla el registro, continuamos con la descarga local para no bloquear al usuario
       const status = apiError.response?.status
@@ -1462,7 +1473,7 @@ const exportarExcel = async () => {
         })
       }
     } catch (e) {
-      console.warn('No se pudo embeber la imagen del gráfico en Excel:', e)
+      // console.warn('No se pudo embeber la imagen del gráfico en Excel:', e)
     }
 
     // Generar archivo
@@ -1486,7 +1497,7 @@ const exportarExcel = async () => {
       position: 'top-right',
     })
   } catch (error) {
-    console.error('Error al exportar a Excel:', error)
+    // console.error('Error al exportar a Excel:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al generar el archivo Excel',
@@ -1517,13 +1528,22 @@ const exportarPdf = async () => {
       message: 'No se encontró token de autenticación. Por favor, inicia sesión nuevamente.',
       position: 'top-right',
     })
-    console.error('❌ exportarPdf: No hay token en localStorage')
+    // console.error('❌ exportarPdf: No hay token en localStorage')
     return
   }
 
-  console.log('📄 Iniciando exportación PDF:', {
-    tokenExists: !!token,
-    tokenLength: token.length,
+  // console.log('📄 Iniciando exportación PDF:', {
+  //   tokenExists: !!token,
+  //   tokenLength: token.length,
+  // })
+
+  $q.notify({
+    type: 'info',
+    message: 'Generando reporte PDF...',
+    caption: 'Preparando documento',
+    position: 'top-right',
+    timeout: 2000,
+    icon: 'picture_as_pdf',
   })
 
   exportandoPdf.value = true
@@ -1543,23 +1563,24 @@ const exportarPdf = async () => {
       }),
     }
 
-    console.log('📤 Enviando request a /api/reporte/generar (PDF):', payload)
+    // console.log('📤 Enviando request a /api/reporte/generar (PDF):', payload)
 
     try {
-      const res = await api.post('/api/reporte/generar', payload)
-      console.log('✅ Reporte PDF registrado en backend:', res.data)
+      const _res = await api.post('/api/reporte/generar', payload)
+      // console.log('✅ Reporte PDF registrado en backend:', _res.data)
       $q.notify({
-        type: 'info',
-        message: 'Reporte registrado',
+        type: 'positive',
+        message: 'Reporte PDF registrado exitosamente',
         position: 'top-right',
-        timeout: 2000,
+        timeout: 3000,
+        icon: 'check_circle',
       })
     } catch (apiError) {
-      console.error('❌ Error registrando reporte PDF en API:', {
-        error: apiError,
-        status: apiError.response?.status,
-        data: apiError.response?.data,
-      })
+      // console.error('❌ Error registrando reporte PDF en API:', {
+      //   error: apiError,
+      //   status: apiError.response?.status,
+      //   data: apiError.response?.data,
+      // })
 
       // Si falla el registro, continuar con generación local del PDF para no bloquear al usuario
       const status = apiError.response?.status
@@ -1637,8 +1658,8 @@ const exportarPdf = async () => {
       position: 'top-right',
     })
   } catch (error) {
-    console.error('Error al exportar PDF:', error)
-    console.error('Detalles del error:', error.response?.data || error.message)
+    // console.error('Error al exportar PDF:', error)
+    // console.error('Detalles del error:', error.response?.data || error.message)
     $q.notify({
       type: 'negative',
       message: `Error al generar o descargar el PDF: ${error.response?.data?.message || error.message}`,
@@ -1681,8 +1702,8 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
       fileName,
     }
 
-    const res = await api.post('/api/reporte/enviar-correo', payload)
-    console.log('Respuesta del envío de correos:', res.data)
+    const _res = await api.post('/api/reporte/enviar-correo', payload)
+    // console.log('Respuesta del envío de correos:', _res.data)
     $q.notify({
       type: 'positive',
       message: `Reporte enviado exitosamente a ${correos.length} destinatario(s)`,
@@ -1691,7 +1712,7 @@ const enviarPorCorreo = async ({ correos, mensaje: _mensaje }) => {
     })
     dialogCorreo.value = false
   } catch (error) {
-    console.error('Error al enviar correo:', error)
+    // console.error('Error al enviar correo:', error)
     $q.notify({
       type: 'negative',
       message: error.response?.data?.message || 'Error al enviar el reporte por correo',
@@ -1725,7 +1746,7 @@ onMounted(async () => {
       }
       await verReporte()
     } catch (e) {
-      console.warn('No se pudieron restaurar filtros guardados:', e)
+      // console.warn('No se pudieron restaurar filtros guardados:', e)
     }
   }
 
@@ -1845,7 +1866,7 @@ const generarPdfBase64 = async () => {
         const evt = new MouseEvent('mouseleave', { bubbles: true })
         canvasEl.dispatchEvent(evt)
       } catch (e) {
-        console.warn('No se pudo forzar mouseleave del canvas:', e)
+        // console.warn('No se pudo forzar mouseleave del canvas:', e)
       }
     }
 
@@ -1857,7 +1878,7 @@ const generarPdfBase64 = async () => {
         chartInstance.tooltip._active = []
       }
     } catch (e) {
-      console.warn('No se pudo limpiar tooltip activo:', e)
+      // console.warn('No se pudo limpiar tooltip activo:', e)
     }
 
     // Pequeño retraso para asegurar que el navegador procese el mouseleave
@@ -1873,7 +1894,7 @@ const generarPdfBase64 = async () => {
       try {
         chartInstance.update('none')
       } catch (e2) {
-        console.warn('No se pudo limpiar el gráfico:', e2)
+        // console.warn('No se pudo limpiar el gráfico:', e2)
       }
     }
 
@@ -1887,7 +1908,7 @@ const generarPdfBase64 = async () => {
       try {
         canvasEl.style.pointerEvents = originalPointer ?? ''
       } catch (e) {
-        console.warn('No se pudo restaurar pointer-events del canvas:', e)
+        // console.warn('No se pudo restaurar pointer-events del canvas:', e)
       }
     }
     // Convertir PNG a JPEG optimizado para reducir peso en PDF

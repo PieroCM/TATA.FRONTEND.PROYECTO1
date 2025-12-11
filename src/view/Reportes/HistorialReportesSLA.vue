@@ -187,12 +187,12 @@ const cargarHistorial = async () => {
         })
       }
     } catch (usuarioError) {
-      console.warn('No se pudieron cargar los usuarios:', usuarioError)
+      // console.warn('No se pudieron cargar los usuarios:', usuarioError)
     }
 
     const res = await api.get('/api/reporte')
     const datos = res.data || []
-    console.log('Datos del API:', datos)
+    // console.log('Datos del API:', datos)
 
     // Enriquecer datos con nombres de usuario
     const datosEnriquecidos = datos.map((reporte) => {
@@ -212,9 +212,9 @@ const cargarHistorial = async () => {
       const fechaB = new Date(b.fechaGeneracion).getTime()
       return fechaB - fechaA
     })
-    console.log('Reportes ordenados:', reportes.value)
+    // console.log('Reportes ordenados:', reportes.value)
   } catch (error) {
-    console.error('Error al cargar historial de reportes:', error)
+    // console.error('Error al cargar historial de reportes:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar historial de reportes',
@@ -243,7 +243,7 @@ const _descargarReporte = (row) => {
 
     window.open(urlDescarga, '_blank')
   } catch (error) {
-    console.error('Error al descargar reporte:', error)
+    // console.error('Error al descargar reporte:', error)
     $q.notify({
       type: 'negative',
       message:

@@ -124,7 +124,7 @@ const loadSolicitudes = async () => {
     solicitudes.value = data
   } catch (err) {
     error.value = 'Error al cargar las solicitudes: ' + (err.message || 'Error desconocido')
-    console.error('Error al cargar solicitudes:', err)
+    // console.error('Error al cargar solicitudes:', err)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar las solicitudes',
@@ -473,7 +473,7 @@ const handleExportarPDF = ({ registros }) => {
       position: 'top-right',
     })
   } catch (err) {
-    console.error('Error al generar PDF:', err)
+    // console.error('Error al generar PDF:', err)
     $q.notify({
       type: 'negative',
       message: 'Error al generar el PDF',
@@ -505,7 +505,7 @@ const handleEliminar = (registro) => {
       // Recargar la tabla después de eliminar
       await loadSolicitudes()
     } catch (err) {
-      console.error('Error al eliminar:', err)
+      // console.error('Error al eliminar:', err)
       $q.notify({
         type: 'negative',
         message: 'Error al eliminar el registro',

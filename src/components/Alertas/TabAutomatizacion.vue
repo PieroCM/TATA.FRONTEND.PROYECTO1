@@ -291,7 +291,7 @@ const obtenerNombrePersonal = async (idUsuario) => {
   }
 
   try {
-    console.log(`👤 Obteniendo datos de personal para ID: ${idUsuario}`)
+    // console.log(`👤 Obteniendo datos de personal para ID: ${idUsuario}`)
     const response = await api.get(`/api/personal/${idUsuario}`)
 
     if (response.data) {
@@ -302,12 +302,12 @@ const obtenerNombrePersonal = async (idUsuario) => {
       const apellidoMaterno = personal.apellidoMaterno || ''
 
       nombreCompletoPersonal.value = `${nombre} ${apellidoPaterno} ${apellidoMaterno}`.trim()
-      console.log(`✅ Nombre obtenido: ${nombreCompletoPersonal.value}`)
+      // console.log(`✅ Nombre obtenido: ${nombreCompletoPersonal.value}`)
     } else {
       nombreCompletoPersonal.value = 'Nombre no disponible'
     }
   } catch (error) {
-    console.error('❌ Error al obtener datos de personal:', error)
+    // console.error('❌ Error al obtener datos de personal:', error)
     nombreCompletoPersonal.value = 'Error al obtener nombre'
   }
 }
@@ -371,21 +371,21 @@ const obtenerUsuarios = async () => {
   totalUsuarios.value = null
 
   try {
-    console.log('👥 Obteniendo administradores y analistas...')
+    // console.log('👥 Obteniendo administradores y analistas...')
     const response = await api.get('/api/email/administradores-analistas')
 
     if (response.data && response.data.success) {
       totalUsuarios.value = response.data.total
       listaUsuarios.value = response.data.usuarios || []
-      console.log(`✅ Total de usuarios: ${totalUsuarios.value}`)
-      console.log('📝 Lista de usuarios:', listaUsuarios.value)
+      // console.log(`✅ Total de usuarios: ${totalUsuarios.value}`)
+      // console.log('📝 Lista de usuarios:', listaUsuarios.value)
     } else {
-      console.warn('⚠️ Respuesta inesperada de la API:', response.data)
+      // console.warn('⚠️ Respuesta inesperada de la API:', response.data)
       totalUsuarios.value = 0
       listaUsuarios.value = []
     }
   } catch (error) {
-    console.error('❌ Error al obtener usuarios:', error)
+    // console.error('❌ Error al obtener usuarios:', error)
     totalUsuarios.value = null
     listaUsuarios.value = []
 
@@ -407,7 +407,7 @@ const cargarConfiguracion = async () => {
   cargando.value = true
 
   try {
-    console.log('📋 Cargando configuración de email...')
+    // console.log('📋 Cargando configuración de email...')
     const response = await api.get('/api/email/config')
 
     if (response.data) {
@@ -436,11 +436,11 @@ const cargarConfiguracion = async () => {
       // Guardar configuración inicial para detectar cambios
       configuracionInicial.value = { ...configuracion.value }
 
-      console.log('✅ Configuración cargada:', configuracion.value)
-      console.log('👤 Usuario seleccionado ID:', idUsuarioSeleccionado.value)
+      // console.log('✅ Configuración cargada:', configuracion.value)
+      // console.log('👤 Usuario seleccionado ID:', idUsuarioSeleccionado.value)
     }
   } catch (error) {
-    console.error('❌ Error al cargar configuración:', error)
+    // console.error('❌ Error al cargar configuración:', error)
 
     $q.notify({
       type: 'warning',
@@ -469,8 +469,8 @@ const guardarConfiguracion = async () => {
       destinatarioResumen: usuarioSeleccionado.value?.correoCorporativo || '',
     }
 
-    console.log('💾 Guardando configuración:', payload)
-    console.log('👤 Destinatario seleccionado:', usuarioSeleccionado.value)
+    // console.log('💾 Guardando configuración:', payload)
+    // console.log('👤 Destinatario seleccionado:', usuarioSeleccionado.value)
 
     // Llamar a PUT /api/email/config
     await api.put('/api/email/config/1', payload) // Actualizar configuración inicial después de guardar exitosamente
@@ -484,9 +484,9 @@ const guardarConfiguracion = async () => {
       timeout: 2000,
     })
 
-    console.log('✅ Configuración guardada exitosamente')
+    // console.log('✅ Configuración guardada exitosamente')
   } catch (error) {
-    console.error('❌ Error al guardar:', error)
+    // console.error('❌ Error al guardar:', error)
 
     $q.notify({
       type: 'negative',
@@ -506,7 +506,7 @@ const probarEnvio = async () => {
   probando.value = true
 
   try {
-    console.log('📧 Probando envío de resumen a:', configuracion.value.destinatarioResumen)
+    // console.log('📧 Probando envío de resumen a:', configuracion.value.destinatarioResumen)
 
     // Llamar a POST /api/email/send-summary
     const response = await api.post('/api/email/send-summary')
@@ -514,7 +514,7 @@ const probarEnvio = async () => {
     // Capturar el mensaje de respuesta del backend
     const mensaje = response.data?.mensaje || response.data?.message || ''
 
-    console.log('📩 Respuesta del servidor:', response.data)
+    // console.log('📩 Respuesta del servidor:', response.data)
 
     // Verificar si no había alertas para enviar
     if (mensaje.toLowerCase().includes('no se encontraron alertas')) {
@@ -526,7 +526,7 @@ const probarEnvio = async () => {
         timeout: 3000,
       })
 
-      console.log('⚠️ Sin alertas para enviar - No se registra ejecución')
+      // console.log('⚠️ Sin alertas para enviar - No se registra ejecución')
 
       // No recargar tabla porque no hubo registro de ejecución
     } else {
@@ -539,16 +539,16 @@ const probarEnvio = async () => {
         timeout: 2000,
       })
 
-      console.log('✅ Resumen enviado exitosamente')
+      // console.log('✅ Resumen enviado exitosamente')
 
       // Recargar tabla de ejecuciones solo cuando hubo envío real
       if (tablaEjecucionesRef.value && tablaEjecucionesRef.value.cargarEjecuciones) {
-        console.log('🔄 Recargando historial de ejecuciones...')
+        // console.log('🔄 Recargando historial de ejecuciones...')
         await tablaEjecucionesRef.value.cargarEjecuciones()
       }
     }
   } catch (error) {
-    console.error('❌ Error al probar envío:', error)
+    // console.error('❌ Error al probar envío:', error)
 
     $q.notify({
       type: 'negative',
