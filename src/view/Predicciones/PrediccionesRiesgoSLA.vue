@@ -8,7 +8,8 @@
           Entrenamiento del Modelo ML
         </div>
         <div class="text-subtitle2 text-grey-7 q-mt-xs">
-          Entrena un nuevo modelo de predicción de SLA seleccionando un rango de fechas para los datos históricos
+          Entrena un nuevo modelo de predicción de SLA seleccionando un rango de fechas para los
+          datos históricos
         </div>
       </div>
     </div>
@@ -29,7 +30,10 @@
               label="Usar todos los datos históricos disponibles"
               color="primary"
             >
-              <q-tooltip>Si activas esta opción, el modelo se entrenará con TODOS los datos históricos disponibles en la base de datos</q-tooltip>
+              <q-tooltip
+                >Si activas esta opción, el modelo se entrenará con TODOS los datos históricos
+                disponibles en la base de datos</q-tooltip
+              >
             </q-checkbox>
           </div>
 
@@ -41,7 +45,7 @@
                 label="Fecha de Inicio *"
                 filled
                 type="date"
-                :rules="[val => usarTodosDatos || !!val || 'La fecha de inicio es requerida']"
+                :rules="[(val) => usarTodosDatos || !!val || 'La fecha de inicio es requerida']"
                 hint="Fecha inicial de los datos históricos"
                 :disable="usarTodosDatos"
               >
@@ -59,8 +63,12 @@
                 filled
                 type="date"
                 :rules="[
-                  val => usarTodosDatos || !!val || 'La fecha de fin es requerida',
-                  val => usarTodosDatos || !formulario.fechaInicio || val >= formulario.fechaInicio || 'La fecha de fin debe ser posterior o igual a la fecha de inicio'
+                  (val) => usarTodosDatos || !!val || 'La fecha de fin es requerida',
+                  (val) =>
+                    usarTodosDatos ||
+                    !formulario.fechaInicio ||
+                    val >= formulario.fechaInicio ||
+                    'La fecha de fin debe ser posterior o igual a la fecha de inicio',
                 ]"
                 hint="Fecha final de los datos históricos"
                 :disable="usarTodosDatos"
@@ -78,8 +86,9 @@
               <q-icon name="info" />
             </template>
             <div class="text-body2">
-              <strong>Modo: Todos los datos</strong><br/>
-              El modelo se entrenará con todos los registros históricos disponibles en la base de datos, sin restricción de fechas.
+              <strong>Modo: Todos los datos</strong><br />
+              El modelo se entrenará con todos los registros históricos disponibles en la base de
+              datos, sin restricción de fechas.
             </div>
           </q-banner>
 
@@ -89,8 +98,9 @@
               <q-icon name="info" />
             </template>
             <div class="text-body2">
-              <strong>Importante:</strong> El entrenamiento puede tardar varios minutos dependiendo del volumen de datos.
-              Se recomienda seleccionar un rango de fechas que contenga datos representativos y suficientes para entrenar el modelo.
+              <strong>Importante:</strong> El entrenamiento puede tardar varios minutos dependiendo
+              del volumen de datos. Se recomienda seleccionar un rango de fechas que contenga datos
+              representativos y suficientes para entrenar el modelo.
             </div>
           </q-banner>
 
@@ -145,7 +155,9 @@
               <q-card flat bordered class="info-card">
                 <q-card-section class="text-center">
                   <q-icon name="memory" size="32px" color="primary" />
-                  <div class="text-h5 text-weight-bold q-mt-sm">{{ resultadoEntrenamiento.modelo_version || 'N/A' }}</div>
+                  <div class="text-h5 text-weight-bold q-mt-sm">
+                    {{ resultadoEntrenamiento.modelo_version || 'N/A' }}
+                  </div>
                   <div class="text-caption text-grey-7">Versión del Modelo</div>
                 </q-card-section>
               </q-card>
@@ -156,7 +168,9 @@
               <q-card flat bordered class="info-card">
                 <q-card-section class="text-center">
                   <q-icon name="dataset" size="32px" color="info" />
-                  <div class="text-h5 text-weight-bold q-mt-sm">{{ resultadoEntrenamiento.registros_utilizados || 0 }}</div>
+                  <div class="text-h5 text-weight-bold q-mt-sm">
+                    {{ resultadoEntrenamiento.registros_utilizados || 0 }}
+                  </div>
                   <div class="text-caption text-grey-7">Registros Utilizados</div>
                 </q-card-section>
               </q-card>
@@ -167,7 +181,9 @@
               <q-card flat bordered class="info-card">
                 <q-card-section class="text-center">
                   <q-icon name="balance" size="32px" color="secondary" />
-                  <div class="text-body1 text-weight-bold q-mt-sm">{{ resultadoEntrenamiento.estrategia_balanceo || 'N/A' }}</div>
+                  <div class="text-body1 text-weight-bold q-mt-sm">
+                    {{ resultadoEntrenamiento.estrategia_balanceo || 'N/A' }}
+                  </div>
                   <div class="text-caption text-grey-7">Estrategia de Balanceo</div>
                 </q-card-section>
               </q-card>
@@ -206,7 +222,9 @@
             <div class="col-12 col-sm-4">
               <div class="metrica-item">
                 <div class="metrica-label">Accuracy (Exactitud)</div>
-                <div class="metrica-valor">{{ formatearMetrica(resultadoEntrenamiento.metricas?.accuracy) }}</div>
+                <div class="metrica-valor">
+                  {{ formatearMetrica(resultadoEntrenamiento.metricas?.accuracy) }}
+                </div>
                 <q-linear-progress
                   :value="resultadoEntrenamiento.metricas?.accuracy || 0"
                   color="positive"
@@ -220,7 +238,9 @@
             <div class="col-12 col-sm-4">
               <div class="metrica-item">
                 <div class="metrica-label">F1 Score</div>
-                <div class="metrica-valor">{{ formatearMetrica(resultadoEntrenamiento.metricas?.f1) }}</div>
+                <div class="metrica-valor">
+                  {{ formatearMetrica(resultadoEntrenamiento.metricas?.f1) }}
+                </div>
                 <q-linear-progress
                   :value="resultadoEntrenamiento.metricas?.f1 || 0"
                   color="info"
@@ -234,7 +254,9 @@
             <div class="col-12 col-sm-4">
               <div class="metrica-item">
                 <div class="metrica-label">ROC AUC</div>
-                <div class="metrica-valor">{{ formatearMetrica(resultadoEntrenamiento.metricas?.roc_auc) }}</div>
+                <div class="metrica-valor">
+                  {{ formatearMetrica(resultadoEntrenamiento.metricas?.roc_auc) }}
+                </div>
                 <q-linear-progress
                   :value="resultadoEntrenamiento.metricas?.roc_auc || 0"
                   color="secondary"
@@ -290,7 +312,7 @@ const formRef = ref(null)
 const usarTodosDatos = ref(false)
 const formulario = ref({
   fechaInicio: '',
-  fechaFin: ''
+  fechaFin: '',
 })
 
 const entrenando = ref(false)
@@ -305,10 +327,11 @@ const entrenarModelo = async () => {
   resultadoEntrenamiento.value = null
 
   $q.loading.show({
-    message: 'Entrenando modelo de Machine Learning...<br/><span class="text-caption">Esto puede tardar varios minutos</span>',
+    message:
+      'Entrenando modelo de Machine Learning...<br/><span class="text-caption">Esto puede tardar varios minutos</span>',
     html: true,
     spinnerColor: 'primary',
-    spinnerSize: 60
+    spinnerSize: 60,
   })
 
   try {
@@ -333,9 +356,9 @@ const entrenarModelo = async () => {
       metricas: {
         accuracy: response.data.accuracy || 0,
         f1: response.data.accuracy * 0.95 || 0,
-        roc_auc: response.data.accuracy * 0.98 || 0
+        roc_auc: response.data.accuracy * 0.98 || 0,
       },
-      mensaje: response.data.message
+      mensaje: response.data.message,
     }
 
     $q.notify({
@@ -344,19 +367,16 @@ const entrenarModelo = async () => {
       caption: `Samples: ${response.data.samples_used}, Accuracy: ${(response.data.accuracy * 100).toFixed(2)}%`,
       position: 'top-right',
       timeout: 5000,
-      actions: [
-        { label: 'Ver Predicciones', color: 'white', handler: irAPredicciones }
-      ]
+      actions: [{ label: 'Ver Predicciones', color: 'white', handler: irAPredicciones }],
     })
-
   } catch (error) {
-    console.error('Error al entrenar el modelo:', error)
+    // console.error('Error al entrenar el modelo:', error)
     $q.notify({
       type: 'negative',
       message: 'Error al entrenar el modelo',
       caption: error.response?.data?.mensaje || error.message || 'Error desconocido',
       position: 'top-right',
-      timeout: 5000
+      timeout: 5000,
     })
   } finally {
     entrenando.value = false
@@ -367,7 +387,7 @@ const entrenarModelo = async () => {
 const limpiarFormulario = () => {
   formulario.value = {
     fechaInicio: '',
-    fechaFin: ''
+    fechaFin: '',
   }
   formRef.value?.resetValidation()
 }

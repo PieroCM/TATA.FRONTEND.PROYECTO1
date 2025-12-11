@@ -4,11 +4,17 @@
     <div class="row items-center q-mb-md q-col-gutter-sm">
       <div class="col-12 col-md-6">
         <div class="text-h4 text-h5-sm text-weight-bold">
-          <q-icon name="analytics" color="primary" :size="$q.screen.gt.xs ? '36px' : '28px'" class="q-mr-sm" />
+          <q-icon
+            name="analytics"
+            color="primary"
+            :size="$q.screen.gt.xs ? '36px' : '28px'"
+            class="q-mr-sm"
+          />
           <span :class="$q.screen.gt.xs ? '' : 'text-h6'">Predicciones de SLA</span>
         </div>
         <div class="text-subtitle2 text-caption-sm text-grey-7 q-mt-xs">
-          📊 Predicción de solicitudes <strong>EN PROCESO</strong>: cuáles cumplirán y cuáles no cumplirán el SLA
+          📊 Predicción de solicitudes <strong>EN PROCESO</strong>: cuáles cumplirán y cuáles no
+          cumplirán el SLA
         </div>
       </div>
 
@@ -49,16 +55,30 @@
     </div>
 
     <!-- Indicadores Clave (KPIs) - Predicción Clara -->
-    <div class="row q-col-gutter-sm q-col-gutter-md-md q-mb-lg" v-if="!loading && predicciones.length > 0">
+    <div
+      class="row q-col-gutter-sm q-col-gutter-md-md q-mb-lg"
+      v-if="!loading && predicciones.length > 0"
+    >
       <!-- Total EN PROCESO -->
       <div class="col-12 col-sm-6 col-lg-3">
         <q-card flat bordered class="kpi-card bg-blue-grey-7 text-white">
           <q-card-section :class="$q.screen.lt.sm ? 'q-pa-sm' : ''">
             <div class="row items-center no-wrap">
-              <q-icon name="hourglass_empty" :size="$q.screen.gt.xs ? 'md' : 'sm'" class="q-mr-sm" />
+              <q-icon
+                name="hourglass_empty"
+                :size="$q.screen.gt.xs ? 'md' : 'sm'"
+                class="q-mr-sm"
+              />
               <div class="col">
-                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">{{ predicciones.length }}</div>
-                <div :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'" class="text-weight-bold">EN PROCESO</div>
+                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">
+                  {{ predicciones.length }}
+                </div>
+                <div
+                  :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'"
+                  class="text-weight-bold"
+                >
+                  EN PROCESO
+                </div>
                 <div class="text-caption" v-if="$q.screen.gt.xs">Solicitudes activas</div>
               </div>
             </div>
@@ -73,8 +93,15 @@
             <div class="row items-center no-wrap">
               <q-icon name="cancel" :size="$q.screen.gt.xs ? 'md' : 'sm'" class="q-mr-sm" />
               <div class="col">
-                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">{{ contadorNoCumpliran }}</div>
-                <div :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'" class="text-weight-bold">NO VAN A CUMPLIR</div>
+                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">
+                  {{ contadorNoCumpliran }}
+                </div>
+                <div
+                  :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'"
+                  class="text-weight-bold"
+                >
+                  NO VAN A CUMPLIR
+                </div>
                 <div class="text-caption" v-if="$q.screen.gt.xs">Probabilidad ≥ 50%</div>
               </div>
             </div>
@@ -89,8 +116,15 @@
             <div class="row items-center no-wrap">
               <q-icon name="check_circle" :size="$q.screen.gt.xs ? 'md' : 'sm'" class="q-mr-sm" />
               <div class="col">
-                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">{{ contadorCumpliran }}</div>
-                <div :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'" class="text-weight-bold">VAN A CUMPLIR</div>
+                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">
+                  {{ contadorCumpliran }}
+                </div>
+                <div
+                  :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'"
+                  class="text-weight-bold"
+                >
+                  VAN A CUMPLIR
+                </div>
                 <div class="text-caption" v-if="$q.screen.gt.xs">Probabilidad &lt; 50%</div>
               </div>
             </div>
@@ -105,8 +139,12 @@
             <div class="row items-center no-wrap">
               <q-icon name="trending_up" :size="$q.screen.gt.xs ? 'md' : 'sm'" class="q-mr-sm" />
               <div class="col">
-                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">{{ promedioRiesgo }}%</div>
-                <div :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'">Riesgo Promedio</div>
+                <div :class="$q.screen.gt.xs ? 'text-h4' : 'text-h5'" class="text-weight-bold">
+                  {{ promedioRiesgo }}%
+                </div>
+                <div :class="$q.screen.gt.xs ? 'text-subtitle2' : 'text-caption'">
+                  Riesgo Promedio
+                </div>
                 <div class="text-caption" v-if="$q.screen.gt.xs">De incumplimiento</div>
               </div>
             </div>
@@ -144,7 +182,8 @@
           <q-icon name="info_outline" size="64px" color="info" />
           <div class="text-h6 text-grey-7 q-mt-md">No hay predicciones disponibles</div>
           <div class="text-body2 text-grey-6 q-mt-sm">
-            No se encontraron predicciones actuales. Intente actualizar los datos o verificar que el servicio de ML esté activo.
+            No se encontraron predicciones actuales. Intente actualizar los datos o verificar que el
+            servicio de ML esté activo.
           </div>
           <q-btn
             label="Actualizar"
@@ -203,7 +242,10 @@
         <q-separator class="q-my-md" />
 
         <!-- Información del Modelo -->
-        <div :class="$q.screen.gt.xs ? 'text-subtitle1' : 'text-subtitle2'" class="q-mb-sm text-weight-medium">
+        <div
+          :class="$q.screen.gt.xs ? 'text-subtitle1' : 'text-subtitle2'"
+          class="q-mb-sm text-weight-medium"
+        >
           <q-icon name="psychology" color="primary" class="q-mr-xs" />
           Modelo de Machine Learning
         </div>
@@ -268,19 +310,19 @@ const exportando = ref(false)
 // Computed - Predicciones claras y entendibles
 const contadorNoCumpliran = computed(() => {
   // Predicción: NO VA A CUMPLIR (probabilidad >= 50%)
-  return predicciones.value.filter(p => p.probabilidadIncumplimiento >= 0.5).length
+  return predicciones.value.filter((p) => p.probabilidadIncumplimiento >= 0.5).length
 })
 
 const contadorCumpliran = computed(() => {
   // Predicción: VA A CUMPLIR (probabilidad < 50%)
-  return predicciones.value.filter(p => p.probabilidadIncumplimiento < 0.5).length
+  return predicciones.value.filter((p) => p.probabilidadIncumplimiento < 0.5).length
 })
 
 const promedioRiesgo = computed(() => {
   if (predicciones.value.length === 0) return 0
-  const suma = predicciones.value.reduce((acc, p) => acc + (p.probabilidadIncumplimiento * 100), 0)
+  const suma = predicciones.value.reduce((acc, p) => acc + p.probabilidadIncumplimiento * 100, 0)
   return (suma / predicciones.value.length).toFixed(1)
-})// Métodos
+}) // Métodos
 const exportarPDF = async () => {
   exportando.value = true
 
@@ -289,14 +331,15 @@ const exportarPDF = async () => {
     const autoTable = (await import('jspdf-autotable')).default
 
     $q.loading.show({
-      message: 'Generando PDF profesional...<br/><span class="text-caption">Por favor espera</span>',
-      html: true
+      message:
+        'Generando PDF profesional...<br/><span class="text-caption">Por favor espera</span>',
+      html: true,
     })
 
     const pdf = new jsPDF({
       orientation: 'landscape',
       unit: 'mm',
-      format: 'a4'
+      format: 'a4',
     })
 
     const pageWidth = pdf.internal.pageSize.getWidth()
@@ -320,7 +363,7 @@ const exportarPDF = async () => {
       month: 'long',
       day: 'numeric',
       hour: '2-digit',
-      minute: '2-digit'
+      minute: '2-digit',
     })
     pdf.text(`Generado: ${fechaHoy}`, pageWidth / 2, 19, { align: 'center' })
 
@@ -343,11 +386,11 @@ const exportarPDF = async () => {
       { label: 'EN PROCESO', value: predicciones.value.length, color: [96, 125, 139] },
       { label: 'NO VAN A CUMPLIR', value: contadorNoCumpliran.value, color: [244, 67, 54] },
       { label: 'VAN A CUMPLIR', value: contadorCumpliran.value, color: [76, 175, 80] },
-      { label: 'RIESGO PROMEDIO', value: `${promedioRiesgo.value}%`, color: [255, 152, 0] }
+      { label: 'RIESGO PROMEDIO', value: `${promedioRiesgo.value}%`, color: [255, 152, 0] },
     ]
 
     kpis.forEach((kpi, index) => {
-      const x = kpiStartX + (index * (kpiWidth + 2))
+      const x = kpiStartX + index * (kpiWidth + 2)
 
       // Fondo del KPI
       pdf.setFillColor(...kpi.color)
@@ -381,12 +424,14 @@ const exportarPDF = async () => {
       const infoModelo = [
         `Registros de entrenamiento: ${modeloInfo.value.registros?.toLocaleString() || 'N/A'}`,
         `Precisión (Accuracy): ${modeloInfo.value.accuracy ? (modeloInfo.value.accuracy * 100).toFixed(1) + '%' : 'N/A'}`,
-        `Rango de datos: ${modeloInfo.value.fecha_inicio && modeloInfo.value.fecha_fin ?
-          `${modeloInfo.value.fecha_inicio} a ${modeloInfo.value.fecha_fin}` :
-          'Todos los datos históricos'}`
+        `Rango de datos: ${
+          modeloInfo.value.fecha_inicio && modeloInfo.value.fecha_fin
+            ? `${modeloInfo.value.fecha_inicio} a ${modeloInfo.value.fecha_fin}`
+            : 'Todos los datos históricos'
+        }`,
       ]
 
-      infoModelo.forEach(info => {
+      infoModelo.forEach((info) => {
         pdf.text(`• ${info}`, 16, yPos)
         yPos += 5
       })
@@ -402,7 +447,7 @@ const exportarPDF = async () => {
     yPos += 5
 
     // Preparar datos de la tabla
-    const tableData = predicciones.value.map(p => [
+    const tableData = predicciones.value.map((p) => [
       p.idSolicitud,
       p.codigoSla,
       p.estadoCumplimientoSla || 'N/A',
@@ -410,21 +455,12 @@ const exportarPDF = async () => {
       p.diasRestantes,
       p.probabilidadIncumplimiento >= 0.5 ? 'NO VA A CUMPLIR' : 'VA A CUMPLIR',
       `${(p.probabilidadIncumplimiento * 100).toFixed(1)}%`,
-      p.nivelRiesgo || 'N/A'
+      p.nivelRiesgo || 'N/A',
     ])
 
     autoTable(pdf, {
       startY: yPos,
-      head: [[
-        'ID',
-        'Tipo SLA',
-        'Estado',
-        'Rol',
-        'Días Rest.',
-        'Predicción',
-        'Prob. %',
-        'Riesgo'
-      ]],
+      head: [['ID', 'Tipo SLA', 'Estado', 'Rol', 'Días Rest.', 'Predicción', 'Prob. %', 'Riesgo']],
       body: tableData,
       theme: 'grid',
       headStyles: {
@@ -432,11 +468,11 @@ const exportarPDF = async () => {
         textColor: [255, 255, 255],
         fontSize: 8,
         fontStyle: 'bold',
-        halign: 'center'
+        halign: 'center',
       },
       bodyStyles: {
         fontSize: 7,
-        cellPadding: 2
+        cellPadding: 2,
       },
       columnStyles: {
         0: { halign: 'center', cellWidth: 15 },
@@ -446,10 +482,10 @@ const exportarPDF = async () => {
         4: { halign: 'center', cellWidth: 15 },
         5: { halign: 'center', cellWidth: 35 },
         6: { halign: 'center', cellWidth: 18 },
-        7: { halign: 'center', cellWidth: 20 }
+        7: { halign: 'center', cellWidth: 20 },
       },
       alternateRowStyles: {
-        fillColor: [245, 245, 245]
+        fillColor: [245, 245, 245],
       },
       didParseCell: (data) => {
         // Colorear predicción
@@ -490,19 +526,12 @@ const exportarPDF = async () => {
 
         pdf.setFontSize(8)
         pdf.setTextColor(128, 128, 128)
-        pdf.text(
-          `Página ${pageCurrent} de ${pageCount}`,
-          pageWidth / 2,
-          pageHeight - 10,
-          { align: 'center' }
-        )
+        pdf.text(`Página ${pageCurrent} de ${pageCount}`, pageWidth / 2, pageHeight - 10, {
+          align: 'center',
+        })
 
-        pdf.text(
-          'Sistema de Gestión SLA - Reporte Confidencial',
-          14,
-          pageHeight - 10
-        )
-      }
+        pdf.text('Sistema de Gestión SLA - Reporte Confidencial', 14, pageHeight - 10)
+      },
     })
 
     // Generar nombre del archivo con fecha
@@ -517,17 +546,16 @@ const exportarPDF = async () => {
       message: 'PDF generado exitosamente',
       caption: `${nombreArchivo} - ${predicciones.value.length} registros`,
       position: 'top-right',
-      timeout: 3000
+      timeout: 3000,
     })
-
   } catch (err) {
-    console.error('❌ Error al exportar PDF:', err)
+    // console.error('❌ Error al exportar PDF:', err)
     $q.notify({
       type: 'negative',
       message: 'Error al generar el PDF',
       caption: err.message,
       position: 'top-right',
-      timeout: 4000
+      timeout: 4000,
     })
   } finally {
     exportando.value = false
@@ -540,9 +568,9 @@ const cargarInfoModelo = async () => {
     const axios = (await import('axios')).default
     const response = await axios.get('http://localhost:8000/modelo/info')
     modeloInfo.value = response.data
-    console.log('🤖 Info del modelo:', modeloInfo.value)
+    // console.log('🤖 Info del modelo:', modeloInfo.value)
   } catch (err) {
-    console.error('❌ Error al cargar info del modelo:', err)
+    // console.error('❌ Error al cargar info del modelo:', err)
     modeloInfo.value = null
   }
 }
@@ -553,14 +581,14 @@ const cargarPredicciones = async () => {
 
   try {
     const data = await getPrediccionesActuales()
-    console.log('📊 Datos recibidos:', data)
-    console.log('📊 Tipo de datos:', typeof data)
-    console.log('📊 Es array?:', Array.isArray(data))
-    console.log('📊 Longitud:', data?.length)
+    // console.log('📊 Datos recibidos:', data)
+    // console.log('📊 Tipo de datos:', typeof data)
+    // console.log('📊 Es array?:', Array.isArray(data))
+    // console.log('📊 Longitud:', data?.length)
     if (data && data.length > 0) {
-      console.log('📊 Primer elemento:', data[0])
-      console.log('📊 Campos disponibles:', Object.keys(data[0]))
-      console.log('📊 Estado Cumplimiento:', data[0].estadoCumplimientoSla)
+      // console.log('📊 Primer elemento:', data[0])
+      // console.log('📊 Campos disponibles:', Object.keys(data[0]))
+      // console.log('📊 Estado Cumplimiento:', data[0].estadoCumplimientoSla)
     }
 
     predicciones.value = data || []
@@ -574,18 +602,18 @@ const cargarPredicciones = async () => {
         type: 'positive',
         message: `${predicciones.value.length} predicciones cargadas correctamente`,
         position: 'top-right',
-        timeout: 2000
+        timeout: 2000,
       })
     }
   } catch (err) {
-    console.error('❌ Error completo:', err)
+    // console.error('❌ Error completo:', err)
     error.value = err.message || 'Error desconocido al cargar predicciones'
     $q.notify({
       type: 'negative',
       message: 'Error al cargar las predicciones',
       caption: error.value,
       position: 'top-right',
-      timeout: 4000
+      timeout: 4000,
     })
   } finally {
     loading.value = false
@@ -596,8 +624,8 @@ const actualizarDatos = async () => {
   await cargarPredicciones()
 }
 
-const manejarFiltrosCambiados = (filtros) => {
-  console.log('Filtros cambiados:', filtros)
+const manejarFiltrosCambiados = (_filtros) => {
+  // console.log('Filtros cambiados:', _filtros)
   // Los filtros se manejan internamente en el componente PrediccionTable
   // Este evento se puede usar para logging o analytics
 }
@@ -611,7 +639,7 @@ const formatearFechaActualizacion = () => {
     month: 'long',
     day: 'numeric',
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
   })
 }
 
@@ -623,7 +651,9 @@ onMounted(() => {
 
 <style scoped>
 .kpi-card {
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition:
+    transform 0.2s ease,
+    box-shadow 0.2s ease;
   height: 100%;
 }
 
