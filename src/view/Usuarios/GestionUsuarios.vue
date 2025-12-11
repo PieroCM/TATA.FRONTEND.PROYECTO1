@@ -533,7 +533,7 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import { useQuasar } from 'quasar'
-import axios from 'axios'
+import { api } from 'boot/axios'
 
 const $q = useQuasar()
 const usuarios = ref([])
@@ -552,15 +552,6 @@ const modoEdicion = ref(false)
 const usuarioSeleccionado = ref(null)
 const personalParaCuenta = ref(null)
 const filtro = ref({ busqueda: '', estadoCuenta: null, rol: null, estadoPersonal: null })
-
-const baseURL = 'http://localhost:5260'
-
-const getToken = () => localStorage.getItem('authToken')
-
-const getAuthHeaders = () => ({
-  Authorization: getToken() ? `Bearer ${getToken()}` : '',
-  'Content-Type': 'application/json',
-})
 
 const formUsuario = ref({
   username: '',
@@ -642,9 +633,7 @@ const cargarRolesSistema = async () => {
   loadingRoles.value = true
   try {
     console.log('🔄 Cargando roles del sistema desde API...')
-    const { data } = await axios.get(`${baseURL}/api/RolesSistema`, {
-      headers: getAuthHeaders(),
-    })
+    const { data } = await api.get('/api/RolesSistema')
     // Filtrar solo roles activos
     rolesSistema.value = data.filter((rol) => rol.esActivo === true)
     console.log('✅ Roles cargados:', rolesSistema.value.length, 'roles activos')
@@ -674,9 +663,7 @@ const cargarListadoPersonal = async () => {
 
   try {
     console.log('🔄 Cargando usuarios desde API...')
-    const { data } = await axios.get(`${baseURL}/api/personal/gestion-usuarios`, {
-      headers: getAuthHeaders(),
-    })
+    const { data } = await api.get('/api/personal/gestion-usuarios')
     usuarios.value = ordenarPorFechaCreacion(data)
     usuariosFiltrados.value = [...usuarios.value]
     console.log('✅ Usuarios cargados:', usuarios.value.length, 'registros')
@@ -795,10 +782,7 @@ const verificarDocumentoDisponible = async () => {
   try {
     // ✅ Usar parámetro de ruta, NO query string
     const documentoLimpio = encodeURIComponent(formUsuario.value.documento.trim())
-    const response = await axios.get(
-      `${baseURL}/api/personal/verificar-documento/${documentoLimpio}`,
-      { headers: getAuthHeaders() },
-    )
+    const response = await api.get(`/api/personal/verificar-documento/${documentoLimpio}`)
 
     // ✅ Backend siempre responde 200 OK con { existe: true/false, documento, mensaje }
     console.log('✅ Verificación de documento:', response.data)
@@ -979,9 +963,7 @@ const guardarUsuario = async () => {
         correoCorporativo: formUsuario.value.correoCorporativo,
       }
 
-      await axios.put(`${baseURL}/api/personal/${formUsuario.value.id}`, datosActualizar, {
-        headers: getAuthHeaders(),
-      })
+      await api.put(`/api/personal/${formUsuario.value.id}`, datosActualizar)
 
       // 🔄 Recargar lista completa desde el backend
       await cargarListadoPersonal()
@@ -1006,11 +988,18 @@ const guardarUsuario = async () => {
       }
 
       // 🔄 Usar endpoint transaccional para crear personal con/sin cuenta
-      const response = await axios.post(`${baseURL}/api/personal/with-account`, nuevoPersonal, {
-        headers: getAuthHeaders(),
+      console.log('📤 [GestionUsuarios] Enviando datos a /api/personal/with-account:', {
+        crearCuentaUsuario: nuevoPersonal.crearCuentaUsuario,
+        username: nuevoPersonal.username,
+        correoCorporativo: nuevoPersonal.correoCorporativo,
+        idRolSistema: nuevoPersonal.idRolSistema,
       })
 
-      console.log('[GestionUsuarios] Respuesta CreateWithAccount:', response.data)
+      const response = await api.post('/api/personal/with-account', nuevoPersonal)
+
+      console.log('✅ [GestionUsuarios] Respuesta CreateWithAccount:', response.data)
+      console.log('📧 [GestionUsuarios] ¿Se envió correo?:', response.data.conCuentaUsuario)
+      console.log('📧 [GestionUsuarios] Mensaje del servidor:', response.data.message)
 
       // 🔄 Recargar lista completa desde el backend
       await cargarListadoPersonal()
@@ -1070,13 +1059,7 @@ const toggleEstadoCuenta = async (usuario) => {
   try {
     const nuevoEstado = usuario.estadoCuentaAcceso === 'ACTIVO' ? 'INACTIVO' : 'ACTIVO'
 
-    await axios.put(
-      `${baseURL}/api/usuario/${usuario.idUsuario}`,
-      { estado: nuevoEstado },
-      {
-        headers: getAuthHeaders(),
-      },
-    )
+    await api.put(`/api/usuario/${usuario.idUsuario}`, { estado: nuevoEstado })
 
     // 🔄 Recargar lista completa desde el backend
     await cargarListadoPersonal()
@@ -1165,13 +1148,7 @@ const confirmTogglePersonalStatus = async (personalRecord, action) => {
       persistent: true,
     }).onOk(async () => {
       try {
-        await axios.patch(
-          `${baseURL}/api/personal/habilitar/${idPersonal}`,
-          {},
-          {
-            headers: getAuthHeaders(),
-          },
-        )
+        await api.patch(`/api/personal/habilitar/${idPersonal}`, {})
 
         $q.notify({
           type: 'positive',
@@ -1197,13 +1174,7 @@ const ejecutarDeshabilitarPersonal = async (personalRecord, eliminarUsuario) => 
   const idPersonal = personalRecord.idPersonal
 
   try {
-    await axios.patch(
-      `${baseURL}/api/personal/deshabilitar/${idPersonal}`,
-      { eliminarUsuario },
-      {
-        headers: getAuthHeaders(),
-      },
-    )
+    await api.patch(`/api/personal/deshabilitar/${idPersonal}`, { eliminarUsuario })
 
     const mensaje = eliminarUsuario
       ? 'Personal archivado y cuenta de usuario eliminada permanentemente'
@@ -1286,9 +1257,17 @@ const confirmarCrearCuenta = async () => {
       idRolSistema: cuentaForm.value.idRolSistema,
     }
 
-    await axios.post(`${baseURL}/api/usuario/vincular-personal`, payload, {
-      headers: getAuthHeaders(),
+    console.log('📤 [GestionUsuarios] Enviando datos a /api/usuario/vincular-personal:', {
+      idPersonal: payload.idPersonal,
+      username: payload.username,
+      correoCorporativo: personalParaCuenta.value.correoCorporativo,
+      idRolSistema: payload.idRolSistema,
     })
+
+    const response = await api.post('/api/usuario/vincular-personal', payload)
+
+    console.log('✅ [GestionUsuarios] Respuesta VincularPersonal:', response.data)
+    console.log('📧 [GestionUsuarios] Correo destino:', personalParaCuenta.value.correoCorporativo)
 
     $q.notify({
       type: 'positive',

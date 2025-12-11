@@ -13,13 +13,30 @@ api.interceptors.request.use(
       // Validar que el token no esté vacío o corrupto
       if (token.trim().length > 0) {
         config.headers.Authorization = `Bearer ${token}`
-        console.log('📤 Request con token:', {
-          url: config.url,
-          method: config.method,
-          hasToken: true,
-          tokenLength: token.length,
-          tokenPreview: token.substring(0, 20) + '...',
-        })
+
+        // 📧 Log especial para endpoints de creación de cuenta
+        const isAccountCreation =
+          config.url.includes('/personal/with-account') ||
+          config.url.includes('/vincular-personal') ||
+          config.url.includes('/activar-cuenta')
+
+        if (isAccountCreation) {
+          console.log('🔐 [CUENTA] Request a endpoint de cuenta:', {
+            url: config.url,
+            method: config.method,
+            hasToken: true,
+            tokenLength: token.length,
+            data: config.data,
+          })
+        } else {
+          console.log('📤 Request con token:', {
+            url: config.url,
+            method: config.method,
+            hasToken: true,
+            tokenLength: token.length,
+            tokenPreview: token.substring(0, 20) + '...',
+          })
+        }
       } else {
         console.error('❌ Token vacío o corrupto en localStorage')
       }
@@ -44,7 +61,23 @@ api.interceptors.request.use(
 
 // Interceptor de respuesta para manejar errores
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // 📧 Log especial para respuestas de endpoints de cuenta
+    const isAccountCreation =
+      response.config.url.includes('/personal/with-account') ||
+      response.config.url.includes('/vincular-personal') ||
+      response.config.url.includes('/activar-cuenta')
+
+    if (isAccountCreation) {
+      console.log('✅ [CUENTA] Respuesta del backend:', {
+        url: response.config.url,
+        status: response.status,
+        data: response.data,
+      })
+    }
+
+    return response
+  },
   async (error) => {
     const status = error.response?.status
     const config = error.config
