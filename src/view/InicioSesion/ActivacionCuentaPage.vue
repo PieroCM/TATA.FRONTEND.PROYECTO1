@@ -257,15 +257,15 @@ export default {
       this.token = token || ''
 
       // Log informativo en consola
-      if (identity) {
-        const esEmail = identity.includes('@')
-        console.log(
-          `[Activación] Identity detectada: ${esEmail ? 'EMAIL' : 'USERNAME'} → "${identity}"`,
-        )
-        console.log(`[Activación] Token recibido: ${this.token ? '✓' : '✗'}`)
-      } else {
-        console.warn('[Activación] ⚠️ No se recibió email ni username en la URL')
-      }
+      // if (identity) {
+      //   const esEmail = identity.includes('@')
+      //   console.log(
+      //     `[Activación] Identity detectada: ${esEmail ? 'EMAIL' : 'USERNAME'} → "${identity}"`,
+      //   )
+      //   console.log(`[Activación] Token recibido: ${this.token ? '✓' : '✗'}`)
+      // } else {
+      //   console.warn('[Activación] ⚠️ No se recibió email ni username en la URL')
+      // }
 
       // Validar que exista token
       if (!this.token) {
@@ -316,7 +316,7 @@ export default {
       this.loading = true
       try {
         // El backend resuelve internamente si es email o username
-        console.log('[Activación] Enviando solicitud al backend con identity:', this.email)
+        // console.log('[Activación] Enviando solicitud al backend con identity:', this.email)
 
         await this.$api.post('/api/usuario/activar-cuenta', {
           Email: this.email, // Puede ser email o username, backend lo resuelve
@@ -340,7 +340,7 @@ export default {
           this.$router.push('/login')
         }, 1500)
       } catch (error) {
-        console.error('[Activación] Error:', error.response?.data || error.message)
+        // console.error('[Activación] Error:', error.response?.data || error.message)
         this.$q.notify({
           type: 'negative',
           message:

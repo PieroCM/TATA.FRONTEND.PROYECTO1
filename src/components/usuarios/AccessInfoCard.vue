@@ -82,8 +82,8 @@ const correoCorporativo = computed(() => {
 })
 
 const rolNombre = computed(() => {
-  console.log('🔍 AccessInfoCard - usuario.rol:', props.usuario.rol)
-  console.log('🔍 AccessInfoCard - rol.nombre:', props.usuario.rol?.nombre)
+  // console.log('🔍 AccessInfoCard - usuario.rol:', props.usuario.rol)
+  // console.log('🔍 AccessInfoCard - rol.nombre:', props.usuario.rol?.nombre)
   return props.usuario.rol?.nombre || 'Sin rol asignado'
 })
 

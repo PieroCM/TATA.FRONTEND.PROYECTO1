@@ -632,13 +632,13 @@ const ordenarPorFechaCreacion = (lista) => {
 const cargarRolesSistema = async () => {
   loadingRoles.value = true
   try {
-    console.log('🔄 Cargando roles del sistema desde API...')
+    // console.log('🔄 Cargando roles del sistema desde API...')
     const { data } = await api.get('/api/RolesSistema')
     // Filtrar solo roles activos
     rolesSistema.value = data.filter((rol) => rol.esActivo === true)
-    console.log('✅ Roles cargados:', rolesSistema.value.length, 'roles activos')
+    // console.log('✅ Roles cargados:', rolesSistema.value.length, 'roles activos')
   } catch (err) {
-    console.error('❌ Error al cargar roles:', err.response?.status, err.message)
+    // console.error('❌ Error al cargar roles:', err.response?.status, err.message)
     $q.notify({
       type: 'negative',
       message: 'Error al cargar los roles del sistema',
@@ -662,13 +662,13 @@ const cargarListadoPersonal = async () => {
   error.value = null
 
   try {
-    console.log('🔄 Cargando usuarios desde API...')
+    // console.log('🔄 Cargando usuarios desde API...')
     const { data } = await api.get('/api/personal/gestion-usuarios')
     usuarios.value = ordenarPorFechaCreacion(data)
     usuariosFiltrados.value = [...usuarios.value]
-    console.log('✅ Usuarios cargados:', usuarios.value.length, 'registros')
+    // console.log('✅ Usuarios cargados:', usuarios.value.length, 'registros')
   } catch (err) {
-    console.error('❌ Error al cargar usuarios:', err.response?.status, err.message)
+    // console.error('❌ Error al cargar usuarios:', err.response?.status, err.message)
     error.value = 'Error al cargar los usuarios: ' + (err.message || 'Error desconocido')
 
     if (err.response?.status === 401) {
@@ -785,7 +785,7 @@ const verificarDocumentoDisponible = async () => {
     const response = await api.get(`/api/personal/verificar-documento/${documentoLimpio}`)
 
     // ✅ Backend siempre responde 200 OK con { existe: true/false, documento, mensaje }
-    console.log('✅ Verificación de documento:', response.data)
+    // console.log('✅ Verificación de documento:', response.data)
 
     if (response.data.existe === true) {
       $q.notify({
@@ -801,7 +801,7 @@ const verificarDocumentoDisponible = async () => {
   } catch (error) {
     // Solo mostrar notify para errores de servidor (5xx)
     if (error.response?.status && error.response.status >= 500) {
-      console.error('❌ Error del servidor al verificar documento:', error)
+      // console.error('❌ Error del servidor al verificar documento:', error)
       $q.notify({
         type: 'negative',
         message: 'Error de servidor',
@@ -810,7 +810,7 @@ const verificarDocumentoDisponible = async () => {
       })
     } else {
       // Errores 4xx solo se registran en consola (sin notify al usuario)
-      console.warn('⚠️ Error al verificar documento:', error.response?.status, error.message)
+      // console.warn('⚠️ Error al verificar documento:', error.response?.status, error.message)
     }
   } finally {
     verificandoDoc.value = false
@@ -836,7 +836,7 @@ const verificarCorreoCorporativoDisponible = async () => {
 
   verificandoCorreo.value = true
   try {
-    console.log('🔄 Verificando disponibilidad de correo corporativo...')
+    // console.log('🔄 Verificando disponibilidad de correo corporativo...')
 
     // Verificar si el correo ya existe en la lista actual de usuarios
     // En modo edición, excluir el registro actual de la comparación
@@ -857,7 +857,7 @@ const verificarCorreoCorporativoDisponible = async () => {
       })
     }
   } catch (error) {
-    console.error('❌ Error al verificar correo:', error)
+    // console.error('❌ Error al verificar correo:', error)
   } finally {
     verificandoCorreo.value = false
   }
@@ -988,18 +988,18 @@ const guardarUsuario = async () => {
       }
 
       // 🔄 Usar endpoint transaccional para crear personal con/sin cuenta
-      console.log('📤 [GestionUsuarios] Enviando datos a /api/personal/with-account:', {
-        crearCuentaUsuario: nuevoPersonal.crearCuentaUsuario,
-        username: nuevoPersonal.username,
-        correoCorporativo: nuevoPersonal.correoCorporativo,
-        idRolSistema: nuevoPersonal.idRolSistema,
-      })
+      // console.log('📤 [GestionUsuarios] Enviando datos a /api/personal/with-account:', {
+      //   crearCuentaUsuario: nuevoPersonal.crearCuentaUsuario,
+      //   username: nuevoPersonal.username,
+      //   correoCorporativo: nuevoPersonal.correoCorporativo,
+      //   idRolSistema: nuevoPersonal.idRolSistema,
+      // })
 
       const response = await api.post('/api/personal/with-account', nuevoPersonal)
 
-      console.log('✅ [GestionUsuarios] Respuesta CreateWithAccount:', response.data)
-      console.log('📧 [GestionUsuarios] ¿Se envió correo?:', response.data.conCuentaUsuario)
-      console.log('📧 [GestionUsuarios] Mensaje del servidor:', response.data.message)
+      // console.log('✅ [GestionUsuarios] Respuesta CreateWithAccount:', response.data)
+      // console.log('📧 [GestionUsuarios] ¿Se envió correo?:', response.data.conCuentaUsuario)
+      // console.log('📧 [GestionUsuarios] Mensaje del servidor:', response.data.message)
 
       // 🔄 Recargar lista completa desde el backend
       await cargarListadoPersonal()
@@ -1033,7 +1033,7 @@ const guardarUsuario = async () => {
     dialogUsuario.value = false
     //usuariosFiltrados.value = [...usuarios.value]
   } catch (error) {
-    console.error('❌ Error al guardar:', error.response?.status, error.message)
+    // console.error('❌ Error al guardar:', error.response?.status, error.message)
     $q.notify({
       type: 'negative',
       message: error.response?.data?.message || error.message || 'Error al guardar personal',
@@ -1071,7 +1071,7 @@ const toggleEstadoCuenta = async (usuario) => {
       position: 'top',
     })
   } catch (error) {
-    console.error('❌ Error al cambiar estado:', error.response?.status)
+    // console.error('❌ Error al cambiar estado:', error.response?.status)
     $q.notify({
       type: 'negative',
       message: error.response?.data?.message || 'Error al cambiar estado de acceso',
@@ -1159,7 +1159,7 @@ const confirmTogglePersonalStatus = async (personalRecord, action) => {
 
         await cargarListadoPersonal()
       } catch (error) {
-        console.error('❌ Error al reactivar personal:', error)
+        // console.error('❌ Error al reactivar personal:', error)
         $q.notify({
           type: 'negative',
           message: error.response?.data?.message || 'Error al reactivar personal',
@@ -1193,7 +1193,7 @@ const ejecutarDeshabilitarPersonal = async (personalRecord, eliminarUsuario) => 
 
     await cargarListadoPersonal()
   } catch (error) {
-    console.error('❌ Error al archivar personal:', error)
+    // console.error('❌ Error al archivar personal:', error)
     $q.notify({
       type: 'negative',
       message: error.response?.data?.message || 'Error al archivar personal',
@@ -1257,17 +1257,17 @@ const confirmarCrearCuenta = async () => {
       idRolSistema: cuentaForm.value.idRolSistema,
     }
 
-    console.log('📤 [GestionUsuarios] Enviando datos a /api/usuario/vincular-personal:', {
-      idPersonal: payload.idPersonal,
-      username: payload.username,
-      correoCorporativo: personalParaCuenta.value.correoCorporativo,
-      idRolSistema: payload.idRolSistema,
-    })
+    // console.log('📤 [GestionUsuarios] Enviando datos a /api/usuario/vincular-personal:', {
+    //   idPersonal: payload.idPersonal,
+    //   username: payload.username,
+    //   correoCorporativo: personalParaCuenta.value.correoCorporativo,
+    //   idRolSistema: payload.idRolSistema,
+    // })
 
-    const response = await api.post('/api/usuario/vincular-personal', payload)
+    const _response = await api.post('/api/usuario/vincular-personal', payload)
 
-    console.log('✅ [GestionUsuarios] Respuesta VincularPersonal:', response.data)
-    console.log('📧 [GestionUsuarios] Correo destino:', personalParaCuenta.value.correoCorporativo)
+    // console.log('✅ [GestionUsuarios] Respuesta VincularPersonal:', _response.data)
+    // console.log('📧 [GestionUsuarios] Correo destino:', personalParaCuenta.value.correoCorporativo)
 
     $q.notify({
       type: 'positive',
@@ -1282,7 +1282,7 @@ const confirmarCrearCuenta = async () => {
     dialogCrearCuenta.value = false
     await cargarListadoPersonal()
   } catch (error) {
-    console.error('❌ Error al crear cuenta:', error.response?.status)
+    // console.error('❌ Error al crear cuenta:', error.response?.status)
 
     let mensaje = 'Error al crear la cuenta de usuario'
     let caption = error.response?.data?.message || error.message

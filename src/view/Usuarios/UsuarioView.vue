@@ -106,7 +106,7 @@ const cargarUsuario = async () => {
     }
 
     if (!personalId) {
-      console.error('❌ No se encontró idPersonal en authUser (localStorage)')
+      // console.error('❌ No se encontró idPersonal en authUser (localStorage)')
       error.value = 'No se pudo identificar al usuario actual. Inicia sesión nuevamente.'
       loading.value = false
       // opcional:
@@ -114,32 +114,32 @@ const cargarUsuario = async () => {
       return
     }
 
-    console.log('📥 Intentando cargar personal con ID:', personalId)
+    // console.log('📥 Intentando cargar personal con ID:', personalId)
 
     // GET /api/Personal/{id}
     const personalResponse = await api.get(`/api/Personal/${personalId}`)
     const personalData = personalResponse.data
-    console.log('✅ Personal cargado exitosamente:', personalData)
+    // console.log('✅ Personal cargado exitosamente:', personalData)
 
     let data = personalData
 
     // Si tiene usuario vinculado, obtener datos completos del usuario con rol
     if (personalData.idUsuario) {
-      console.log('🔍 Obteniendo datos de usuario:', personalData.idUsuario)
+      // console.log('🔍 Obteniendo datos de usuario:', personalData.idUsuario)
       const usuarioResponse = await api.get(`/api/Usuario/${personalData.idUsuario}`)
       const usuarioData = usuarioResponse.data
-      console.log('✅ Usuario obtenido:', usuarioData)
+      // console.log('✅ Usuario obtenido:', usuarioData)
 
       // Obtener información del rol del sistema
       let rolData = null
       if (usuarioData.idRolSistema) {
-        console.log('🔍 Obteniendo rol del sistema:', usuarioData.idRolSistema)
+        // console.log('🔍 Obteniendo rol del sistema:', usuarioData.idRolSistema)
         try {
           const rolResponse = await api.get(`/api/RolesSistema/${usuarioData.idRolSistema}`)
           rolData = rolResponse.data
-          console.log('✅ Rol obtenido:', rolData)
+          // console.log('✅ Rol obtenido:', rolData)
         } catch (rolError) {
-          console.warn('⚠️ No se pudo obtener el rol:', rolError)
+          // console.warn('⚠️ No se pudo obtener el rol:', rolError)
         }
       }
 
@@ -153,7 +153,7 @@ const cargarUsuario = async () => {
       }
     }
 
-    console.log('🔍 Datos del rol recibido:', data.rol)
+    // console.log('🔍 Datos del rol recibido:', data.rol)
 
     // Transformar la respuesta del backend al formato esperado por los componentes
     usuario.value = {
@@ -186,18 +186,18 @@ const cargarUsuario = async () => {
       cuentaActivada: data.cuentaActivada,
     }
 
-    console.log('🎯 Usuario mapeado final:', usuario.value)
-    console.log('🎯 Rol mapeado:', usuario.value.rol)
+    // console.log('🎯 Usuario mapeado final:', usuario.value)
+    // console.log('🎯 Rol mapeado:', usuario.value.rol)
   } catch (err) {
-    console.error('❌ Error en cargarUsuario:', err)
-    console.error('📍 Detalles:', err.response?.status, err.response?.data)
+    // console.error('❌ Error en cargarUsuario:', err)
+    // console.error('📍 Detalles:', err.response?.status, err.response?.data)
 
     // Verificar si es error 404 (personal no existe) o error de conexión
     if (err.response?.status === 404) {
       error.value = 'Personal no encontrado en el sistema'
     } else if (!err.response) {
       // Backend no disponible - usar datos de prueba TEMPORALES
-      console.warn('⚠️ Backend no disponible. Usando datos de PRUEBA temporales')
+      // console.warn('⚠️ Backend no disponible. Usando datos de PRUEBA temporales')
       usuario.value = {
         id_usuario: 1,
         username: 'usuario.test',
@@ -264,13 +264,13 @@ const mostrarDialogConfirmar = () => {
 
 const confirmarCambioEmail = async (password) => {
   try {
-    console.log('🔄 Iniciando actualización de correo...')
+    // console.log('🔄 Iniciando actualización de correo...')
 
     // MERGED: Validación robusta combinando ambas ramas
     // Prioriza el correo del usuario, pero hace fallback al personal si es necesario
     const correoParaValidar = usuario.value.correo || usuario.value.personal?.correo_corporativo
 
-    console.log('🔍 Validando contraseña con correo:', correoParaValidar)
+    // console.log('🔍 Validando contraseña con correo:', correoParaValidar)
 
     // POST /api/Usuario/signin para validar contraseña (sin token)
     try {
@@ -282,15 +282,15 @@ const confirmarCambioEmail = async (password) => {
         },
         { headers: { 'Content-Type': 'application/json' } },
       )
-      console.log('✅ Contraseña validada correctamente')
+      // console.log('✅ Contraseña validada correctamente')
     } catch (validateError) {
-      console.error('❌ Contraseña incorrecta')
+      // console.error('❌ Contraseña incorrecta')
       throw new Error('Contraseña incorrecta')
     }
 
     // PUT /api/Personal/{id} - Actualizar email en Personal
     if (usuario.value.personal) {
-      console.log('📝 Actualizando correo en Personal...')
+      // console.log('📝 Actualizando correo en Personal...')
       await api.put(`/api/Personal/${usuario.value.personal.id_personal}`, {
         nombres: usuario.value.personal.nombres,
         apellidos: usuario.value.personal.apellidos,
@@ -298,7 +298,7 @@ const confirmarCambioEmail = async (password) => {
         correoCorporativo: emailEditado.value,
         estado: usuario.value.estado,
       })
-      console.log('✅ Correo actualizado en Personal')
+      // console.log('✅ Correo actualizado en Personal')
     }
 
     // POST /api/Alerta - Registrar alerta
@@ -311,9 +311,9 @@ const confirmarCambioEmail = async (password) => {
         estado: 'PENDIENTE',
         enviado_email: false,
       })
-      console.log('✅ Alerta registrada')
+      // console.log('✅ Alerta registrada')
     } catch (alertError) {
-      console.warn('⚠️ No se pudo registrar la alerta:', alertError)
+      // console.warn('⚠️ No se pudo registrar la alerta:', alertError)
       // Continuar aunque falle la alerta
     }
 
